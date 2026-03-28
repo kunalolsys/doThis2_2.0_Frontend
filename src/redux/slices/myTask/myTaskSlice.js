@@ -109,6 +109,27 @@ export const getFilterTasks = createAsyncThunk(
     }
   },
 );
+//**my task view stats */
+export const getMyTaskStats = createAsyncThunk(
+  "myTasks/fetchMyTasksStats",
+  async (params, { rejectWithValue }) => {
+    try {
+      const url = "/tasks/myTask-stats";
+
+      const { userId, creatorOrAssignorId } = params;
+
+      const payload = {
+        userId,
+        creatorOrAssignorId,
+      };
+
+      const response = await api.post(url, payload);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
 
 //**role based task filter for manager/admin/owner/sr.manager view */
 export const getRoleBasedTasks = createAsyncThunk(
@@ -237,7 +258,7 @@ const myTaskSlice = createSlice({
       total: 0,
       overdue: 0,
       completed: 0,
-      dueToday: 0,
+      pending: 0,
     },
     status: "idle",
     error: null,
@@ -297,33 +318,15 @@ const myTaskSlice = createSlice({
       })
 
       // --- Fetch Task Counts Logic ---
-      .addCase(fetchTaskCounts.fulfilled, (state, action) => {
-        const allTasks = action.payload;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+      .addCase(getMyTaskStats.fulfilled, (state, action) => {
+        const stats = action.payload.stats;
 
-        const stats = (() => {
-          const total = allTasks.length;
-          let overdue = 0;
-          let completed = 0;
-          let dueToday = 0;
-
-          allTasks.forEach((t) => {
-            const status = (t.status || "").toLowerCase();
-            if (status === "completed") completed++;
-            if (status === "overdue") overdue++;
-
-            if (t.dueDate) {
-              const d = new Date(t.dueDate);
-              d.setHours(0, 0, 0, 0);
-              if (d.getTime() === today.getTime() && status === "pending")
-                dueToday += 1;
-            }
-          });
-
-          return { total, overdue, completed, dueToday };
-        })();
-        state.taskCounts = stats;
+        state.taskCounts = {
+          total: stats.total || 0,
+          overdue: stats.overdue || 0,
+          completed: stats.completed || 0,
+          pending: stats.pending || 0,
+        };
       })
       // ... (CRUD reducers)
       .addCase(addMyTask.fulfilled, (state, action) => {

@@ -4,6 +4,7 @@ import {
   fetchMyTasks,
   fetchTaskCounts,
   getFilterTasks,
+  getMyTaskStats,
 } from "../../redux/slices/myTask/myTaskSlice";
 import api from "../../lib/api";
 import { toast } from "sonner";
@@ -246,7 +247,25 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
           </div>
         </CardContent>
       </Card>
-
+      {/* Pending */}
+      <Card
+        className={`${getCardClass("pending", "yellow")} bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200`}
+        onClick={() => onStatClick("pending")}
+      >
+        <CardContent className="p-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-yellow-700">Pending</p>
+              <p className="text-2xl font-bold text-yellow-800">
+                {counts.pending}
+              </p>
+            </div>
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <Clock className="h-6 w-6 text-yellow-700" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       {/* Overdue */}
       <Card
         className={`${getCardClass("overdue", "red")} bg-gradient-to-br from-red-50 to-red-100 border-red-200`}
@@ -282,26 +301,6 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
             </div>
             <div className="p-2 bg-green-100 rounded-lg">
               <CheckCircle2 className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Due Today */}
-      <Card
-        className={`${getCardClass("dueToday", "purple")} bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200`}
-        onClick={() => onStatClick("dueToday")}
-      >
-        <CardContent className="p-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-purple-600">Due Today</p>
-              <p className="text-2xl font-bold text-purple-700">
-                {counts.dueToday}
-              </p>
-            </div>
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Clock className="h-6 w-6 text-purple-600" />
             </div>
           </div>
         </CardContent>
@@ -348,7 +347,7 @@ const FilterBar = ({
           <SelectItem value="RecurringTask">Recurring</SelectItem>
         </SelectContent>
       </Select>
-      {(selectedStatFilter == "total"||!selectedStatFilter) && (
+      {(selectedStatFilter == "total" || !selectedStatFilter) && (
         <Select
           value={selectedFilterStatus}
           onValueChange={setSelectedFilterStatus}
@@ -397,95 +396,163 @@ const TodayTasksTable = ({
   onDelete,
   currentPage,
   itemsPerPage,
-}) => (
-  <div className="overflow-x-auto border rounded-lg bg-white">
-    <Table>
-      <TableHeader className="bg-gray-50">
-        <TableRow>
-          <TableHead>Sr. No.</TableHead>
-          <TableHead>Task Id</TableHead>
-          <TableHead>Task Title</TableHead>
-          <TableHead>Assigned To</TableHead>
-          <TableHead>Description</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Assigned By</TableHead>
-          <TableHead>Attachment</TableHead>
-          <TableHead>Start Date</TableHead>
-          <TableHead>Due Date</TableHead>
-          <TableHead>Frequency</TableHead>
-          <TableHead>Delay</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Actions</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {tasks.length > 0 ? (
-          tasks.map((task, index) => (
-            <React.Fragment key={task._id}>
-              <TableRow className={task.isOverdue ? "bg-red-50" : ""}>
-                <TableCell>
-                  {(currentPage - 1) * itemsPerPage + index + 1}
-                </TableCell>
-                <TableCell>{task.TaskId || "-"}</TableCell>
-                <TableCell className="font-medium">{task.title}</TableCell>
-                <TableCell>{task.assignedTo?.name || "-"}</TableCell>
-
-                <TableCell>
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto text-blue-600"
-                    onClick={() => onViewDescription(task)}
-                    disabled={!task.description}
-                  >
-                    View
-                  </Button>
-                </TableCell>
-                <TableCell>{task.taskType}</TableCell>
-                <TableCell>{task.assignedBy?.name || "Self"}</TableCell>
-                <TableCell>
-                  {Array.isArray(task?.attachmentFile) &&
-                  task.attachmentFile.length > 0 ? (
-                    <ViewLink file={task.attachmentFile} />
-                  ) : (
-                    "NA"
-                  )}
-                </TableCell>
-                <TableCell>
-                  {task.startDate ? formatDate(task.startDate) : "-"}
-                </TableCell>
-                <TableCell>
-                  {task.dueDate ? formatDate(task.dueDate) : "-"}
-                </TableCell>
-                <TableCell>
-                  {task.taskType === "RecurringTask" ? task.frequency : "-"}
-                </TableCell>
-                <TableCell className={task.delay ? "text-red-600" : ""}>
-                  {task.delay || "-"}
-                </TableCell>
-                <TableCell>{getStatusBadge(task.status)}</TableCell>
-                <TableCell>
-                  <TaskActions
-                    task={task}
-                    onChecklist={onChecklist}
-                    onToggleComplete={onToggleComplete}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                  />
-                </TableCell>
-              </TableRow>
-            </React.Fragment>
-          ))
-        ) : (
+  allUsers,
+}) => {
+  return (
+    <div className="overflow-x-auto border rounded-lg bg-white">
+      <Table>
+        <TableHeader className="bg-gray-50">
           <TableRow>
-            <TableCell colSpan={14} className="text-center py-8 text-gray-500">
-              No tasks found for this filter
-            </TableCell>
+            <TableHead>Sr. No.</TableHead>
+            <TableHead>Task Id</TableHead>
+            <TableHead>Task Title</TableHead>
+            <TableHead>Assigned By</TableHead>
+            <TableHead>Assigned To</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Attachment</TableHead>
+            <TableHead>Start Date</TableHead>
+            <TableHead>Due Date</TableHead>
+            <TableHead>Frequency</TableHead>
+            <TableHead>Delay</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  </div>
-);
+        </TableHeader>
+        <TableBody>
+          {tasks.length > 0 ? (
+            tasks.map((task, index) => {
+              const assignedByUser = allUsers.find(
+                (u) => String(u._id) === String(task.assignedBy?._id),
+              );
+
+              const assignedToUser = allUsers.find(
+                (u) => String(u._id) === String(task.assignedTo?._id),
+              );
+
+              return (
+                <React.Fragment key={task._id}>
+                  <TableRow className={task.isOverdue ? "bg-red-50" : ""}>
+                    <TableCell>
+                      {(currentPage - 1) * itemsPerPage + index + 1}
+                    </TableCell>
+                    <TableCell>{task.TaskId || "-"}</TableCell>
+                    <TableCell className="font-medium">{task.title}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-row gap-1">
+                        <span className="text-sm font-medium text-gray-900">
+                          {task.assignedBy?.name || "-"}
+                        </span>
+                        {assignedByUser?.name && (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
+      ${
+        assignedByUser.role?.name === "Admin"
+          ? "bg-red-100 text-red-700"
+          : assignedByUser.role?.name === "Owner"
+            ? "bg-purple-100 text-purple-700"
+            : assignedByUser.role?.name === "Sr. Manager"
+              ? "bg-blue-100 text-blue-700"
+              : assignedByUser.role?.name === "Manager"
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-700"
+      }
+    `}
+                          >
+                            {assignedByUser.role?.name}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-row gap-1">
+                        <span className="text-sm font-medium text-gray-900">
+                          {task.assignedTo?.name || "-"}
+                        </span>
+
+                        {assignedToUser?.name && (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
+      ${
+        assignedToUser.role?.name === "Admin"
+          ? "bg-red-100 text-red-700"
+          : assignedToUser.role?.name === "Owner"
+            ? "bg-purple-100 text-purple-700"
+            : assignedToUser.role?.name === "Sr. Manager"
+              ? "bg-blue-100 text-blue-700"
+              : assignedToUser.role?.name === "Manager"
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-700"
+      }
+    `}
+                          >
+                            {assignedToUser.role?.name}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    <TableCell>
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto text-blue-600"
+                        onClick={() => onViewDescription(task)}
+                        disabled={!task.description}
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                    <TableCell>{task.taskType}</TableCell>
+                    {/* <TableCell>{task.assignedBy?.name || "Self"}</TableCell> */}
+                    <TableCell>
+                      {Array.isArray(task?.attachmentFile) &&
+                      task.attachmentFile.length > 0 ? (
+                        <ViewLink file={task.attachmentFile} />
+                      ) : (
+                        "NA"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {task.startDate ? formatDate(task.startDate) : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {task.dueDate ? formatDate(task.dueDate) : "-"}
+                    </TableCell>
+                    <TableCell>
+                      {task.taskType === "RecurringTask" ? task.frequency : "-"}
+                    </TableCell>
+                    <TableCell className={task.delay ? "text-red-600" : ""}>
+                      {task.delay || "-"}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(task.status)}</TableCell>
+                    <TableCell>
+                      <TaskActions
+                        task={task}
+                        onChecklist={onChecklist}
+                        onToggleComplete={onToggleComplete}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                      />
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
+              );
+            })
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={14}
+                className="text-center py-8 text-gray-500"
+              >
+                No tasks found for this filter
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
 
 // --- MAIN COMPONENT ---
 const MyTask = () => {
@@ -541,6 +608,24 @@ const MyTask = () => {
     }
   }, [currentUser, dispatch]);
 
+  //**Fetch users */
+  const [allUsers, setAllUsers] = useState([]);
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get("/setup/users/allUsers");
+        const users = response.data?.data || [];
+        setAllUsers(users);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+        toast.error("Could not load users.");
+      }
+    };
+
+    if (currentUser?._id) {
+      fetchUsers();
+    }
+  }, [currentUser]);
   // --- CORE LOGIC: Get Fetch Params ---
   const getFetchParams = () => {
     const params = {
@@ -618,7 +703,6 @@ const MyTask = () => {
     }
     return params;
   };
-
   // --- Fetch Trigger ---
   useEffect(() => {
     let mounted = true;
@@ -629,6 +713,7 @@ const MyTask = () => {
       //   .finally(() => {
       //     if (mounted) setIsFetching(false);
       //   });
+      dispatch(getMyTaskStats({ userId: currentUser._id }));
       dispatch(
         getFilterTasks({
           userId: currentUser._id,
@@ -1062,9 +1147,9 @@ const MyTask = () => {
                         Showing Overdue Pending Tasks
                       </div>
                     )}
-                    {selectedStatFilter === "dueToday" && (
-                      <div className="text-sm font-bold text-purple-600 mb-2">
-                        Showing Tasks Due Today
+                    {selectedStatFilter === "pending" && (
+                      <div className="text-sm font-bold text-yellow-600 mb-2">
+                        Showing Pending Tasks
                       </div>
                     )}
 
@@ -1093,6 +1178,7 @@ const MyTask = () => {
                         }
                         currentPage={localCurrentPage}
                         itemsPerPage={localItemsPerPage}
+                        allUsers={allUsers}
                       />
                     </TooltipProvider>
 

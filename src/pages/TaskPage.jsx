@@ -58,7 +58,7 @@ const TaskPage = () => {
         if (mounted) {
           const usersData = userRes?.data?.data || [];
           const departmentsData = deptRes?.data?.data || [];
-          const holidaysData = holidayRes?.data?.data?.holidays || [];
+          const holidaysData = holidayRes?.data?.data || [];
           setUsers(usersData);
           setDepartments(departmentsData);
           setHolidays(holidaysData);

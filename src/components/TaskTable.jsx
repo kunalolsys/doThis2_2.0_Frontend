@@ -1239,6 +1239,24 @@ const TaskTable = ({
     indexOfFirstRecurringTask,
     indexOfLastRecurringTask,
   );
+  //**Fetch users */
+  const [allUsers, setAllUsers] = useState([]);
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get("/setup/users/allUsers");
+        const users = response.data?.data || [];
+        setAllUsers(users);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+        toast.error("Could not load users.");
+      }
+    };
+
+    if (currentUser?._id) {
+      fetchUsers();
+    }
+  }, [currentUser]);
 
   return (
     <Card className="m-4 shadow-xl bg-white/80 border-0 group">
@@ -1374,6 +1392,9 @@ const TaskTable = ({
                       Description
                     </TableHead>
                     <TableHead className="whitespace-nowrap">
+                      Assigned By
+                    </TableHead>{" "}
+                    <TableHead className="whitespace-nowrap">
                       Assigned To
                     </TableHead>
                     <TableHead className="whitespace-nowrap">
@@ -1408,46 +1429,111 @@ const TaskTable = ({
                       </TableCell>
                     </TableRow>
                   ) : currentOneTimeTasks.length > 0 ? (
-                    currentOneTimeTasks.map((task, i) => (
-                      <TableRow
-                        key={task._id || i}
-                        className="hover:bg-slate-50"
-                      >
-                        <TableCell>{indexOfFirstOneTimeTask + i + 1}</TableCell>
-                        <TableCell className="font-medium whitespace-nowrap">
-                          {task.TaskId || "-"}
-                        </TableCell>
-                        <TableCell
-                          className="font-medium whitespace-nowrap truncate max-w-[150px]"
-                          title={task.title}
+                    currentOneTimeTasks.map((task, i) => {
+                      const assignedByUser = allUsers.find(
+                        (u) => String(u._id) === String(task.assignedBy?._id),
+                      );
+
+                      const assignedToUser = allUsers.find(
+                        (u) => String(u._id) === String(task.assignedTo?._id),
+                      );
+                      return (
+                        <TableRow
+                          key={task._id || i}
+                          className="hover:bg-slate-50"
                         >
-                          {task.title}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => onViewDescription(task.description)}
+                          <TableCell>
+                            {indexOfFirstOneTimeTask + i + 1}
+                          </TableCell>
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {task.TaskId || "-"}
+                          </TableCell>
+                          <TableCell
+                            className="font-medium whitespace-nowrap truncate max-w-[150px]"
+                            title={task.title}
                           >
-                            View
-                          </Button>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {task.assignedTo?.name ||
-                            task.assignedTo?.email ||
-                            "Unassigned"}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {task.departmentOfAssignToUser?.name || "-"}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {task.startDate ? formatDate(task.startDate) : "-"}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {task.dueDate ? formatDate(task.dueDate) : "-"}
-                        </TableCell>
-                        <TableCell>-</TableCell>
-                        {/* <TableCell className="text-center">
+                            {task.title}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="link"
+                              size="sm"
+                              onClick={() =>
+                                onViewDescription(task.description)
+                              }
+                            >
+                              View
+                            </Button>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-row gap-1">
+                              <span className="text-sm font-medium text-gray-900">
+                                {task.assignedBy?.name || "-"}
+                              </span>
+                              {assignedByUser?.name && (
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
+      ${
+        assignedByUser.role?.name === "Admin"
+          ? "bg-red-100 text-red-700"
+          : assignedByUser.role?.name === "Owner"
+            ? "bg-purple-100 text-purple-700"
+            : assignedByUser.role?.name === "Sr. Manager"
+              ? "bg-blue-100 text-blue-700"
+              : assignedByUser.role?.name === "Manager"
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-700"
+      }
+    `}
+                                >
+                                  {assignedByUser.role?.name}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-row gap-1">
+                              <span className="text-sm font-medium text-gray-900">
+                                {task.assignedTo?.name || "-"}
+                              </span>
+
+                              {assignedToUser?.name && (
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
+      ${
+        assignedToUser.role?.name === "Admin"
+          ? "bg-red-100 text-red-700"
+          : assignedToUser.role?.name === "Owner"
+            ? "bg-purple-100 text-purple-700"
+            : assignedToUser.role?.name === "Sr. Manager"
+              ? "bg-blue-100 text-blue-700"
+              : assignedToUser.role?.name === "Manager"
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-700"
+      }
+    `}
+                                >
+                                  {assignedToUser.role?.name}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          {/* <TableCell className="whitespace-nowrap">
+                            {task.assignedTo?.name ||
+                              task.assignedTo?.email ||
+                              "Unassigned"}
+                          </TableCell> */}
+                          <TableCell className="whitespace-nowrap">
+                            {task.departmentOfAssignToUser?.name || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {task.startDate ? formatDate(task.startDate) : "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {task.dueDate ? formatDate(task.dueDate) : "-"}
+                          </TableCell>
+                          <TableCell>-</TableCell>
+                          {/* <TableCell className="text-center">
                           {Array.isArray(task.attachmentFile) &&
                           task.attachmentFile.length > 0 ? (
                             <Button
@@ -1463,107 +1549,110 @@ const TaskTable = ({
                             "No"
                           )}
                         </TableCell> */}
-                        <TableCell className="text-center">
-                          {getStatusBadge(task.status)}
-                        </TableCell>
-                        <TableCell className="flex items-center justify-center gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                                  onClick={() => handleEditClick(task)}
-                                >
-                                  <FilePenLine className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Edit Task</p>
-                              </TooltipContent>
-                            </Tooltip>
+                          <TableCell className="text-center">
+                            {getStatusBadge(task.status)}
+                          </TableCell>
+                          <TableCell className="flex items-center justify-center gap-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                                    onClick={() => handleEditClick(task)}
+                                  >
+                                    <FilePenLine className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Edit Task</p>
+                                </TooltipContent>
+                              </Tooltip>
 
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-gray-600 hover:bg-gray-50"
-                                  onClick={() => handleChecklistClick(task)}
-                                  disabled={
-                                    !task.checklist ||
-                                    task.checklist.length === 0
-                                  }
-                                >
-                                  <ClipboardList className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>View Checklist</p>
-                              </TooltipContent>
-                            </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-gray-600 hover:bg-gray-50"
+                                    onClick={() => handleChecklistClick(task)}
+                                    disabled={
+                                      !task.checklist ||
+                                      task.checklist.length === 0
+                                    }
+                                  >
+                                    <ClipboardList className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>View Checklist</p>
+                                </TooltipContent>
+                              </Tooltip>
 
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-green-600 hover:bg-green-50"
-                                  onClick={() => handleToggleComplete(task)}
-                                  disabled={
-                                    task.checklist && task.checklist.length > 0
-                                  }
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Mark as Complete</p>
-                              </TooltipContent>
-                            </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-green-600 hover:bg-green-50"
+                                    onClick={() => handleToggleComplete(task)}
+                                    disabled={
+                                      task.checklist &&
+                                      task.checklist.length > 0
+                                    }
+                                  >
+                                    <CheckCircle className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Mark as Complete</p>
+                                </TooltipContent>
+                              </Tooltip>
 
-                            {currentUser &&
-                              (currentUser.role?.name === "Admin" ||
-                                currentUser.role === "Admin" ||
-                                currentUser._id ===
-                                  (task.createdBy?._id || task.createdBy)) && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
-                                      onClick={() => openReassignDialog(task)}
-                                    >
-                                      <Users className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Re-assign User</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
+                              {currentUser &&
+                                (currentUser.role?.name === "Admin" ||
+                                  currentUser.role === "Admin" ||
+                                  currentUser._id ===
+                                    (task.createdBy?._id ||
+                                      task.createdBy)) && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
+                                        onClick={() => openReassignDialog(task)}
+                                      >
+                                        <Users className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Re-assign User</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
 
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-red-600 hover:bg-red-50"
-                                  onClick={() => handleDeleteClick(task)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Delete Task</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-600 hover:bg-red-50"
+                                    onClick={() => handleDeleteClick(task)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Delete Task</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     <TableRow>
                       <TableCell
@@ -1611,6 +1700,9 @@ const TaskTable = ({
                       End Date
                     </TableHead>
                     <TableHead className="whitespace-nowrap">
+                      Assigned By
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
                       Assigned To
                     </TableHead>
                     <TableHead className="whitespace-nowrap">
@@ -1638,80 +1730,144 @@ const TaskTable = ({
                       </TableCell>
                     </TableRow>
                   ) : currentRecurringTasks.length > 0 ? (
-                    currentRecurringTasks.map((task, i) => (
-                      <TableRow
-                        key={task._id || i}
-                        className="hover:bg-slate-50"
-                      >
-                        <TableCell>
-                          {indexOfFirstRecurringTask + i + 1}
-                        </TableCell>
-                        <TableCell className="font-medium whitespace-nowrap">
-                          {task.TaskId || "-"}
-                        </TableCell>
-                        <TableCell
-                          className="font-medium whitespace-nowrap truncate max-w-[150px]"
-                          title={task.title}
+                    currentRecurringTasks.map((task, i) => {
+                      const assignedByUser = allUsers.find(
+                        (u) => String(u._id) === String(task.assignedBy?._id),
+                      );
+
+                      const assignedToUser = allUsers.find(
+                        (u) => String(u._id) === String(task.assignedTo?._id),
+                      );
+                      return (
+                        <TableRow
+                          key={task._id || i}
+                          className="hover:bg-slate-50"
                         >
-                          {task.title}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            onClick={() => onViewDescription(task.description)}
+                          <TableCell>
+                            {indexOfFirstRecurringTask + i + 1}
+                          </TableCell>
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {task.TaskId || "-"}
+                          </TableCell>
+                          <TableCell
+                            className="font-medium whitespace-nowrap truncate max-w-[150px]"
+                            title={task.title}
                           >
-                            View
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className="bg-blue-50 text-blue-700"
-                          >
-                            {task.frequency || "Custom"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {(() => {
-                            const frequency = task.frequency?.toLowerCase();
-                            if (frequency !== "weekly" || !task.weekDays)
+                            {task.title}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="link"
+                              size="sm"
+                              onClick={() =>
+                                onViewDescription(task.description)
+                              }
+                            >
+                              View
+                            </Button>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className="bg-blue-50 text-blue-700"
+                            >
+                              {task.frequency || "Custom"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="w-100">
+                            {(() => {
+                              const frequency = task.frequency?.toLowerCase();
+                              if (frequency !== "weekly" || !task.weekDays)
+                                return "-";
+                              let days = task.weekDays;
+                              if (typeof days === "string") {
+                                try {
+                                  days = JSON.parse(days);
+                                } catch (e) {
+                                  return days;
+                                }
+                              }
+                              if (Array.isArray(days) && days.length > 0) {
+                                if (
+                                  typeof days[0] === "object" &&
+                                  days[0] !== null
+                                ) {
+                                  return days
+                                    .map((d) => d.label || d.value || d.day)
+                                    .join(", ");
+                                }
+                                return days.join(", ");
+                              }
                               return "-";
-                            let days = task.weekDays;
-                            if (typeof days === "string") {
-                              try {
-                                days = JSON.parse(days);
-                              } catch (e) {
-                                return days;
-                              }
-                            }
-                            if (Array.isArray(days) && days.length > 0) {
-                              if (
-                                typeof days[0] === "object" &&
-                                days[0] !== null
-                              ) {
-                                return days
-                                  .map((d) => d.label || d.value || d.day)
-                                  .join(", ");
-                              }
-                              return days.join(", ");
-                            }
-                            return "-";
-                          })()}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {task.startDate ? formatDate(task.startDate) : "-"}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {task.endDate ? formatDate(task.endDate) : "-"}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {task.assignedTo?.name || "Unassigned"}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap">
-                          {task.departmentOfAssignToUser?.name || "-"}
-                        </TableCell>
-                        {/* <TableCell className="text-center">
+                            })()}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {task.startDate ? formatDate(task.startDate) : "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {task.endDate ? formatDate(task.endDate) : "-"}
+                          </TableCell>
+                          <TableCell className="w-100">
+                            <div className="flex flex-row gap-1 ">
+                              <span className="text-sm font-medium text-gray-900">
+                                {task.assignedBy?.name || "-"}
+                              </span>
+                              {assignedByUser?.name && (
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
+      ${
+        assignedByUser.role?.name === "Admin"
+          ? "bg-red-100 text-red-700"
+          : assignedByUser.role?.name === "Owner"
+            ? "bg-purple-100 text-purple-700"
+            : assignedByUser.role?.name === "Sr. Manager"
+              ? "bg-blue-100 text-blue-700"
+              : assignedByUser.role?.name === "Manager"
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-700"
+      }
+    `}
+                                >
+                                  {assignedByUser.role?.name}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="w-100">
+                            <div className="flex flex-row gap-1">
+                              <span className="text-sm font-medium text-gray-900">
+                                {task.assignedTo?.name || "-"}
+                              </span>
+
+                              {assignedToUser?.name && (
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
+      ${
+        assignedToUser.role?.name === "Admin"
+          ? "bg-red-100 text-red-700"
+          : assignedToUser.role?.name === "Owner"
+            ? "bg-purple-100 text-purple-700"
+            : assignedToUser.role?.name === "Sr. Manager"
+              ? "bg-blue-100 text-blue-700"
+              : assignedToUser.role?.name === "Manager"
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-700"
+      }
+    `}
+                                >
+                                  {assignedToUser.role?.name}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          {/* <TableCell className="whitespace-nowrap">
+                            {task.assignedTo?.name || "Unassigned"}
+                          </TableCell> */}
+                          <TableCell className="whitespace-nowrap">
+                            {task.departmentOfAssignToUser?.name || "-"}
+                          </TableCell>
+                          {/* <TableCell className="text-center">
                           {task.attachmentFile ? (
                             <Button
                               variant="link"
@@ -1726,107 +1882,110 @@ const TaskTable = ({
                             "No"
                           )}
                         </TableCell> */}
-                        <TableCell className="text-center">
-                          {getStatusBadge(task.status)}
-                        </TableCell>
-                        <TableCell className="flex items-center justify-center gap-1">
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                                  onClick={() => handleEditClick(task)}
-                                >
-                                  <FilePenLine className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Edit Task</p>
-                              </TooltipContent>
-                            </Tooltip>
+                          <TableCell className="text-center">
+                            {getStatusBadge(task.status)}
+                          </TableCell>
+                          <TableCell className="flex items-center justify-center gap-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                                    onClick={() => handleEditClick(task)}
+                                  >
+                                    <FilePenLine className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Edit Task</p>
+                                </TooltipContent>
+                              </Tooltip>
 
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-gray-600 hover:bg-gray-50"
-                                  onClick={() => handleChecklistClick(task)}
-                                  disabled={
-                                    !task.checklist ||
-                                    task.checklist.length === 0
-                                  }
-                                >
-                                  <ClipboardList className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>View Checklist</p>
-                              </TooltipContent>
-                            </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-gray-600 hover:bg-gray-50"
+                                    onClick={() => handleChecklistClick(task)}
+                                    disabled={
+                                      !task.checklist ||
+                                      task.checklist.length === 0
+                                    }
+                                  >
+                                    <ClipboardList className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>View Checklist</p>
+                                </TooltipContent>
+                              </Tooltip>
 
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-green-600 hover:bg-green-50"
-                                  onClick={() => handleToggleComplete(task)}
-                                  disabled={
-                                    task.checklist && task.checklist.length > 0
-                                  }
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Mark as Complete</p>
-                              </TooltipContent>
-                            </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-green-600 hover:bg-green-50"
+                                    onClick={() => handleToggleComplete(task)}
+                                    disabled={
+                                      task.checklist &&
+                                      task.checklist.length > 0
+                                    }
+                                  >
+                                    <CheckCircle className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Mark as Complete</p>
+                                </TooltipContent>
+                              </Tooltip>
 
-                            {currentUser &&
-                              (currentUser.role?.name === "Admin" ||
-                                currentUser.role === "Admin" ||
-                                currentUser._id ===
-                                  (task.createdBy?._id || task.createdBy)) && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
-                                      onClick={() => openReassignDialog(task)}
-                                    >
-                                      <Users className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Re-assign User</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
+                              {currentUser &&
+                                (currentUser.role?.name === "Admin" ||
+                                  currentUser.role === "Admin" ||
+                                  currentUser._id ===
+                                    (task.createdBy?._id ||
+                                      task.createdBy)) && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
+                                        onClick={() => openReassignDialog(task)}
+                                      >
+                                        <Users className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Re-assign User</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
 
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-red-600 hover:bg-red-50"
-                                  onClick={() => handleDeleteClick(task)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p>Delete Task</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-red-600 hover:bg-red-50"
+                                    onClick={() => handleDeleteClick(task)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Delete Task</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   ) : (
                     <TableRow>
                       <TableCell

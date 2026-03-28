@@ -20,6 +20,8 @@ import {
   Clock,
   CheckCircle2,
   ClipboardList,
+  Clock1,
+  Clock2Icon,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -223,7 +225,8 @@ const TaskProgress = ({ completed, total }) => {
 };
 
 // Stats Cards Component
-const StatsCards = ({ counts, selectedStat, onStatClick }) => {
+const StatsCards = ({ allTaskCounts, selectedStat, onStatClick }) => {
+  if (!allTaskCounts) return;
   const getCardClass = (type, color) => `
     cursor-pointer transition-all duration-200 transform hover:scale-105
     ${selectedStat === type ? `ring-2 ring-${color}-500 shadow-lg` : ""}
@@ -241,10 +244,31 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
               <p className="text-sm font-medium text-blue-600">
                 Total Assigned
               </p>
-              <p className="text-2xl font-bold text-blue-700">{counts.total}</p>
+              <p className="text-2xl font-bold text-blue-700">
+                {allTaskCounts?.total || 0}
+              </p>
             </div>
             <div className="p-2 bg-blue-100 rounded-lg">
               <FileText className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      <Card
+        className={`${getCardClass("pending", "yellow")} bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200`}
+        onClick={() => onStatClick("pending")}
+      >
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-yellow-700">Pending</p>
+              <p className="text-2xl font-bold text-yellow-800">
+                {allTaskCounts?.counts?.Pending || 0}
+              </p>
+            </div>
+
+            <div className="p-2 bg-yellow-200 rounded-lg">
+              <Clock2Icon className="h-6 w-6 text-yellow-700" />
             </div>
           </div>
         </CardContent>
@@ -258,7 +282,7 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
             <div>
               <p className="text-sm font-medium text-red-600">Overdue</p>
               <p className="text-2xl font-bold text-red-700">
-                {counts.overdue}
+                {allTaskCounts?.counts?.Overdue || 0}
               </p>
             </div>
             <div className="p-2 bg-red-100 rounded-lg">
@@ -276,7 +300,7 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
             <div>
               <p className="text-sm font-medium text-green-600">Completed</p>
               <p className="text-2xl font-bold text-green-700">
-                {counts.completed}
+                {allTaskCounts?.counts?.Completed || 0}
               </p>
             </div>
             <div className="p-2 bg-green-100 rounded-lg">
@@ -285,7 +309,7 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
           </div>
         </CardContent>
       </Card>
-      <Card
+      {/* <Card
         className={`${getCardClass("dueToday", "purple")} bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200`}
         onClick={() => onStatClick("dueToday")}
       >
@@ -294,7 +318,7 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
             <div>
               <p className="text-sm font-medium text-purple-600">Due Today</p>
               <p className="text-2xl font-bold text-purple-700">
-                {counts.dueToday}
+                {allTaskCounts.dueToday}
               </p>
             </div>
             <div className="p-2 bg-purple-100 rounded-lg">
@@ -302,7 +326,7 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
             </div>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 };
@@ -580,12 +604,12 @@ const ManagerView = () => {
         view: "manager",
         assignorId: currentUser._id,
       };
-      dispatch(fetchTaskCounts(fetchCountsParams));
+      // dispatch(fetchTaskCounts(fetchCountsParams));
       setSelectedAssignor(currentUser._id); // Set the current user as the default assignor
     }
   }, [currentUser, dispatch]);
   //**Fetch counts for stats */
-  const [allTaskForDashboard, setAllTaskForDashboard] = useState(null);
+  const [allTaskCounts, setAllTaskCounts] = useState(null);
 
   const fetchTasksForDashboard = async () => {
     try {
@@ -595,7 +619,7 @@ const ManagerView = () => {
           role: currentUser.role?.name,
         }),
       ).unwrap();
-      setAllTaskForDashboard(res);
+      setAllTaskCounts(res);
     } catch (error) {
       console.log(error);
     }
@@ -603,7 +627,7 @@ const ManagerView = () => {
   useEffect(() => {
     fetchTasksForDashboard();
   }, [currentUser]);
-  
+
   // --- Fetch Users for Filters ---
   const [allUsers, setAllUsers] = useState([]);
   useEffect(() => {
@@ -645,6 +669,9 @@ const ManagerView = () => {
     } else if (statType === "completed") {
       setSelectedStatFilter(statType);
       setSelectedFilterStatus("Completed");
+    } else if (statType === "pending") {
+      setSelectedStatFilter(statType);
+      setSelectedFilterStatus("Pending");
     } else {
       setSelectedStatFilter(statType);
       setSelectedFilterStatus("all");
@@ -1103,7 +1130,7 @@ const ManagerView = () => {
 
           <CardContent className="p-4">
             <StatsCards
-              counts={taskCounts}
+              allTaskCounts={allTaskCounts}
               selectedStat={selectedStatFilter}
               onStatClick={handleStatClick}
             />

@@ -125,14 +125,14 @@ const CreateTaskForm = ({
     }
   }, [startDate, date]);
 
-  useEffect(() => {
-    if (startDate && recurrenceEndDate && startDate > recurrenceEndDate) {
-      setRecurrenceEndDate(undefined);
-      toast.info(
-        "Recurrence end date has been cleared because it was before the new start date.",
-      );
-    }
-  }, [startDate, recurrenceEndDate]);
+  // useEffect(() => {
+  //   if (startDate && recurrenceEndDate && startDate > recurrenceEndDate) {
+  //     setRecurrenceEndDate(undefined);
+  //     toast.info(
+  //       "Recurrence end date has been cleared because it was before the new start date.",
+  //     );
+  //   }
+  // }, [startDate, recurrenceEndDate]);
 
   // --- Assignee Dropdown Logic ---
   const assignDropdownRef = useRef(null);
@@ -639,13 +639,31 @@ const CreateTaskForm = ({
                     className="w-full h-10 hover:shadow-md transition-all duration-200"
                     format="DD MMM YYYY"
                     value={startDate ? dayjs(startDate) : null}
+                    // onChange={(date, dateString) => {
+                    //   setStartDate(dateString); // ✅ "2026-03-19"
+                    // }}
                     onChange={(date, dateString) => {
-                      setStartDate(dateString); // ✅ "2026-03-19"
+                      const selectedDate = dayjs(date).format("YYYY-MM-DD");
+
+                      const holiday = holidays.find(
+                        (h) =>
+                          dayjs(h.date).format("YYYY-MM-DD") === selectedDate,
+                      );
+
+                      if (holiday) {
+                        toast.error(
+                          `Selected date is a holiday: ${holiday.name}. Please select another date.`,
+                        );
+                        setStartDate(null); // clear
+                        return;
+                      }
+
+                      setStartDate(selectedDate);
                     }}
-                    disabledDate={(current) => {
-                      const today = dayjs().startOf("day");
-                      return current && current < today;
-                    }} // Disable past dates
+                    // disabledDate={(current) => {
+                    //   const today = dayjs().startOf("day");
+                    //   return current && current < today;
+                    // }} // Disable past dates
                   />
                   {/* <Input
                   type="date"
@@ -938,7 +956,9 @@ const CreateTaskForm = ({
                         }
 
                         // ✅ store in backend format
-                        setRecurrenceEndDate(selectedDate.format("DD MMM YYYY"));
+                        setRecurrenceEndDate(
+                          selectedDate.format("DD MMM YYYY"),
+                        );
                       }}
                     />
                   </div>

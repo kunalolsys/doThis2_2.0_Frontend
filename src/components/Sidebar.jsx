@@ -77,7 +77,7 @@ const Sidebar = ({ children }) => {
     }
 
     // The 'Admin' role has all permissions.
-    if (user.role.name === "Admin") {
+    if (user.role.name === "Admin" || user.role.name === "Owner") {
       return true;
     }
 
