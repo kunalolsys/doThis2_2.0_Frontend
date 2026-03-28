@@ -41,7 +41,7 @@ import PermissionRoute from "./PermissionRoute";
 import ImportTask from "./pages/ImportTask";
 import Profile from "./pages/Profile";
 import SessionTimeoutDialog from "./components/SessionTimeoutDialog";
-import LogsTimeline from "./pages/logs";
+import LogsDashboard from "./pages/logs";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -83,7 +83,7 @@ function App() {
           <Route element={<ProtectedLayout />}>
             {/* dashboard routes - assuming all logged-in users can see this */}
             <Route path="/dashboard" element={<AdminDashboard />} />
-            <Route path="/logs" element={<LogsTimeline />} />
+            <Route path="/logs" element={<LogsDashboard />} />
             <Route path="/profile" element={<Profile />} />
 
             {/* My Day Routes */}
