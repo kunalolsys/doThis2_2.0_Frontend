@@ -4,7 +4,7 @@ import { ClipboardListIcon } from 'lucide-react';
 const StatCard = ({ title, value, icon: Icon, color = 'blue', trend }) => {
   return (
     <>
-    <div className="bg-white rounded-xl p-6 shadow-sm ">
+    <div className="bg-white rounded-xl p-6 shadow-sm hover:scale-[1.02] transition-all duration-500">
       <div className="flex items-center justify-around">
         <div className={`p-3 rounded-lg`}>
           <Icon className={`w-8 h-8 text-${color}-600`} />

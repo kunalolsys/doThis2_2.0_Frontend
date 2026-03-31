@@ -55,6 +55,8 @@ import {
   DialogFooter,
 } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
+import dayjs from "dayjs";
+import axios from "axios";
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
@@ -77,8 +79,8 @@ const AdminDashboard = () => {
       const res = await dispatch(
         fetchTasksWithStats({
           filterType,
-          userId: currentUser._id,
-          role: currentUser.role?.name,
+          userId: currentUser?._id,
+          role: currentUser?.role?.name,
         }),
       ).unwrap();
       setAllTaskForDashboard(res);
@@ -100,21 +102,6 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchTasksForDashboard(filterType);
   }, [filterType, currentUser]);
-
-  const handleRefreshTasks = () => {
-    if (isAdmin) {
-      dispatch(fetchTasks());
-    } else {
-      if (currentUser?._id) {
-        dispatch(fetchMyTasks({ userId: currentUser._id }));
-      }
-    }
-  };
-
-  const handleViewDescription = (description) => {
-    setFullDescription(description);
-    setIsDescriptionDialogOpen(true);
-  };
 
   const dynamicStats = useMemo(() => {
     const counts = allTaskForDashboard?.counts || {};
@@ -154,37 +141,50 @@ const AdminDashboard = () => {
     name: item.name,
     percentage: item.performance,
   }));
-  const upcomingDeadlines = [
-    { task: "Prepare Weekly Report", date: "2025-10-29", priority: "high" },
-    { task: "Client Follow-up Call", date: "2025-10-29", priority: "medium" },
-    { task: "Submit Expense Sheet", date: "2025-10-29", priority: "low" },
-    { task: "FMS-1-L1-04", date: "2025-10-29", priority: "high" },
-  ];
-  const getPriorityColor = (priority) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-100 border-red-300";
-      case "medium":
-        return "bg-yellow-100 border-yellow-300";
-      case "low":
-        return "bg-green-100 border-green-300";
-      default:
-        return "bg-gray-100 border-gray-300";
-    }
-  };
-  const getPriorityDot = (priority) => {
-    switch (priority) {
-      case "high":
-        return "bg-red-500";
-      case "medium":
-        return "bg-yellow-500";
-      case "low":
-        return "bg-green-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
 
+  const upcomingTasks = useMemo(() => {
+    if (!allTaskForDashboard?.data) return [];
+
+    const now = dayjs();
+    const next3Days = dayjs().add(3, "day");
+
+    return allTaskForDashboard.data.filter((task) => {
+      if (!task.dueDate) return false;
+
+      const due = dayjs(task.dueDate);
+
+      return (
+        due.isAfter(now) && // future only
+        due.isBefore(next3Days) && // within 3 days
+        task.status !== "Completed" // ignore completed
+      );
+    });
+  }, [allTaskForDashboard]);
+  const sortedUpcoming = useMemo(() => {
+    return [...upcomingTasks].sort(
+      (a, b) => new Date(a.dueDate) - new Date(b.dueDate),
+    );
+  }, [upcomingTasks]);
+  const [topPerformers, setTopPerformers] = useState([]);
+  const handleGetReport = async () => {
+    try {
+      const payload = {
+        period: "yearly",
+      };
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/mis/report`,
+        payload,
+      );
+      // const users = response.data?.data || [];
+      setTopPerformers(response.data.topPerformers);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  useEffect(() => {
+    handleGetReport();
+  }, []);
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       {/* Header */}
@@ -270,7 +270,7 @@ const AdminDashboard = () => {
 
       {/* Performance Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <Card className="p-4">
+        <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
           <CardHeader>
             <CardTitle>FMS Engine Performance</CardTitle>
           </CardHeader>
@@ -278,7 +278,7 @@ const AdminDashboard = () => {
             <p className="text-gray-500 text-sm">Data not available</p>
           </CardContent>
         </Card>
-        <Card className="p-4">
+        <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
           <CardHeader>
             <CardTitle>Delegated Tasks Performance</CardTitle>
           </CardHeader>
@@ -286,7 +286,7 @@ const AdminDashboard = () => {
             <p className="text-gray-500 text-sm">Data not available</p>
           </CardContent>
         </Card>
-        <Card className="flex items-center justify-center border shadow-sm bg-white p-4">
+        <Card className="flex items-center justify-center border shadow-sm bg-white p-4 hover:scale-[1.02] transition-all duration-500">
           <div className="flex items-center gap-3 ">
             <div className="p-2 rounded-md bg-blue-50">
               <Settings className="w-6 h-6 text-blue-600" />
@@ -297,7 +297,7 @@ const AdminDashboard = () => {
             </div>
           </div>
         </Card>
-        <Card className="flex items-center justify-center border shadow-sm bg-white p-4">
+        <Card className="flex items-center justify-center border shadow-sm bg-white p-4 hover:scale-[1.02] transition-all duration-500">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-md bg-green-50">
               <Users2 className="w-8 h-8 text-green-600" />
@@ -317,25 +317,95 @@ const AdminDashboard = () => {
       {/* Leaderboards Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Top Performers */}
-        <Card className="border p-4 shadow-sm bg-white">
-          <div className="flex items-center gap-2 mb-0">
-            <div className="p-1.5 bg-amber-100 rounded-md">
-              <Crown className="w-4 h-4 text-amber-600" />
+        <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
+          <div className="flex items-center justify-between mb-0">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <Crown className="w-4 h-4 text-amber-600" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900">
+                Top Performers — This Year{" "}
+              </h3>
             </div>
-            <h1 className="text-md font-bold text-gray-700">
-              Top 3 Performers
-            </h1>
           </div>
-          <div className="flex flex-col gap-2">
-            <p className="text-gray-500 text-sm">Data not available</p>
+          <div className="space-y-3">
+            {Array.isArray(topPerformers) &&
+              topPerformers.length > 0 &&
+              topPerformers.map((item, id) => {
+                const rankStyles = [
+                  {
+                    bg: "bg-yellow-50",
+                    border: "border-yellow-300",
+                    badge: "bg-yellow-500",
+                    text: "text-yellow-700",
+                  },
+                  {
+                    bg: "bg-gray-50",
+                    border: "border-gray-300",
+                    badge: "bg-gray-500",
+                    text: "text-gray-700",
+                  },
+                  {
+                    bg: "bg-orange-50",
+                    border: "border-orange-300",
+                    badge: "bg-orange-500",
+                    text: "text-orange-700",
+                  },
+                ];
+
+                const style = rankStyles[id] || {
+                  bg: "bg-blue-50",
+                  border: "border-blue-200",
+                  badge: "bg-blue-500",
+                  text: "text-blue-700",
+                };
+
+                return (
+                  <div
+                    key={id}
+                    className={`flex justify-between items-center p-3 rounded-lg border ${style.bg} ${style.border}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-5 h-5 ${style.badge} rounded-full flex items-center justify-center text-white text-xs font-semibold`}
+                      >
+                        {id + 1}
+                      </div>
+                      <span className="font-medium text-gray-800 text-sm">
+                        {item.name}
+                      </span>
+                    </div>
+                    <div className="flex gap-4 justify-end items-center">
+                      {/* Done on Time */}
+                      <div className="flex flex-col items-end">
+                        <span className="font-semibold text-sm text-green-600">
+                          {item.score}%
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          Done on Time
+                        </span>
+                      </div>
+
+                      {/* Not Done on Time */}
+                      <div className="flex flex-col items-end">
+                        <span className="font-semibold text-sm text-red-600">
+                          {item.lateScore}%
+                        </span>
+                        <span className="text-xs text-gray-500">Late</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </Card>
-
         {/* Top FMS */}
-        <TopFmsCard title="Top 5 FMS by On-Time %" items={topFmsItems} />
+        <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
+          <TopFmsCard title="Top 5 FMS by On-Time %" items={topFmsItems} />
+        </Card>
 
         {/* Top Managers */}
-        <Card className="border p-4 shadow-sm bg-white">
+        <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
           <div className="flex items-center gap-2 mb-0">
             <div className="p-1.5 bg-purple-100 rounded-md">
               <Medal className="w-4 h-4 text-purple-600" />
@@ -362,7 +432,7 @@ const AdminDashboard = () => {
                 Your Performance
               </h2>
             </div>
-            <ChartPieDonutText />
+            <ChartPieDonutText record={allTaskForDashboard} />
           </div>
         </div>
 
@@ -376,7 +446,38 @@ const AdminDashboard = () => {
               <h1 className="text-md font-medium">Upcoming Deadlines</h1>
             </div>
             <div className="flex flex-col gap-2">
-              <p className="text-gray-500 text-sm">Data not available</p>
+              {sortedUpcoming.length === 0 ? (
+                <p className="text-sm text-gray-500">No upcoming deadlines</p>
+              ) : (
+                sortedUpcoming.map((task, index) => {
+                  const daysLeft = dayjs(task.dueDate).diff(dayjs(), "day");
+
+                  return (
+                    <div
+                      key={task._id}
+                      className="flex justify-between items-center p-2 rounded-md border bg-red-50"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">
+                          {task.title}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {task.assignedTo?.name}
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-xs text-gray-600">
+                          {dayjs(task.dueDate).format("DD MMM")}
+                        </p>
+                        <p className="text-xs font-semibold text-red-600">
+                          {daysLeft <= 0 ? "Today" : `${daysLeft}d left`}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </Card>

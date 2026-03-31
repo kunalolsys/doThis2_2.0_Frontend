@@ -849,6 +849,7 @@ const TaskTable = ({
         { name: "Assign To UserDepartment", type: "Text", required: true },
         { name: "Check List", type: "Optional", required: false },
         { name: "Start Date", type: "DD-MM-YYYY", required: true },
+        { name: "Task End Days", type: "Number", required: true },
         { name: "Attachment File", type: "File", required: false },
       ],
       demoData: [
@@ -859,6 +860,7 @@ const TaskTable = ({
         "Engineering",
         '"item1,item2"',
         "01-08-2024",
+        1,
         "file.pdf",
       ],
     },
@@ -1075,7 +1077,7 @@ const TaskTable = ({
           );
           const apiBaseUrl =
             import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
-          const fullUrl = `${apiBaseUrl}/tasks/download/${error.response.data.errorFile}`;
+          const fullUrl = `${apiBaseUrl}/tasks/download?filePath=${encodeURIComponent(error.response.data.errorFile)}`;
           setErrorFileUrl(fullUrl);
         } else {
           setImportError(
@@ -1558,6 +1560,7 @@ const TaskTable = ({
                                     size="icon"
                                     className="h-8 w-8 text-blue-600 hover:bg-blue-50"
                                     onClick={() => handleEditClick(task)}
+                                    disabled={task.status == "Completed"}
                                   >
                                     <FilePenLine className="h-4 w-4" />
                                   </Button>
@@ -1595,8 +1598,9 @@ const TaskTable = ({
                                     className="h-8 w-8 text-green-600 hover:bg-green-50"
                                     onClick={() => handleToggleComplete(task)}
                                     disabled={
-                                      task.checklist &&
-                                      task.checklist.length > 0
+                                      task.status == "Completed" ||
+                                      (task.checklist &&
+                                        task.checklist.length > 0)
                                     }
                                   >
                                     <CheckCircle className="h-4 w-4" />
@@ -2553,7 +2557,7 @@ const TaskTable = ({
                       .map((col, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-0 px-3 py-1.5 rounded-md text-xs font-semibold border bg-red-50 text-red-700 border-red-200"
+                          className="flex items-center mb-1 gap-0 px-3 py-1.5 rounded-md text-xs font-semibold border bg-red-50 text-red-700 border-red-200"
                         >
                           <span>{col.name}</span>({col.type})
                         </div>
@@ -2569,7 +2573,7 @@ const TaskTable = ({
                       .map((col, index) => (
                         <div
                           key={index}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold border bg-gray-100 text-gray-600 border-gray-200"
+                          className="flex items-center mb-1 gap-2 px-3 py-1.5 rounded-md text-xs font-semibold border bg-gray-100 text-gray-600 border-gray-200"
                         >
                           <span>{col.name}</span>({col.type})
                         </div>
