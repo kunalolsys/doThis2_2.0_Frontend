@@ -48,6 +48,7 @@ const CreateTaskForm = ({
   holidays,
   onTaskCreated,
   allTasks,
+  workingWeeks,
 }) => {
   const dispatch = useDispatch();
 
@@ -73,7 +74,8 @@ const CreateTaskForm = ({
   const [checklistItem, setChecklistItem] = useState("");
 
   // --- Assignee States ---
-  const [soleSelectedDept, setSoleSelectedDept] = useState(null);
+  const [openDepartments, setOpenDepartments] = useState(new Set());
+  const [selectedDepartments, setSelectedDepartments] = useState(new Set());
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [isAssignDropdownOpen, setIsAssignDropdownOpen] = useState(false);
 
@@ -150,28 +152,67 @@ const CreateTaskForm = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [assignDropdownRef]);
 
-  // Handle Department Toggle
-  const handleDepartmentToggle = (deptId) => {
-    if (soleSelectedDept === deptId) {
-      setSoleSelectedDept(null);
-      setSelectedUsers([]);
-    } else {
-      setSoleSelectedDept(deptId);
-      const usersInDept = users.filter(
-        (u) => u.department?._id === deptId || u.department === deptId,
-      );
-      const userIdsInDept = usersInDept.map((u) => u._id);
-      setSelectedUsers(userIdsInDept);
-    }
+  // Handle Department Expand/Collapse
+  const handleDeptExpand = (deptId) => {
+    setOpenDepartments((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(deptId)) {
+        newSet.delete(deptId);
+      } else {
+        newSet.add(deptId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle Department Select All Toggle
+  const handleDeptSelectAll = (deptId) => {
+    setSelectedDepartments((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(deptId)) {
+        newSet.delete(deptId);
+        // Deselect all users in this dept
+        const deptUsers = users.filter(
+          (u) =>
+            u.department &&
+            Array.isArray(u.department) &&
+            u.department.some((d) => d && d._id === deptId),
+        );
+        const deptUserIds = deptUsers.map((u) => u._id);
+        setSelectedUsers((prevUsers) =>
+          prevUsers.filter((id) => !deptUserIds.includes(id)),
+        );
+      } else {
+        newSet.add(deptId);
+        // Select all users in this dept
+        const deptUsers = users.filter(
+          (u) =>
+            u.department &&
+            Array.isArray(u.department) &&
+            u.department.some((d) => d && d._id === deptId),
+        );
+        const deptUserIds = deptUsers.map((u) => u._id);
+        setSelectedUsers((prevUsers) => {
+          const newUsers = new Set(prevUsers);
+          deptUserIds.forEach((id) => newUsers.add(id));
+          return Array.from(newUsers);
+        });
+      }
+      return newSet;
+    });
   };
 
   // Handle Individual User Toggle
   const handleUserToggle = (userId) => {
-    if (selectedUsers.includes(userId)) {
-      setSelectedUsers((prev) => prev.filter((id) => id !== userId));
-    } else {
-      setSelectedUsers((prev) => [...prev, userId]);
-    }
+    setSelectedUsers((prev) => {
+      const newUsers = new Set(prev);
+      if (newUsers.has(userId)) {
+        newUsers.delete(userId);
+      } else {
+        newUsers.add(userId);
+      }
+      return Array.from(newUsers);
+    });
   };
 
   const dateChangeHandler = (e, setter) => {
@@ -239,8 +280,9 @@ const CreateTaskForm = ({
       formData.append("assignedTo", JSON.stringify(selectedUsers));
       formData.append("title", title.trim());
       formData.append("description", description.trim());
-      if (soleSelectedDept)
-        formData.append("departmentOfAssignToUser", soleSelectedDept);
+      // Keep for backward compatibility if needed, but selectedUsers covers it
+      // if (soleSelectedDept)
+      //   formData.append("departmentOfAssignToUser", soleSelectedDept);
 
       // Set date fields by default
       if (startDate) {
@@ -305,7 +347,8 @@ const CreateTaskForm = ({
       if (res.data?.success) {
         setTitle("");
         setSelectedUsers([]);
-        setSoleSelectedDept(null);
+        setOpenDepartments(new Set());
+        setSelectedDepartments(new Set());
         setDescription("");
         setDate(null);
         setStartDate(null);
@@ -432,36 +475,32 @@ const CreateTaskForm = ({
 
                         return (
                           <div key={dept._id} className="mb-4">
-                            {/* Department Header with Checkbox */}
-                            <div
-                              className={`flex items-center gap-2 p-2 bg-slate-100/80 rounded-md mb-1 font-semibold text-slate-700 transition-colors ${soleSelectedDept === null || soleSelectedDept === dept._id ? "hover:bg-slate-200/80" : "opacity-50"}`}
-                            >
+                            {/* Department Header (Original Style): Checkbox + Name(count) + Chevron */}
+                            <div className="flex items-center gap-2 p-2 bg-slate-100/80 rounded-md mb-1 font-semibold text-slate-700 hover:bg-slate-200/80 transition-colors">
                               <Checkbox
                                 id={`dept-${dept._id}`}
-                                checked={soleSelectedDept === dept._id}
-                                onChange={() =>
-                                  handleDepartmentToggle(dept._id)
-                                }
-                                disabled={
-                                  soleSelectedDept !== null &&
-                                  soleSelectedDept !== dept._id
-                                }
-                                className="border-slate-400 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                                checked={selectedDepartments.has(dept._id)}
+                                onChange={(e) => handleDeptSelectAll(dept._id)}
+                                className="border-slate-400 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 cursor-pointer"
                               />
-                              <Label
-                                htmlFor={`dept-${dept._id}`}
-                                className={`cursor-pointer select-none flex-1 text-sm flex items-center justify-between ${soleSelectedDept !== null && soleSelectedDept !== dept._id ? "cursor-not-allowed" : ""}`}
-                              >
+                              <div className="flex-1 cursor-pointer select-none flex items-center justify-between text-sm hover:text-slate-800" onClick={() => handleDeptExpand(dept._id)}>
                                 {dept.name}
                                 <span className="text-xs font-normal text-slate-500 bg-white px-2 py-0.5 rounded-full">
                                   {deptUsers.length}
                                 </span>
-                              </Label>
+                              </div>
+                              <ChevronDown 
+                                className={cn(
+                                  "h-4 w-4 text-slate-500 transition-transform cursor-pointer hover:text-slate-600 flex-shrink-0",
+                                  openDepartments.has(dept._id) && "rotate-180"
+                                )}
+                                onClick={() => handleDeptExpand(dept._id)}
+                              />
                             </div>
 
-                            {/* Users List */}
-                            {soleSelectedDept === dept._id && (
-                              <div className="pl-4 space-y-1 border-l-2 border-slate-100 ml-3">
+                            {/* Users List - Show if dept expanded */}
+                            {openDepartments.has(dept._id) && (
+                              <div className="pl-6 space-y-1 border-l-2 border-slate-200 ml-2">
                                 {deptUsers.map((u) => (
                                   <div
                                     key={u._id}
@@ -639,12 +678,13 @@ const CreateTaskForm = ({
                     className="w-full h-10 hover:shadow-md transition-all duration-200"
                     format="DD MMM YYYY"
                     value={startDate ? dayjs(startDate) : null}
-                    // onChange={(date, dateString) => {
-                    //   setStartDate(dateString); // ✅ "2026-03-19"
-                    // }}
-                    onChange={(date, dateString) => {
-                      const selectedDate = dayjs(date).format("YYYY-MM-DD");
+                    onChange={(date) => {
+                      if (!date) return;
 
+                      const selected = dayjs(date);
+                      const selectedDate = selected.format("YYYY-MM-DD");
+
+                      // 🟡 1. Check Holiday
                       const holiday = holidays.find(
                         (h) =>
                           dayjs(h.date).format("YYYY-MM-DD") === selectedDate,
@@ -654,10 +694,23 @@ const CreateTaskForm = ({
                         toast.error(
                           `Selected date is a holiday: ${holiday.name}. Please select another date.`,
                         );
-                        setStartDate(null); // clear
+                        setStartDate(null);
                         return;
                       }
 
+                      // 🟡 2. Check Working Day
+                      const dayName = selected.format("dddd").toLowerCase();
+                      // e.g. "monday"
+
+                      if (!workingWeeks?.[dayName]) {
+                        toast.error(
+                          `Selected day (${dayName}) is not a working day. Please choose a valid day.`,
+                        );
+                        setStartDate(null);
+                        return;
+                      }
+
+                      // ✅ Valid date
                       setStartDate(selectedDate);
                     }}
                     // disabledDate={(current) => {

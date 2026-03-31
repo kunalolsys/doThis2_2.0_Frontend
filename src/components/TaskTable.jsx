@@ -79,6 +79,7 @@ import { formatDate } from "../lib/utilFunctions.js";
 import dayjs from "dayjs";
 import { DatePicker, Upload } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
+import { useDebounce } from "../lib/debounce.js";
 const AttachmentTab = ({ editFileList, setEditFileList, handleRemove }) => {
   const isImage = (file) => {
     return (
@@ -233,7 +234,6 @@ const TaskTable = ({
   const [selectedFilterStatus, setSelectedFilterStatus] = useState("all");
 
   const [activeTabForExport, setActiveTabForExport] = useState("one-time");
-
   // Pagination States
   const [oneTimeCurrentPage, setOneTimeCurrentPage] = useState(1);
   const [oneTimeItemsPerPage, setOneTimeItemsPerPage] = useState(10);
@@ -803,10 +803,14 @@ const TaskTable = ({
     await handleToggleComplete(selectedTaskForChecklist);
     setIsChecklistDialogOpen(false);
   };
-
+  const debouncedSearch = useDebounce(searchTerm);
   const handleExport = async () => {
     try {
-      const response = await api.get("/tasks/export", {
+      const response = await api.post("/tasks/export", {
+        tabType: activeTabForExport,
+        assignedTo: selectedFilterUser,
+        status: selectedFilterStatus,
+        search: debouncedSearch,
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -1281,21 +1285,14 @@ const TaskTable = ({
         </div>
       </CardHeader>
       <CardContent className="pt-4">
-        <Tabs defaultValue="one-time">
+        <Tabs
+          defaultValue="one-time"
+          onValueChange={(val) => setActiveTabForExport(val)}
+        >
           <div className="flex flex-col md:flex-row justify-between items-center mb-4">
             <TabsList className="bg-gray-100/50">
-              <TabsTrigger
-                value="one-time"
-                onClick={() => setActiveTabForExport("one-time")}
-              >
-                One-time Tasks
-              </TabsTrigger>
-              <TabsTrigger
-                value="recurrence"
-                onClick={() => setActiveTabForExport("recurrence")}
-              >
-                Recurring Tasks
-              </TabsTrigger>
+              <TabsTrigger value="one-time">One-time Tasks</TabsTrigger>
+              <TabsTrigger value="recurrence">Recurring Tasks</TabsTrigger>
             </TabsList>
             <div className="flex gap-2 mt-4 md:mt-0">
               <Button variant="outline" onClick={handleExport}>

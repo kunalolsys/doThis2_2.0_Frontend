@@ -1,47 +1,83 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { toast } from 'sonner';
-import api from '../lib/api';
-import { fetchTasks } from '../redux/slices/task/taskSlice';
+import React, { useState, useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "sonner";
+import api from "../lib/api";
+import { fetchTasks } from "../redux/slices/task/taskSlice";
 
 // Imports for new UI components and utilities
-import { cn, frequencyMap } from '../components/utils'; // Keep frequencyMap here for now, might be needed in TaskTable
+import { cn, frequencyMap } from "../components/utils"; // Keep frequencyMap here for now, might be needed in TaskTable
 import {
-  CardHeader, CardTitle, CardContent,
-  Button, Input, Label, Badge, Textarea, Checkbox,
-  Select, SelectContext, SelectTrigger, SelectValue, SelectContent, SelectItem,
-  RadioGroup, RadioGroupContext, RadioGroupItem,
-  Tabs, TabsContext, TabsList, TabsTrigger, TabsContent,
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-  DropdownMenu, DropdownMenuContext, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
-  Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
-  Pagination
-} from '../components/ui/index.jsx';
+  CardHeader,
+  CardTitle,
+  CardContent,
+  Button,
+  Input,
+  Label,
+  Badge,
+  Textarea,
+  Checkbox,
+  Select,
+  SelectContext,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  RadioGroup,
+  RadioGroupContext,
+  RadioGroupItem,
+  Tabs,
+  TabsContext,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DropdownMenu,
+  DropdownMenuContext,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Pagination,
+} from "../components/ui/index.jsx";
 
 // Import the new sub-components
-import CreateTaskForm from '../components/CreateTaskForm';
-import TaskTable from '../components/TaskTable';
-
+import CreateTaskForm from "../components/CreateTaskForm";
+import TaskTable from "../components/TaskTable";
 
 const TaskPage = () => {
   // Global States (shared or needed by wrapper)
   const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
-  const [fullDescription, setFullDescription] = useState('');
+  const [fullDescription, setFullDescription] = useState("");
   const [users, setUsers] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [holidays, setHolidays] = useState([]);
+  const [workingWeeks, setWorkingWeeks] = useState(null);
 
   // Search State
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
   // Redux Integration
   const dispatch = useDispatch();
-  const { tasks, status, error: reduxError } = useSelector((state) => state.tasks);
+  const {
+    tasks,
+    status,
+    error: reduxError,
+  } = useSelector((state) => state.tasks);
   const { currentUser } = useSelector((state) => state.users);
 
-  const allTasks = useMemo(() => Array.isArray(tasks) ? tasks : [], [tasks]);
-  const tasksLoading = status === 'loading';
+  const allTasks = useMemo(() => (Array.isArray(tasks) ? tasks : []), [tasks]);
+  const tasksLoading = status === "loading";
 
   // --- 1. Fetch Users & Departments & Holidays ---
   useEffect(() => {
@@ -49,29 +85,35 @@ const TaskPage = () => {
 
     const loadData = async () => {
       try {
-        const [userRes, deptRes, holidayRes] = await Promise.all([
-          api.get('/setup/users/allUsers'),
-          api.get('/setup/departments/allDepartments'),
-          api.get('/setup/holiday/allHolidays')
-        ]);
+        const [userRes, deptRes, holidayRes, workingWeekRes] =
+          await Promise.all([
+            api.get("/setup/users/allUsers"),
+            api.get("/setup/departments/allDepartments"),
+            api.get("/setup/holiday/allHolidays"),
+            api.get("/setup/working-week"),
+          ]);
 
         if (mounted) {
           const usersData = userRes?.data?.data || [];
           const departmentsData = deptRes?.data?.data || [];
           const holidaysData = holidayRes?.data?.data || [];
+          const workingWeekData =
+            workingWeekRes?.data?.data?.workingWeek?.workingDays || null;
+          setWorkingWeeks(workingWeekData);
           setUsers(usersData);
           setDepartments(departmentsData);
           setHolidays(holidaysData);
         }
       } catch (err) {
-        console.error('Failed to load initial data:', err);
+        console.error("Failed to load initial data:", err);
       }
     };
 
     loadData();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
-
   // --- 2. Fetch Tasks via Redux ---
   useEffect(() => {
     dispatch(fetchTasks());
@@ -89,11 +131,15 @@ const TaskPage = () => {
   }, [searchTerm]);
 
   const handleRefreshTasks = () => {
-    toast.promise(dispatch(fetchTasks()), { loading: 'Refreshing tasks...', success: 'Tasks updated!', error: 'Failed to refresh tasks.' });
+    toast.promise(dispatch(fetchTasks()), {
+      loading: "Refreshing tasks...",
+      success: "Tasks updated!",
+      error: "Failed to refresh tasks.",
+    });
   };
 
   const handleViewDescription = (description) => {
-    setFullDescription(description || 'No description provided.');
+    setFullDescription(description || "No description provided.");
     setIsDescriptionDialogOpen(true);
   };
 
@@ -105,12 +151,16 @@ const TaskPage = () => {
 
     const searchTermLower = debouncedSearchTerm.toLowerCase().trim();
 
-    return allTasks.filter(task => {
+    return allTasks.filter((task) => {
       // Search in Task ID (e.g., "25120100")
-      const taskIdMatch = (task.TaskId || '').toLowerCase().includes(searchTermLower);
+      const taskIdMatch = (task.TaskId || "")
+        .toLowerCase()
+        .includes(searchTermLower);
 
       // Search in Task Title
-      const titleMatch = (task.title || '').toLowerCase().includes(searchTermLower);
+      const titleMatch = (task.title || "")
+        .toLowerCase()
+        .includes(searchTermLower);
 
       // Return true if either field matches
       return taskIdMatch || titleMatch;
@@ -133,6 +183,7 @@ const TaskPage = () => {
         holidays={holidays}
         onTaskCreated={onTaskCreated}
         allTasks={allTasks} // For parent task selection
+        workingWeeks={workingWeeks}
       />
 
       {/* Task List and Actions */}
@@ -150,20 +201,30 @@ const TaskPage = () => {
       />
 
       {/* --- DESCRIPTION VIEW DIALOG (kept here as it's a generic view for TaskTable) --- */}
-      <Dialog open={isDescriptionDialogOpen} onOpenChange={setIsDescriptionDialogOpen}>
+      <Dialog
+        open={isDescriptionDialogOpen}
+        onOpenChange={setIsDescriptionDialogOpen}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Full Task Description</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{fullDescription}</p>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+              {fullDescription}
+            </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDescriptionDialogOpen(false)}>Close</Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsDescriptionDialogOpen(false)}
+            >
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div >
+    </div>
   );
 };
 

@@ -741,7 +741,7 @@ const DepartmentCalender = () => {
       await dispatch(deleteDepartment(id)).unwrap();
       toast.success("Department deleted successfully!");
     } catch (err) {
-      toast.error(err.message || "Failed to delete department.");
+      toast.error(err || "Failed to delete department.");
     }
   };
 

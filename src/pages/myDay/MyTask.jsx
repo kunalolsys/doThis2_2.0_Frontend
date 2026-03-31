@@ -800,7 +800,7 @@ const MyTask = () => {
       setIsExporting(true);
 
       // Use client-side filtered tasks for export
-      const dataToExport = filteredTasks.map((task, index) => ({
+      const dataToExport = fetchedTasks.map((task, index) => ({
         "Sr. No.": index + 1,
         "Task ID": task.TaskId || "-",
         "Task Title": task.title || "-",

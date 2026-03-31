@@ -64,20 +64,22 @@ export const updateDepartment = createAsyncThunk(
 
 export const deleteDepartment = createAsyncThunk(
   "departments/deleteDepartment",
-  async (id) => {
-    await axios.delete(
-      `${import.meta.env.VITE_API_BASE_URL}/setup/departments/${id}`,
-    );
-    return id;
+  async (id, { rejectWithValue }) => {
+    try {
+      await axios.delete(
+        `${import.meta.env.VITE_API_BASE_URL}/setup/departments/${id}`,
+      );
+      return id;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
   },
 );
 export const exportDepts = createAsyncThunk(
   "departments/exportDepartments",
   async (params = {}, { rejectWithValue }) => {
     try {
-      const {
-        departmentSearchTerm = "",
-      } = params;
+      const { departmentSearchTerm = "" } = params;
 
       const payload = {
         search: departmentSearchTerm || undefined,

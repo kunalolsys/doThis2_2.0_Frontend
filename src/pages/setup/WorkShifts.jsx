@@ -294,7 +294,10 @@ const WorkShifts = () => {
           toast.success("Work shift deleted successfully!");
           fetchShifts();
         } catch (error) {
-          toast.error("Failed to delete work shift.");
+          console.log(error);
+          toast.error(
+            error.response.data.message || "Failed to delete work shift.",
+          );
         }
       },
     });

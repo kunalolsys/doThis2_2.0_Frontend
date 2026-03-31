@@ -352,10 +352,10 @@ const FilterBar = ({
 }) => {
   const handleFilterChange = (setter, value) => {
     setter(value);
-    // Logic to reset other filters so only one user filter is active at a time
-    if (setter !== setSelectedDoer) setSelectedDoer("all");
-    if (setter !== setSelectedManager) setSelectedManager("all");
-    if (setter !== setSelectedSrManager) setSelectedSrManager("all");
+    // // Logic to reset other filters so only one user filter is active at a time
+    // if (setter !== setSelectedDoer) setSelectedDoer("all");
+    // if (setter !== setSelectedManager) setSelectedManager("all");
+    // if (setter !== setSelectedSrManager) setSelectedSrManager("all");
   };
 
   const userRole = currentUser?.role?.name;
@@ -375,48 +375,6 @@ const FilterBar = ({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 flex-[2]">
-        {/* All Doers Filter - Always visible */}
-        <Select
-          value={selectedDoer}
-          onValueChange={(val) => handleFilterChange(setSelectedDoer, val)}
-        >
-          <SelectTrigger className="w-full bg-white">
-            <SelectValue placeholder="All Doers" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="font-semibold text-blue-700">
-              All Doers
-            </SelectItem>
-            {doers.map((doer) => (
-              <SelectItem key={doer._id} value={doer._id}>
-                {doer.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* All Managers Filter - Visible to Admin, Owner, Sr. Manager */}
-        {(isAdminOrOwner || isSrManager) && (
-          <Select
-            value={selectedManager}
-            onValueChange={(val) => handleFilterChange(setSelectedManager, val)}
-          >
-            <SelectTrigger className="w-full bg-white">
-              <SelectValue placeholder="All Managers" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="font-semibold text-green-700">
-                All Managers
-              </SelectItem>
-              {managers.map((manager) => (
-                <SelectItem key={manager._id} value={manager._id}>
-                  {manager.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
         {/* All Sr. Managers Filter - Visible to Admin, Owner */}
         {isAdminOrOwner && (
           <Select
@@ -440,7 +398,46 @@ const FilterBar = ({
             </SelectContent>
           </Select>
         )}
-
+        {/* All Managers Filter - Visible to Admin, Owner, Sr. Manager */}
+        {(isAdminOrOwner || isSrManager) && (
+          <Select
+            value={selectedManager}
+            onValueChange={(val) => handleFilterChange(setSelectedManager, val)}
+          >
+            <SelectTrigger className="w-full bg-white">
+              <SelectValue placeholder="All Managers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="font-semibold text-green-700">
+                All Managers
+              </SelectItem>
+              {managers.map((manager) => (
+                <SelectItem key={manager._id} value={manager._id}>
+                  {manager.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {/* All Doers Filter - Always visible */}
+        <Select
+          value={selectedDoer}
+          onValueChange={(val) => handleFilterChange(setSelectedDoer, val)}
+        >
+          <SelectTrigger className="w-full bg-white">
+            <SelectValue placeholder="All Doers" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="font-semibold text-blue-700">
+              All Doers
+            </SelectItem>
+            {doers.map((doer) => (
+              <SelectItem key={doer._id} value={doer._id}>
+                {doer.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select
           value={selectedFilterStatus}
           onValueChange={setSelectedFilterStatus}
@@ -589,6 +586,7 @@ const ManagerView = () => {
       case "Sr. Manager":
         return "Sr. Manager View";
       case "Owner":
+        return "Owner View";
       case "Admin":
         return "Admin View";
       default:

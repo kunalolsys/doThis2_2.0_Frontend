@@ -127,6 +127,7 @@ const Sidebar = ({ children }) => {
       case "Sr. Manager":
         return "Sr. Manager View";
       case "Owner":
+        return "Owner View";
       case "Admin": // Admin also shows Owner View
         return "Admin View";
       default:

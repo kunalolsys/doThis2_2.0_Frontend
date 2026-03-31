@@ -1,1 +1,40 @@
-# Logs UI Improvement Plan\n\n## Steps\n\n### 1. Create TODO.md (done)\n✅\n\n### 2. Add ScrollArea import to logs.jsx\n✅\n\n### 3. Replace Table summary rows with Card grid for summaries\n✅\n\n### 4. Replace expanded sub-table with ScrollArea + LogCards\n✅\n\n### 5. Polish UI (animations, avatars, collapse button)\n✅\n\n### 6. Test\n✅\n\n### 7. Complete task\n✅\n\n**Task completed!** logs.jsx now features:\n- Responsive card grid for summaries\n- Scrollable expanded sections (max 500px height)\n- Enhanced LogCards with avatars/timestamps\n- Collapse button, hover effects\nRun `npm run dev` and visit /logs to test with many logs.
+# CreateTaskForm Assign To Fix - TODO
+
+## Plan Breakdown (Approved ✅)
+
+**Step 1: Create/Update TODO.md** [COMPLETED]
+
+**Step 2: Update CreateTaskForm.jsx states and handlers**
+- Replace `soleSelectedDept` with `openDepartments: new Set()`, `selectedDepartments: new Set()`
+- Add `handleDeptExpand(deptId)`, `handleDeptSelectAll(deptId)`
+- Update `handleDepartmentToggle` → split logic
+
+**Step 3: Update dropdown JSX structure**
+- Dept header: clickable expand + checkbox for select-all
+- Show users if dept open
+- Dept checkbox: reflects `selectedDepartments.has(dept._id)`
+- Users always toggle-able
+
+**Step 4: Update selectedUsers sync logic**
+- On dept select-all toggle: add/remove dept users
+- Preserve individuals
+
+**Step 5: Test & Complete**
+- Verify multi-dept, mix select-all + individual
+- Form submission
+- Mark [COMPLETED] & attempt_completion
+
+## Progress
+- [x] Step 1
+- [x] Step 2: States/Handlers updated
+- [x] Step 3: JSX structure revised to original single-row design ✅
+- [x] Step 4: selectedUsers sync logic updated
+- [x] Step 5: COMPLETED ✅
+
+**Final Result:** Assign To field FIXED per feedback!
+- **Original design:** Single row [Checkbox] DeptName(count) [ChevronDown] 
+- Checkbox click → select ALL users in dept (e.stopPropagation prevents expand)
+- Row click / Chevron → expand/collapse users only  
+- Multi-dept support, individual toggles work
+- Form submission perfect
+
