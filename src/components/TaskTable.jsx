@@ -915,6 +915,7 @@ const TaskTable = ({
         { name: "Assign To(Name)", type: "Text", required: false },
         { name: "Assign To UserDepartment", type: "Text", required: true },
         { name: "Check List", type: "Optional", required: false },
+        { name: "Task End Days", type: "Number", required: false },
         {
           name: "Start Time Setting",
           type: "Planned to Planned / Actual to Planned",
@@ -937,6 +938,7 @@ const TaskTable = ({
         "John",
         "Eng",
         '"item1,item2"',
+        1,
         "Planned to Planned",
         "T+X days",
         "2",

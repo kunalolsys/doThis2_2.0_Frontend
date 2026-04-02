@@ -257,6 +257,10 @@ const CreateTaskForm = ({
       toast.error("Please select at least one user");
       return;
     }
+    if (!isDependent && !isRecurrent && !taskEndDateOffset) {
+      toast.error("Task end day is required");
+      return;
+    }
     if (!description.trim()) {
       toast.error("Description is required");
       return;
@@ -337,7 +341,7 @@ const CreateTaskForm = ({
         // EXPLICIT SAFEGUARD: For actual-to-planned, forcefully remove any date fields.
         if (startTimeSetting === "actual-to-planned") {
           formData.delete("startDate");
-          formData.delete("taskEndDays");
+          // formData.delete("taskEndDays");
         }
       }
 
@@ -483,16 +487,19 @@ const CreateTaskForm = ({
                                 onChange={(e) => handleDeptSelectAll(dept._id)}
                                 className="border-slate-400 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 cursor-pointer"
                               />
-                              <div className="flex-1 cursor-pointer select-none flex items-center justify-between text-sm hover:text-slate-800" onClick={() => handleDeptExpand(dept._id)}>
+                              <div
+                                className="flex-1 cursor-pointer select-none flex items-center justify-between text-sm hover:text-slate-800"
+                                onClick={() => handleDeptExpand(dept._id)}
+                              >
                                 {dept.name}
                                 <span className="text-xs font-normal text-slate-500 bg-white px-2 py-0.5 rounded-full">
                                   {deptUsers.length}
                                 </span>
                               </div>
-                              <ChevronDown 
+                              <ChevronDown
                                 className={cn(
                                   "h-4 w-4 text-slate-500 transition-transform cursor-pointer hover:text-slate-600 flex-shrink-0",
-                                  openDepartments.has(dept._id) && "rotate-180"
+                                  openDepartments.has(dept._id) && "rotate-180",
                                 )}
                                 onClick={() => handleDeptExpand(dept._id)}
                               />
