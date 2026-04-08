@@ -115,7 +115,7 @@ function App() {
             <Route
               path="/fms-engine/upcoming"
               element={
-                <PermissionRoute requiredPermission="fms_engine_view">
+                <PermissionRoute requiredPermission="fmsengine_view">
                   <UpcomingOngoingFms />
                 </PermissionRoute>
               }
@@ -123,7 +123,7 @@ function App() {
             <Route
               path="/fms-engine/templates"
               element={
-                <PermissionRoute requiredPermission="fms_engine_view">
+                <PermissionRoute requiredPermission="fmsengine_view">
                   <FmsTemplates />
                 </PermissionRoute>
               }
@@ -131,7 +131,7 @@ function App() {
             <Route
               path="/fms-engine/launch"
               element={
-                <PermissionRoute requiredPermission="fms_engine_view">
+                <PermissionRoute requiredPermission="fmsengine_view">
                   <FmsLaunch />
                 </PermissionRoute>
               }
@@ -139,7 +139,7 @@ function App() {
             <Route
               path="/fms-engine/create-template"
               element={
-                <PermissionRoute requiredPermission="fms_engine_view">
+                <PermissionRoute requiredPermission="fmsengine_view">
                   <CreateNewFmsTem />
                 </PermissionRoute>
               }
@@ -147,7 +147,7 @@ function App() {
             <Route
               path="/fms-engine/edit-template"
               element={
-                <PermissionRoute requiredPermission="fms_engine_view">
+                <PermissionRoute requiredPermission="fmsengine_view">
                   <EditFmsTem />
                 </PermissionRoute>
               }

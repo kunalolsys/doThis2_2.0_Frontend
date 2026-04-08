@@ -331,7 +331,7 @@ const Sidebar = ({ children }) => {
           )}
 
           {/* FMS Engine */}
-          {hasPermission("fms_engine_view") && (
+          {hasPermission("fmsengine_view") && (
             <div>
               <div className="relative">
                 <button
