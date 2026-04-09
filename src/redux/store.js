@@ -8,6 +8,7 @@ import taskReducer from './slices/task/taskSlice';
 import myTaskReducer from './slices/myTask/myTaskSlice';
 import workingWeekReducer from './slices/workingWeek/workingWeekSlice';
 import scheduleHolidayTaskReducer from './slices/scheduleHolidayTask/scheduleHolidayTaskSlice';
+import fmsReducer from './slices/fms/fmsSlice';
 
 const store = configureStore({
     reducer: {
@@ -20,6 +21,7 @@ const store = configureStore({
         tasks: taskReducer,
         myTasks: myTaskReducer,
         scheduleHolidayTask: scheduleHolidayTaskReducer,
+        fms:fmsReducer
     },
 });
 

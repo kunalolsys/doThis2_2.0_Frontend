@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,17 +11,32 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Checkbox } from "../components/ui/checkbox";
 import { Badge } from "../components/ui/badge";
-import { Label } from './ui';
-import { Trash2 } from 'lucide-react';
+import { Label } from "./ui";
+import { Trash2 } from "lucide-react";
 
 const ChecklistModal = ({ open, onClose, checklist = [], onSave }) => {
-  const [items, setItems] = useState(checklist.map(item => ({ text: item.text || item, isMandatory: item.isMandatory || false })));
-  const [newItem, setNewItem] = useState('');
+  const [items, setItems] = useState(
+    checklist.map((item) => ({
+      text: item.text || item,
+      isMandatory: item.isMandatory || false,
+    })),
+  );
+  useEffect(() => {
+    if (open) {
+      setItems(
+        (checklist || []).map((f) => ({
+          text: f.text || "",
+          isMandatory: f.isMandatory || false,
+        })),
+      );
+    }
+  }, [checklist, open]);
+  const [newItem, setNewItem] = useState("");
 
   const addItem = () => {
     if (newItem.trim()) {
       setItems([...items, { text: newItem.trim(), isMandatory: false }]);
-      setNewItem('');
+      setNewItem("");
     }
   };
 
@@ -42,7 +57,7 @@ const ChecklistModal = ({ open, onClose, checklist = [], onSave }) => {
   };
 
   const handleSave = () => {
-    onSave(items.filter(item => item.text.trim()));
+    onSave(items.filter((item) => item.text.trim()));
     onClose();
   };
 
@@ -59,14 +74,21 @@ const ChecklistModal = ({ open, onClose, checklist = [], onSave }) => {
               value={newItem}
               onChange={(e) => setNewItem(e.target.value)}
               placeholder="Add new checklist item..."
-              onKeyPress={(e) => e.key === 'Enter' && addItem()}
+              onKeyPress={(e) => e.key === "Enter" && addItem()}
             />
-            <Button type="button" size="sm" onClick={addItem}>Add</Button>
+            <Button type="button" size="sm" onClick={addItem}>
+              Add
+            </Button>
           </div>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {items.map((item, index) => (
-              <div key={index} className="flex items-center gap-3 p-2 rounded-md border hover:bg-muted">
-                <span className="text-muted-foreground font-mono text-xs w-6 flex-shrink-0">⋮⋮</span>
+              <div
+                key={index}
+                className="flex items-center gap-3 p-2 rounded-md border hover:bg-muted"
+              >
+                <span className="text-muted-foreground font-mono text-xs w-6 flex-shrink-0">
+                  ⋮⋮
+                </span>
                 <Input
                   value={item.text}
                   onChange={(e) => updateItem(index, e.target.value)}
@@ -74,17 +96,19 @@ const ChecklistModal = ({ open, onClose, checklist = [], onSave }) => {
                   placeholder="Checklist item..."
                 />
                 <div className="flex items-center gap-1 text-xs">
-                  <Checkbox 
+                  <Checkbox
                     id={`req-${index}`}
                     checked={item.isMandatory}
                     onCheckedChange={() => toggleMandatory(index)}
                   />
-                  <Label htmlFor={`req-${index}`} className="cursor-pointer">Req</Label>
+                  <Label htmlFor={`req-${index}`} className="cursor-pointer">
+                    Req
+                  </Label>
                 </div>
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => removeItem(index)}
                   className="h-6 w-6 p-0 text-destructive hover:text-destructive-foreground"
                 >
@@ -94,12 +118,18 @@ const ChecklistModal = ({ open, onClose, checklist = [], onSave }) => {
             ))}
           </div>
           {items.length === 0 && (
-            <p className="text-center text-muted-foreground py-8">No checklist items yet</p>
+            <p className="text-center text-muted-foreground py-8">
+              No checklist items yet
+            </p>
           )}
         </div>
         <div className="flex gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave}>Save {items.length > 0 && `(${items.length})`}</Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave}>
+            Save {items.length > 0 && `(${items.length})`}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -107,4 +137,3 @@ const ChecklistModal = ({ open, onClose, checklist = [], onSave }) => {
 };
 
 export default ChecklistModal;
-

@@ -145,6 +145,10 @@ function App() {
               }
             />
             <Route
+              path="/fms-engine/edit-template/:id"
+              element={<CreateNewFmsTem />}
+            />
+            <Route
               path="/fms-engine/edit-template"
               element={
                 <PermissionRoute requiredPermission="fmsengine_view">
