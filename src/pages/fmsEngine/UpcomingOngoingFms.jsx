@@ -1,5 +1,5 @@
-import React from 'react';
-import { FilePenLine, Settings, Trash2, Search } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import { FilePenLine, Settings, Trash2, Search } from "lucide-react";
 
 // shadcn/ui components
 import {
@@ -7,13 +7,13 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from '../../components/ui/card';
+} from "../../components/ui/card";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '../../components/ui/tabs';
+} from "../../components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -21,10 +21,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../../components/ui/table';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
+} from "../../components/ui/table";
+import { Badge } from "../../components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,57 +32,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '../../components/ui/dropdown-menu';
+} from "../../components/ui/dropdown-menu";
+import api from "../../lib/api";
+import { toast } from "sonner";
+import { formatDate } from "../../lib/utilFunctions";
+import { cn } from "../../lib/utils";
 
-// --- Data from your images ---
-
-const upcomingData = [
-  {
-    launchId: 'FMS-2-L1',
-    launchDate: '2025-10-30',
-    name: 'New Employee Onboarding',
-    description: 'Workflow for onboarding new hires.',
-    duration: 'Fixed Period',
-    srManager: 'Atul Mohan',
-    manager: 'Baldev Singh',
-    startDate: '2025-11-01',
-    endDate: '2025-11-30',
-    status: 'Scheduled',
-  },
-];
-
-const ongoingData = [
-  {
-    launchId: 'FMS-1-L1',
-    launchDate: '2025-10-19',
-    name: 'Social Media Task FMS',
-    description: 'Daily social media management tasks.',
-    duration: 'Timeless',
-    srManager: 'Atul Mohan',
-    manager: 'Baldev Singh',
-    startDate: '2025-10-20',
-    endDate: 'NA',
-    status: 'In Progress',
-  },
-  {
-    launchId: 'FMS-2-L1',
-    launchDate: '2025-10-21',
-    name: 'Quarterly Financial Audit',
-    description: 'Complete Q3 financial audit and reporting.',
-    duration: 'Fixed Period',
-    srManager: 'Atul Mohan',
-    manager: 'Baldev Singh',
-    startDate: '2025-10-22',
-    endDate: '2025-12-31',
-    status: 'In Progress',
-  },
-];
-
-// --- Reusable Helper Components ---
-
-// Helper for Status Badges (to match your image style)
 const getStatusBadge = (status) => {
-  if (status === 'In Progress') {
+  if (status === "In Progress") {
     return (
       <Badge
         variant="default"
@@ -92,7 +49,7 @@ const getStatusBadge = (status) => {
       </Badge>
     );
   }
-  if (status === 'Scheduled') {
+  if (status === "Scheduled") {
     return (
       <Badge
         variant="default"
@@ -112,13 +69,14 @@ const FmsTableHeader = () => (
       <TableHead className="whitespace-nowrap">LAUNCH ID</TableHead>
       <TableHead className="whitespace-nowrap">LAUNCH DATE</TableHead>
       <TableHead className="whitespace-nowrap">FMS NAME</TableHead>
-      <TableHead className="whitespace-nowrap">DESCRIPTION</TableHead>
-      <TableHead className="whitespace-nowrap">FMS DURATION</TableHead>
+      {/* <TableHead className="whitespace-nowrap">DESCRIPTION</TableHead> */}
+      {/* <TableHead className="whitespace-nowrap">FMS DURATION</TableHead> */}
       <TableHead className="whitespace-nowrap">SR. MANAGER</TableHead>
       <TableHead className="whitespace-nowrap">MANAGER</TableHead>
       <TableHead className="whitespace-nowrap">START DATE</TableHead>
       <TableHead className="whitespace-nowrap">END DATE</TableHead>
       <TableHead className="whitespace-nowrap">OVERALL STATUS</TableHead>
+      <TableHead className="whitespace-nowrap">PROGRESS</TableHead>
       <TableHead className="text-right whitespace-nowrap">ACTIONS</TableHead>
     </TableRow>
   </TableHeader>
@@ -129,7 +87,11 @@ const FmsTableActions = () => (
   <TableCell className="text-right whitespace-nowrap">
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground"
+        >
           <Settings className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -155,21 +117,41 @@ const FmsTableActions = () => (
 
 // --- Main Component ---
 const UpcomingOngoingFms = () => {
-  const [searchTerm, setSearchTerm] = React.useState('');
-
-  const filterData = (data) => {
-    return data.filter((fms) =>
-      Object.values(fms).some((value) =>
-        String(value).toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [FMS, setFMS] = useState([]);
+  const fetchFMS = async () => {
+    try {
+      const res = await api.get(`/fms/instances/`);
+      const FMSData = res.data.data || [];
+      setFMS(FMSData);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load tasks");
+    }
   };
 
+  const upcomingFMS =
+    Array.isArray(FMS) && FMS.length > 0
+      ? FMS.filter((items) => items.status == "Upcoming")
+      : [];
+  const onGoingFMS =
+    Array.isArray(FMS) && FMS.length > 0
+      ? FMS.filter((items) => items.status == "Ongoing")
+      : [];
+  const completedFMS =
+    Array.isArray(FMS) && FMS.length > 0
+      ? FMS.filter((items) => items.status == "Completed")
+      : [];
+  useEffect(() => {
+    fetchFMS();
+  }, []);
   return (
     <div className="m-4">
       <Card className="shadow-lg">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-2xl text-blue-700 font-semibold">FMS Status</CardTitle>
+          <CardTitle className="text-2xl text-blue-700 font-semibold">
+            FMS Status
+          </CardTitle>
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -187,55 +169,272 @@ const UpcomingOngoingFms = () => {
             <TabsList>
               <TabsTrigger value="upcoming">Upcoming FMSs</TabsTrigger>
               <TabsTrigger value="ongoing">Ongoing FMSs</TabsTrigger>
+              <TabsTrigger value="completed">Completed FMSs</TabsTrigger>
             </TabsList>
-
             {/* --- Upcoming FMSs Tab --- */}
             <TabsContent value="upcoming" className="mt-4">
               <div className="overflow-x-auto">
                 <Table>
                   <FmsTableHeader />
                   <TableBody>
-                    {filterData(upcomingData).map((fms) => (
-                      <TableRow key={fms.launchId} className="hover:bg-muted/50">
-                        <TableCell className="font-medium whitespace-nowrap">{fms.launchId}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.launchDate}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.name}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.description}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.duration}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.srManager}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.manager}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.startDate}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.endDate}</TableCell>
-                        <TableCell className="whitespace-nowrap">{getStatusBadge(fms.status)}</TableCell>
-                        <FmsTableActions />
-                      </TableRow>
-                    ))}
+                    {Array.isArray(upcomingFMS) && upcomingFMS.length > 0 ? (
+                      upcomingFMS.map((fms) => (
+                        <TableRow
+                          key={fms.instanceId}
+                          className="hover:bg-muted/50"
+                        >
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {fms.instanceId || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.createdAt) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {fms.instanceName || "-"}
+                          </TableCell>
+                          {/* <TableCell className="whitespace-nowrap">""</TableCell> */}
+                          {/* <TableCell className="whitespace-nowrap">
+                          {fms.endDate}
+                        </TableCell> */}
+                          <TableCell className="whitespace-nowrap">
+                            {fms.srManager ? fms.srManager.name : "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {fms.manager ? fms.manager.name : "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.startDate) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.endDate) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {getStatusBadge(fms.status) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap min-w-[180px]">
+                            <div className="flex flex-col gap-1">
+                              {/* Top: % + count */}
+                              <div className="flex justify-between text-xs text-slate-600">
+                                <span>
+                                  {fms.progress?.completedTasks || 0}/
+                                  {fms.progress?.totalTasks || 0}
+                                </span>
+                                <span>{fms.progress?.rate || 0}%</span>
+                              </div>
+
+                              {/* Progress Bar */}
+                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full transition-all",
+                                    fms.progress?.rate === 100
+                                      ? "bg-green-500"
+                                      : fms.progress?.rate > 0
+                                        ? "bg-blue-500"
+                                        : "bg-gray-400",
+                                  )}
+                                  style={{
+                                    width: `${fms.progress?.rate || 0}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </TableCell>
+                          <FmsTableActions />
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableCell
+                        colSpan={9}
+                        className="p-6 text-center text-gray-500"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <span>No FMS found</span>
+                          {/* <span className="text-xs text-gray-400">
+                            Try creating a new template
+                          </span> */}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableBody>
                 </Table>
               </div>
             </TabsContent>
-
             {/* --- Ongoing FMSs Tab --- */}
             <TabsContent value="ongoing" className="mt-4">
               <div className="overflow-x-auto">
                 <Table>
                   <FmsTableHeader />
                   <TableBody>
-                    {filterData(ongoingData).map((fms) => (
-                      <TableRow key={fms.launchId} className="hover:bg-muted/50">
-                        <TableCell className="font-medium whitespace-nowrap">{fms.launchId}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.launchDate}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.name}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.description}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.duration}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.srManager}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.manager}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.startDate}</TableCell>
-                        <TableCell className="whitespace-nowrap">{fms.endDate}</TableCell>
-                        <TableCell className="whitespace-nowrap">{getStatusBadge(fms.status)}</TableCell>
-                        <FmsTableActions />
-                      </TableRow>
-                    ))}
+                    {Array.isArray(onGoingFMS) && onGoingFMS.length > 0 ? (
+                      onGoingFMS.map((fms) => (
+                        <TableRow
+                          key={fms.instanceId}
+                          className="hover:bg-muted/50"
+                        >
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {fms.instanceId || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.createdAt) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {fms.instanceName || "-"}
+                          </TableCell>
+                          {/* <TableCell className="whitespace-nowrap">""</TableCell> */}
+                          {/* <TableCell className="whitespace-nowrap">
+                          {fms.endDate}
+                        </TableCell> */}
+                          <TableCell className="whitespace-nowrap">
+                            {fms.srManager ? fms.srManager.name : "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {fms.manager ? fms.manager.name : "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.startDate) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.endDate) || "-"}
+                          </TableCell>
+
+                          <TableCell className="whitespace-nowrap">
+                            {getStatusBadge(fms.status) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap min-w-[180px]">
+                            <div className="flex flex-col gap-1">
+                              {/* Top: % + count */}
+                              <div className="flex justify-between text-xs text-slate-600">
+                                <span>
+                                  {fms.progress?.completedTasks || 0}/
+                                  {fms.progress?.totalTasks || 0}
+                                </span>
+                                <span>{fms.progress?.rate || 0}%</span>
+                              </div>
+
+                              {/* Progress Bar */}
+                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full transition-all",
+                                    fms.progress?.rate === 100
+                                      ? "bg-green-500"
+                                      : fms.progress?.rate > 0
+                                        ? "bg-blue-500"
+                                        : "bg-gray-400",
+                                  )}
+                                  style={{
+                                    width: `${fms.progress?.rate || 0}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </TableCell>
+                          <FmsTableActions />
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableCell
+                        colSpan={9}
+                        className="p-6 text-center text-gray-500"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <span>No FMS found</span>
+                          {/* <span className="text-xs text-gray-400">
+                            Try creating a new template
+                          </span> */}
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </TabsContent>{" "}
+            {/* --- Completed FMSs Tab --- */}
+            <TabsContent value="completed" className="mt-4">
+              <div className="overflow-x-auto">
+                <Table>
+                  <FmsTableHeader />
+                  <TableBody>
+                    {Array.isArray(completedFMS) && completedFMS.length > 0 ? (
+                      completedFMS.map((fms) => (
+                        <TableRow
+                          key={fms.instanceId}
+                          className="hover:bg-muted/50"
+                        >
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {fms.instanceId || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.createdAt) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {fms.instanceName || "-"}
+                          </TableCell>
+                          {/* <TableCell className="whitespace-nowrap">""</TableCell> */}
+                          {/* <TableCell className="whitespace-nowrap">
+                          {fms.endDate}
+                        </TableCell> */}
+                          <TableCell className="whitespace-nowrap">
+                            {fms.srManager ? fms.srManager.name : "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {fms.manager ? fms.manager.name : "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.startDate) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.endDate) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {getStatusBadge(fms.status) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap min-w-[180px]">
+                            <div className="flex flex-col gap-1">
+                              {/* Top: % + count */}
+                              <div className="flex justify-between text-xs text-slate-600">
+                                <span>
+                                  {fms.progress?.completedTasks || 0}/
+                                  {fms.progress?.totalTasks || 0}
+                                </span>
+                                <span>{fms.progress?.rate || 0}%</span>
+                              </div>
+
+                              {/* Progress Bar */}
+                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full transition-all",
+                                    fms.progress?.rate === 100
+                                      ? "bg-green-500"
+                                      : fms.progress?.rate > 0
+                                        ? "bg-blue-500"
+                                        : "bg-gray-400",
+                                  )}
+                                  style={{
+                                    width: `${fms.progress?.rate || 0}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </TableCell>
+                          <FmsTableActions />
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableCell
+                        colSpan={9}
+                        className="p-6 text-center text-gray-500"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <span>No FMS found</span>
+                          {/* <span className="text-xs text-gray-400">
+                            Try creating a new template
+                          </span> */}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableBody>
                 </Table>
               </div>
