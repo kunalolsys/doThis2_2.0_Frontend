@@ -42,6 +42,7 @@ import ImportTask from "./pages/ImportTask";
 import Profile from "./pages/Profile";
 import SessionTimeoutDialog from "./components/SessionTimeoutDialog";
 import LogsDashboard from "./pages/logs";
+import FmsLaunchedView from "./pages/fmsEngine/fmsInstanceView";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -85,14 +86,12 @@ function App() {
             <Route path="/dashboard" element={<AdminDashboard />} />
             <Route path="/logs" element={<LogsDashboard />} />
             <Route path="/profile" element={<Profile />} />
-
             {/* My Day Routes */}
             <Route path="/my-day/launchpad" element={<Launchpad />} />
             <Route path="/my-day/mytasks" element={<MyTask />} />
             <Route path="/my-day/view" element={<ManagerView />} />
             {/* <Route path="/my-day/sr-manager-view" element={<SrManagerView />} />
             <Route path="/my-day/owner-view" element={<OwnerView />} /> */}
-
             {/* Delegation Task */}
             <Route
               path="/delegation-tasks"
@@ -110,7 +109,6 @@ function App() {
                 </PermissionRoute>
               }
             />
-
             {/* FMS Engine Routes */}
             <Route
               path="/fms-engine/upcoming"
@@ -147,6 +145,10 @@ function App() {
             <Route
               path="/fms-engine/edit-template/:id"
               element={<CreateNewFmsTem />}
+            />{" "}
+            <Route
+              path="/fms-engine/instance/:id"
+              element={<FmsLaunchedView />}
             />
             <Route
               path="/fms-engine/edit-template"
@@ -156,7 +158,6 @@ function App() {
                 </PermissionRoute>
               }
             />
-
             {/* Reports Routes */}
             <Route
               path="/reports/mis"
@@ -174,7 +175,6 @@ function App() {
                 </PermissionRoute>
               }
             />
-
             {/* dashboard routes */}
             {/* setup routes */}
             <Route

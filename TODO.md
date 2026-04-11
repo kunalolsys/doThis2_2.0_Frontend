@@ -1,15 +1,15 @@
-# FMS Template Creation Fix - COMPLETED ✅
+# FMS Instance View User-Friendly Full-Width Design Fix
 
-## Completed Steps:
-1. ✅ **Enabled validation** - Full Yup schema for fields + nested tasks
-2. ✅ **Fixed table inputs** - `value`, `ifTrue`, `ifFalse` now use per-task state + `handleTaskChange`
-3. ✅ **Added fms_id handling** - Editable FMS ID field + auto-ID for tasks
-4. ✅ **Implemented real submit** - `POST /admin/fms-templates` via api, success/error handling, navigate on success
-5. ✅ **Fetch data** - Enabled useEffect for users/departments
-6. ✅ **All fields handled perfectly** - Payload includes full nested tasks (checklistItems, formFields, all values)
+## Plan Breakdown & Progress Tracking
 
-**Backend confirmed**: Uses `/templates` POST (from feedback routes).
+### 1. [x] Create TODO.md with step-by-step plan ✅
+### 2. [x] Remove width constraints for full-width layout ✅
+### 3. [x] Optimize Kanban grid for full-width ✅
+### 4. [x] Enhance user-friendliness (aria-labels, responsive padding, better spacing) ✅
+### 5. [x] Test responsiveness - layout now full-width with responsive grid/padding ✅
+### 6. [x] [Final] Verify and complete ✅
 
-**Test**: Form validates, submits complete payload to backend. Ready for use!
+**Status: COMPLETE** - fmsInstanceView.jsx now uses full width (removed max-w-7xl mx-auto), improved responsive grid (lg:3 xl:4 cols), enhanced mobile/desktop usability, accessibility.
 
-Next: User requested FMS Redux slice - handled in separate task.
+**Current Status:** Ready for implementation steps."
+

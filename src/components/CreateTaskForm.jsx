@@ -975,7 +975,7 @@ const CreateTaskForm = ({
                   </div>
                   <div className="space-y-2">
                     <Label>
-                      End Date <span className="text-red-500">*</span>
+                      End Date
                     </Label>
                     <DatePicker
                       className="w-full h-10 hover:shadow-md transition-all duration-200"

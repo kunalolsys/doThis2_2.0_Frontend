@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
+import api from "../../../lib/api";
 
 const initialState = {
   departments: [],
@@ -42,12 +43,16 @@ export const fetchDepartments = createAsyncThunk(
 
 export const addDepartment = createAsyncThunk(
   "departments/addDepartment",
-  async (department) => {
-    const response = await axios.post(
-      `${import.meta.env.VITE_API_BASE_URL}/setup/departments`,
-      department,
-    );
-    return response.data.department;
+  async (department, { rejectWithValue }) => {
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL}/setup/departments`,
+        department,
+      );
+      return response.data.department;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
   },
 );
 
@@ -66,9 +71,7 @@ export const deleteDepartment = createAsyncThunk(
   "departments/deleteDepartment",
   async (id, { rejectWithValue }) => {
     try {
-      await axios.delete(
-        `${import.meta.env.VITE_API_BASE_URL}/setup/departments/${id}`,
-      );
+      await api.delete(`/setup/departments/${id}`);
       return id;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);

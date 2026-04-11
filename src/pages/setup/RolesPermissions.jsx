@@ -1,9 +1,23 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Trash2, Shield, ShieldCheck, UserCog, Users, LayoutGrid, FileText, Lock } from 'lucide-react';
-import { useDispatch, useSelector } from 'react-redux';
-import Cookies from 'js-cookie';
-import { fetchRoles, createRole, updateRole, deleteRole } from '../../redux/slices/role/roleSlice';
-
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Plus,
+  Trash2,
+  Shield,
+  ShieldCheck,
+  UserCog,
+  Users,
+  LayoutGrid,
+  FileText,
+  Lock,
+} from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import Cookies from "js-cookie";
+import {
+  fetchRoles,
+  createRole,
+  updateRole,
+  deleteRole,
+} from "../../redux/slices/role/roleSlice";
 
 // shadcn/ui components
 import {
@@ -12,8 +26,8 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
+} from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
 import {
   Table,
   TableBody,
@@ -21,9 +35,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../../components/ui/table';
-import { Switch } from '../../components/ui/switch';
-import { Badge } from '../../components/ui/badge';
+} from "../../components/ui/table";
+import { Switch } from "../../components/ui/switch";
+import { Badge } from "../../components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -31,22 +45,22 @@ import {
   DialogTitle,
   DialogFooter,
   DialogTrigger,
-} from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Checkbox } from '../../components/ui/checkbox';
-
+} from "../../components/ui/dialog";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Checkbox } from "../../components/ui/checkbox";
+import { toast } from "sonner";
 
 const permissionMap = {
-  setup: 'Setup',
-  fmsEngine: 'FmsEngine',
-  reports: 'Reports',
-  delegationTask: 'Delegation Task',
+  setup: "Setup",
+  fmsEngine: "FmsEngine",
+  reports: "Reports",
+  delegationTask: "Delegation Task",
 };
 
 const transformRoles = (roles) => {
   const nonDeletableRoles = ["Owner", "Sr. Manager", "Member"];
-  return roles.map(role => ({
+  return roles.map((role) => ({
     ...role,
     setup: role.permissions.includes(permissionMap.setup),
     fmsEngine: role.permissions.includes(permissionMap.fmsEngine),
@@ -58,16 +72,22 @@ const transformRoles = (roles) => {
 
 // --- Helper for Role Icons ---
 const RoleIcon = ({ name }) => {
-  if (name === 'Owner') return <ShieldCheck className="w-4 h-4 text-purple-600" />;
-  if (name === 'Admin') return <Lock className="w-4 h-4 text-slate-600" />;
-  if (name.includes('Manager')) return <UserCog className="w-4 h-4 text-blue-600" />;
+  if (name === "Owner")
+    return <ShieldCheck className="w-4 h-4 text-purple-600" />;
+  if (name === "Admin") return <Lock className="w-4 h-4 text-slate-600" />;
+  if (name.includes("Manager"))
+    return <UserCog className="w-4 h-4 text-blue-600" />;
   return <Users className="w-4 h-4 text-slate-500" />;
 };
 
 // --- Main Component ---
 const RolesPermissions = () => {
   const dispatch = useDispatch();
-  const { roles: rawRoles, status, error } = useSelector((state) => state.roles);
+  const {
+    roles: rawRoles,
+    status,
+    error,
+  } = useSelector((state) => state.roles);
   const roles = useMemo(() => {
     const transformed = transformRoles(rawRoles);
     const desiredOrder = ["Admin", "Owner", "Sr. Manager", "Manager", "Member"];
@@ -80,37 +100,36 @@ const RolesPermissions = () => {
         return indexA - indexB; // Both are in the desired order list
       }
       if (indexA !== -1) return -1; // a is in the list, b is not
-      if (indexB !== -1) return 1;  // b is in the list, a is not
+      if (indexB !== -1) return 1; // b is in the list, a is not
       return a.name.localeCompare(b.name); // Neither are in the list, sort alphabetically
     });
   }, [rawRoles]);
   // Get user data from cookies
   const user = {
-    name: Cookies.get('name') || '',
-    role: { name: Cookies.get('role') || '' },
-    email: Cookies.get('email') || '',
+    name: Cookies.get("name") || "",
+    role: { name: Cookies.get("role") || "" },
+    email: Cookies.get("email") || "",
   };
-  const permissions = JSON.parse(Cookies.get('permissions') || '{}');
+  const permissions = JSON.parse(Cookies.get("permissions") || "{}");
 
   const hasPermission = (permission) => {
     if (!user) {
       return false;
     }
-    if (user.role.name === 'Admin') {
+    if (user.role.name === "Admin") {
       return true;
     }
     return !!permissions[permission];
   };
 
-  const canViewPage = hasPermission('setup_view');
+  const canViewPage = hasPermission("setup_view");
 
   useEffect(() => {
     if (canViewPage) dispatch(fetchRoles());
   }, [canViewPage, dispatch]);
 
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newRoleName, setNewRoleName] = useState('');
+  const [newRoleName, setNewRoleName] = useState("");
   const [newRolePermissions, setNewRolePermissions] = useState({
     setup: false,
     fmsEngine: false,
@@ -127,26 +146,41 @@ const RolesPermissions = () => {
 
   // Handle toggling a permission
   const handlePermissionChange = (roleId, permissionKey, value) => {
-    const roleToUpdate = roles.find(r => r._id === roleId);
+    const roleToUpdate = roles.find((r) => r._id === roleId);
     if (!roleToUpdate) return;
 
     const updatedRole = { ...roleToUpdate, [permissionKey]: value };
 
     const backendPermissions = Object.keys(permissionMap)
-      .filter(key => updatedRole[key])
-      .map(key => permissionMap[key]);
+      .filter((key) => updatedRole[key])
+      .map((key) => permissionMap[key]);
 
     dispatch(updateRole({ id: roleId, permissions: backendPermissions }));
   };
 
   // Handle deleting a role
-  const handleDeleteRole = (roleId) => {
-    const roleToDelete = roles.find(r => r._id === roleId);
-    if (roleToDelete.isSystem) {
-      alert("System roles cannot be deleted.");
-      return;
+  const handleDeleteRole = async (roleId) => {
+    try {
+      const roleToDelete = roles.find((r) => r._id === roleId);
+
+      if (roleToDelete?.isSystem) {
+        alert("System roles cannot be deleted.");
+        return;
+      }
+
+      // ✅ confirm before delete
+      const confirmed = window.confirm(
+        `Are you sure you want to delete "${roleToDelete?.name}" role?`,
+      );
+
+      if (!confirmed) return;
+
+      await dispatch(deleteRole(roleId)).unwrap();
+
+      toast.success("Role deleted successfully");
+    } catch (error) {
+      toast.error(error || "Failed to delete.");
     }
-    dispatch(deleteRole(roleId));
   };
 
   const handleCreateRole = () => {
@@ -156,12 +190,17 @@ const RolesPermissions = () => {
     }
 
     const permissions = Object.keys(newRolePermissions)
-      .filter(key => newRolePermissions[key])
-      .map(key => permissionMap[key]);
+      .filter((key) => newRolePermissions[key])
+      .map((key) => permissionMap[key]);
 
     dispatch(createRole({ name: newRoleName, permissions }));
-    setNewRoleName('');
-    setNewRolePermissions({ setup: false, fmsEngine: false, reports: false, delegationTask: false });
+    setNewRoleName("");
+    setNewRolePermissions({
+      setup: false,
+      fmsEngine: false,
+      reports: false,
+      delegationTask: false,
+    });
     setIsDialogOpen(false);
   };
 
@@ -176,25 +215,27 @@ const RolesPermissions = () => {
   //   );
   // }
 
-  if (status === 'loading') {
+  if (status === "loading") {
     return <div>Loading...</div>;
   }
 
-  if (status === 'failed') {
+  if (status === "failed") {
     return <div>Error: {error}</div>;
   }
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-8 flex justify-center items-start">
       <Card className="w-full shadow-xl border-slate-200 bg-white">
-
         {/* --- Header --- */}
         <CardHeader className="border-b border-slate-100 pb-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-              <CardTitle className="text-xl font-bold text-slate-900">Roles & Permissions</CardTitle>
+              <CardTitle className="text-xl font-bold text-slate-900">
+                Roles & Permissions
+              </CardTitle>
               <CardDescription className="mt-1 text-sm text-slate-500">
-                Manage access levels and control what users can do within the application.
+                Manage access levels and control what users can do within the
+                application.
               </CardDescription>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -224,13 +265,16 @@ const RolesPermissions = () => {
                   <div className="grid grid-cols-4 items-start gap-4">
                     <Label className="text-right pt-2">Permissions</Label>
                     <div className="col-span-3 grid grid-cols-2 gap-4">
-                      {Object.keys(permissionMap).map(key => (
+                      {Object.keys(permissionMap).map((key) => (
                         <div key={key} className="flex items-center space-x-2">
                           <Checkbox
                             id={`perm-${key}`}
                             checked={newRolePermissions[key]}
                             onCheckedChange={(checked) =>
-                              setNewRolePermissions(prev => ({ ...prev, [key]: checked }))
+                              setNewRolePermissions((prev) => ({
+                                ...prev,
+                                [key]: checked,
+                              }))
                             }
                           />
                           <label
@@ -245,7 +289,12 @@ const RolesPermissions = () => {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
                   <Button onClick={handleCreateRole}>Create Role</Button>
                 </DialogFooter>
               </DialogContent>
@@ -258,10 +307,13 @@ const RolesPermissions = () => {
             <Table>
               <TableHeader className="bg-slate-50/80">
                 <TableRow className="hover:bg-transparent border-slate-100">
-                  <TableHead className="w-[300px] py-4 pl-6 font-semibold text-slate-600 text-xs uppercase tracking-wider">Role Details</TableHead>
+                  <TableHead className="w-[300px] py-4 pl-6 font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                    Role Details
+                  </TableHead>
                   <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
                     <div className="flex items-center justify-center gap-2">
-                      <Users className="w-4 h-4" />Setup
+                      <Users className="w-4 h-4" />
+                      Setup
                     </div>
                   </TableHead>
                   <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
@@ -279,14 +331,18 @@ const RolesPermissions = () => {
                       <FileText className="w-4 h-4" /> Delegation Task
                     </div>
                   </TableHead>
-                  <TableHead className="text-right pr-6 font-semibold text-slate-600 text-xs uppercase tracking-wider">Action</TableHead>
+                  <TableHead className="text-right pr-6 font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                    Action
+                  </TableHead>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
                 {roles.map((role) => (
-                  <TableRow key={role._id} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-
+                  <TableRow
+                    key={role._id}
+                    className="hover:bg-slate-50/50 transition-colors border-slate-100"
+                  >
                     {/* Role Name & Description */}
                     <TableCell className="pl-6 py-4">
                       <div className="flex items-start gap-3">
@@ -295,9 +351,16 @@ const RolesPermissions = () => {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-slate-800 text-base">{role.name}</span>
+                            <span className="font-semibold text-slate-800 text-base">
+                              {role.name}
+                            </span>
                             {role.isSystem && (
-                              <Badge variant="secondary" className="text-xs px-1.5 h-5 bg-slate-100 text-slate-500 border-slate-200">System</Badge>
+                              <Badge
+                                variant="secondary"
+                                className="text-xs px-1.5 h-5 bg-slate-100 text-slate-500 border-slate-200"
+                              >
+                                System
+                              </Badge>
                             )}
                           </div>
                         </div>
@@ -308,7 +371,9 @@ const RolesPermissions = () => {
                     <TableCell className="text-center">
                       <Switch
                         checked={role.setup}
-                        onCheckedChange={(value) => handlePermissionChange(role._id, 'setup', value)}
+                        onCheckedChange={(value) =>
+                          handlePermissionChange(role._id, "setup", value)
+                        }
                         className="data-[state=checked]:bg-blue-600"
                       />
                     </TableCell>
@@ -317,7 +382,9 @@ const RolesPermissions = () => {
                     <TableCell className="text-center">
                       <Switch
                         checked={role.fmsEngine}
-                        onCheckedChange={(value) => handlePermissionChange(role._id, 'fmsEngine', value)}
+                        onCheckedChange={(value) =>
+                          handlePermissionChange(role._id, "fmsEngine", value)
+                        }
                         className="data-[state=checked]:bg-blue-600"
                       />
                     </TableCell>
@@ -326,7 +393,9 @@ const RolesPermissions = () => {
                     <TableCell className="text-center">
                       <Switch
                         checked={role.reports}
-                        onCheckedChange={(value) => handlePermissionChange(role._id, 'reports', value)}
+                        onCheckedChange={(value) =>
+                          handlePermissionChange(role._id, "reports", value)
+                        }
                         className="data-[state=checked]:bg-blue-600"
                       />
                     </TableCell>
@@ -335,7 +404,13 @@ const RolesPermissions = () => {
                     <TableCell className="text-center">
                       <Switch
                         checked={role.delegationTask}
-                        onCheckedChange={(value) => handlePermissionChange(role._id, 'delegationTask', value)}
+                        onCheckedChange={(value) =>
+                          handlePermissionChange(
+                            role._id,
+                            "delegationTask",
+                            value,
+                          )
+                        }
                         className="data-[state=checked]:bg-blue-600"
                       />
                     </TableCell>
@@ -347,11 +422,16 @@ const RolesPermissions = () => {
                         size="icon"
                         disabled={role.isSystem}
                         onClick={() => handleDeleteRole(role._id)}
-                        className={`h-9 w-9 transition-colors ${role.isSystem
-                          ? 'text-slate-300 cursor-not-allowed'
-                          : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
-                          }`}
-                        title={role.isSystem ? "System roles cannot be deleted" : "Delete Role"}
+                        className={`h-9 w-9 transition-colors ${
+                          role.isSystem
+                            ? "text-slate-300 cursor-not-allowed"
+                            : "text-slate-400 hover:text-red-600 hover:bg-red-50"
+                        }`}
+                        title={
+                          role.isSystem
+                            ? "System roles cannot be deleted"
+                            : "Delete Role"
+                        }
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

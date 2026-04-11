@@ -641,7 +641,8 @@ const DepartmentCalender = () => {
       setEditingDepartment(null);
       setIsAddEditDialogOpen(false);
     } catch (err) {
-      toast.error(err.message || "Failed to save department.");
+      console.log(err)
+      toast.error(err|| "Failed to save department.");
     }
   };
 

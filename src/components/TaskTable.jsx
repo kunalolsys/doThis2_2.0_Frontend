@@ -266,6 +266,8 @@ const TaskTable = ({
   const [editStartDate, setEditStartDate] = useState(null);
   const [editDueDate, setEditDueDate] = useState(null);
   const [editChecklist, setEditChecklist] = useState([]);
+  const [taskEndDateOffset, setTaskEndDateOffset] = useState(""); // New state for task end date offset
+
   const [editChecklistItem, setEditChecklistItem] = useState("");
   const [editRecurrenceFrequency, setEditRecurrenceFrequency] =
     useState("daily");
@@ -481,6 +483,7 @@ const TaskTable = ({
     setEditStartDate(data.startDate ? new Date(data.startDate) : null);
     setEditDueDate(data.dueDate ? new Date(data.dueDate) : null);
     setEditChecklist(data.checklist || []);
+    setTaskEndDateOffset(data.taskEndDays);
 
     if (data.taskType === "RecurringTask" || data.frequency) {
       setEditRecurrenceFrequency(data.frequency?.toLowerCase() || "daily");
@@ -546,6 +549,7 @@ const TaskTable = ({
         formData.append("title", editTitle);
         formData.append("description", editDescription);
         if (editAssignedTo) formData.append("assignedTo", editAssignedTo);
+
         if (editStartDate)
           formData.append("startDate", format(editStartDate, "yyyy-MM-dd"));
 
@@ -607,6 +611,7 @@ const TaskTable = ({
           description: editDescription,
         };
         if (editAssignedTo) payload.assignedTo = editAssignedTo;
+        if (taskEndDateOffset) payload.taskEndDays = taskEndDateOffset;
         if (editStartDate)
           payload.startDate = format(editStartDate, "yyyy-MM-dd");
 
@@ -1533,7 +1538,43 @@ const TaskTable = ({
                           <TableCell className="whitespace-nowrap">
                             {task.dueDate ? formatDate(task.dueDate) : "-"}
                           </TableCell>
-                          <TableCell>-</TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {task.dueDate
+                              ? (() => {
+                                  const today = new Date();
+                                  const due = new Date(task.dueDate);
+
+                                  today.setHours(0, 0, 0, 0);
+                                  due.setHours(0, 0, 0, 0);
+
+                                  const diffDays = Math.ceil(
+                                    (today - due) / (1000 * 60 * 60 * 24),
+                                  );
+
+                                  if (diffDays > 0) {
+                                    return (
+                                      <span className="px-2 py-1 rounded-md text-xs font-semibold bg-red-50 text-red-600 border border-red-200">
+                                        {diffDays}d overdue
+                                      </span>
+                                    );
+                                  }
+
+                                  if (diffDays === 0) {
+                                    return (
+                                      <span className="px-2 py-1 rounded-md text-xs font-semibold bg-yellow-50 text-yellow-600 border border-yellow-200">
+                                        Due Today
+                                      </span>
+                                    );
+                                  }
+
+                                  return (
+                                    <span className="px-2 py-1 rounded-md text-xs font-semibold bg-green-50 text-green-600 border border-green-200">
+                                      {Math.abs(diffDays)}d left
+                                    </span>
+                                  );
+                                })()
+                              : "-"}
+                          </TableCell>{" "}
                           {/* <TableCell className="text-center">
                           {Array.isArray(task.attachmentFile) &&
                           task.attachmentFile.length > 0 ? (
@@ -1580,6 +1621,7 @@ const TaskTable = ({
                                     className="h-8 w-8 text-gray-600 hover:bg-gray-50"
                                     onClick={() => handleChecklistClick(task)}
                                     disabled={
+                                      task.status == "Completed" ||
                                       !task.checklist ||
                                       task.checklist.length === 0
                                     }
@@ -1601,6 +1643,7 @@ const TaskTable = ({
                                     onClick={() => handleToggleComplete(task)}
                                     disabled={
                                       task.status == "Completed" ||
+                                      task.status == "Upcoming" ||
                                       (task.checklist &&
                                         task.checklist.length > 0)
                                     }
@@ -1624,6 +1667,7 @@ const TaskTable = ({
                                       <Button
                                         variant="ghost"
                                         size="icon"
+                                        disabled={task.status == "Completed"}
                                         className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
                                         onClick={() => openReassignDialog(task)}
                                       >
@@ -1635,11 +1679,14 @@ const TaskTable = ({
                                     </TooltipContent>
                                   </Tooltip>
                                 )}
-
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
                                     variant="ghost"
+                                    disabled={
+                                      currentUser?.role?.name !== "Owner" &&
+                                      currentUser?.role?.name !== "Admin"
+                                    }
                                     size="icon"
                                     className="h-8 w-8 text-red-600 hover:bg-red-50"
                                     onClick={() => handleDeleteClick(task)}
@@ -1914,6 +1961,7 @@ const TaskTable = ({
                                     className="h-8 w-8 text-gray-600 hover:bg-gray-50"
                                     onClick={() => handleChecklistClick(task)}
                                     disabled={
+                                      task.status == "Completed" ||
                                       !task.checklist ||
                                       task.checklist.length === 0
                                     }
@@ -1934,8 +1982,10 @@ const TaskTable = ({
                                     className="h-8 w-8 text-green-600 hover:bg-green-50"
                                     onClick={() => handleToggleComplete(task)}
                                     disabled={
-                                      task.checklist &&
-                                      task.checklist.length > 0
+                                      task.status == "Completed" ||
+                                      task.status == "Upcoming" ||
+                                      (task.checklist &&
+                                        task.checklist.length > 0)
                                     }
                                   >
                                     <CheckCircle className="h-4 w-4" />
@@ -1957,6 +2007,7 @@ const TaskTable = ({
                                       <Button
                                         variant="ghost"
                                         size="icon"
+                                        disabled={task.status == "Completed"}
                                         className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
                                         onClick={() => openReassignDialog(task)}
                                       >
@@ -1974,6 +2025,10 @@ const TaskTable = ({
                                   <Button
                                     variant="ghost"
                                     size="icon"
+                                    disabled={
+                                      currentUser?.role?.name !== "Owner" &&
+                                      currentUser?.role?.name !== "Admin"
+                                    }
                                     className="h-8 w-8 text-red-600 hover:bg-red-50"
                                     onClick={() => handleDeleteClick(task)}
                                   >
@@ -2206,8 +2261,8 @@ const TaskTable = ({
                       <Input
                         type="number"
                         // Removed taskEndDateOffset from here - check original
-                        // value={taskEndDateOffset}
-                        // onChange={(e) => setTaskEndDateOffset(e.target.value)}
+                        value={taskEndDateOffset}
+                        onChange={(e) => setTaskEndDateOffset(e.target.value)}
                         placeholder="E.g., 1 for same day, 2 for next day"
                         min="1"
                       />
@@ -2514,9 +2569,8 @@ const TaskTable = ({
             <Button
               onClick={handleCompleteTaskFromChecklist}
               disabled={
-                !checklistItems ||
-                checklistItems.length === 0 ||
-                !checklistItems.every((item) => item.isCompleted)
+                !checklistItems || checklistItems.length === 0
+                // || !checklistItems.every((item) => item.isCompleted)
               }
             >
               Complete Task

@@ -105,7 +105,9 @@ const AddUser = () => {
       department: Yup.array().when("role", {
         is: (roleId) => {
           const selectedRole = roles.find((r) => r._id === roleId);
-          return selectedRole?.name === "Member";
+          return (
+            selectedRole?.name !== "Owner" && selectedRole?.name !== "Admin"
+          );
         },
         then: (schema) =>
           schema
@@ -306,8 +308,7 @@ const AddUser = () => {
                 )}
             </div>
             <div className="space-y-2">
-              <Label>Select Main Email</Label>
-
+              <Label>Email for Receiving Notifications</Label>
               <div className="flex gap-6">
                 {/* PRIMARY EMAIL */}
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -370,9 +371,10 @@ const AddUser = () => {
             <div className="space-y-2">
               <Label>
                 Department(s){" "}
-                {selectedRole?.name == "Member" && (
-                  <span className="text-red-500">*</span>
-                )}
+                {selectedRole?.name !== "Owner" &&
+                  selectedRole?.name !== "Admin" && (
+                    <span className="text-red-500">*</span>
+                  )}
               </Label>
               <ScrollArea className="h-32 w-full rounded-md border p-4">
                 <div className="space-y-2">

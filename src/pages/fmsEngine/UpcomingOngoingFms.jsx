@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { FilePenLine, Settings, Trash2, Search } from "lucide-react";
+import { FilePenLine, Settings, Trash2, Search, EyeIcon } from "lucide-react";
 
 // shadcn/ui components
 import {
@@ -37,6 +37,9 @@ import api from "../../lib/api";
 import { toast } from "sonner";
 import { formatDate } from "../../lib/utilFunctions";
 import { cn } from "../../lib/utils";
+import { useDebounce } from "../../lib/debounce";
+import DataPagination from "../../components/ui/commonPagination";
+import { useNavigate } from "react-router-dom";
 
 const getStatusBadge = (status) => {
   if (status === "In Progress") {
@@ -76,14 +79,14 @@ const FmsTableHeader = () => (
       <TableHead className="whitespace-nowrap">START DATE</TableHead>
       <TableHead className="whitespace-nowrap">END DATE</TableHead>
       <TableHead className="whitespace-nowrap">OVERALL STATUS</TableHead>
-      <TableHead className="whitespace-nowrap">PROGRESS</TableHead>
+      {/* <TableHead className="whitespace-nowrap">PROGRESS</TableHead> */}
       <TableHead className="text-right whitespace-nowrap">ACTIONS</TableHead>
     </TableRow>
   </TableHeader>
 );
 
 // Helper for Action Icons (to avoid duplication)
-const FmsTableActions = () => (
+const FmsTableActions = ({ id, handleChangeAction }) => (
   <TableCell className="text-right whitespace-nowrap">
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -98,15 +101,18 @@ const FmsTableActions = () => (
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Actions</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          <FilePenLine className="w-4 h-4 mr-2" />
-          Edit
+        <DropdownMenuItem onClick={() => handleChangeAction("Edit", id)}>
+          <EyeIcon className="w-4 h-4 mr-2" />
+          View
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleChangeAction("Settings", id)}>
           <Settings className="w-4 h-4 mr-2" />
           Settings
         </DropdownMenuItem>
-        <DropdownMenuItem className="text-red-500">
+        <DropdownMenuItem
+          className="text-red-500"
+          onClick={() => handleChangeAction("Delete", id)}
+        >
           <Trash2 className="w-4 h-4 mr-2" />
           Delete
         </DropdownMenuItem>
@@ -117,12 +123,21 @@ const FmsTableActions = () => (
 
 // --- Main Component ---
 const UpcomingOngoingFms = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = React.useState("");
+  const debounceSearch = useDebounce(searchTerm);
+  const [pagination, setPagination] = useState(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [activeTab, setActiveTab] = useState("upcoming");
+
   const [FMS, setFMS] = useState([]);
-  const fetchFMS = async () => {
+  const fetchFMS = async (search, activeTab, page, limit) => {
     try {
-      const res = await api.get(`/fms/instances/`);
+      const payload = { search, status: activeTab, page, limit };
+      const res = await api.post(`/fms/instances/`, payload);
       const FMSData = res.data.data || [];
+      setPagination(res.data.pagination);
       setFMS(FMSData);
     } catch (err) {
       console.error(err);
@@ -143,8 +158,18 @@ const UpcomingOngoingFms = () => {
       ? FMS.filter((items) => items.status == "Completed")
       : [];
   useEffect(() => {
-    fetchFMS();
-  }, []);
+    fetchFMS(debounceSearch, activeTab, page, limit);
+  }, [debounceSearch, page, limit, activeTab]);
+  const handleTabChange = (value) => {
+    setActiveTab(value);
+    setPage(1); // reset pagination
+    setLimit(10); // reset pagination
+  };
+  const handleChangeAction = (val, id) => {
+    if (val == "Edit") {
+      return navigate(`/fms-engine/instance/${id}`);
+    }
+  };
   return (
     <div className="m-4">
       <Card className="shadow-lg">
@@ -165,7 +190,7 @@ const UpcomingOngoingFms = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="upcoming">
+          <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList>
               <TabsTrigger value="upcoming">Upcoming FMSs</TabsTrigger>
               <TabsTrigger value="ongoing">Ongoing FMSs</TabsTrigger>
@@ -211,9 +236,8 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {getStatusBadge(fms.status) || "-"}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap min-w-[180px]">
+                          {/* <TableCell className="whitespace-nowrap min-w-[180px]">
                             <div className="flex flex-col gap-1">
-                              {/* Top: % + count */}
                               <div className="flex justify-between text-xs text-slate-600">
                                 <span>
                                   {fms.progress?.completedTasks || 0}/
@@ -221,8 +245,6 @@ const UpcomingOngoingFms = () => {
                                 </span>
                                 <span>{fms.progress?.rate || 0}%</span>
                               </div>
-
-                              {/* Progress Bar */}
                               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
                                   className={cn(
@@ -239,8 +261,11 @@ const UpcomingOngoingFms = () => {
                                 />
                               </div>
                             </div>
-                          </TableCell>
-                          <FmsTableActions />
+                          </TableCell> */}
+                          <FmsTableActions
+                            id={fms._id || fms.id}
+                            handleChangeAction={handleChangeAction}
+                          />
                         </TableRow>
                       ))
                     ) : (
@@ -258,6 +283,17 @@ const UpcomingOngoingFms = () => {
                     )}
                   </TableBody>
                 </Table>
+                <DataPagination
+                  page={page}
+                  limit={limit}
+                  total={pagination?.total || 0}
+                  totalPages={pagination?.pages || 1}
+                  onPageChange={(p) => setPage(p)}
+                  onLimitChange={(l) => {
+                    setLimit(l);
+                    setPage(1); // reset page when limit changes
+                  }}
+                />
               </div>
             </TabsContent>
             {/* --- Ongoing FMSs Tab --- */}
@@ -301,9 +337,8 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {getStatusBadge(fms.status) || "-"}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap min-w-[180px]">
+                          {/* <TableCell className="whitespace-nowrap min-w-[180px]">
                             <div className="flex flex-col gap-1">
-                              {/* Top: % + count */}
                               <div className="flex justify-between text-xs text-slate-600">
                                 <span>
                                   {fms.progress?.completedTasks || 0}/
@@ -312,7 +347,6 @@ const UpcomingOngoingFms = () => {
                                 <span>{fms.progress?.rate || 0}%</span>
                               </div>
 
-                              {/* Progress Bar */}
                               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
                                   className={cn(
@@ -329,8 +363,11 @@ const UpcomingOngoingFms = () => {
                                 />
                               </div>
                             </div>
-                          </TableCell>
-                          <FmsTableActions />
+                          </TableCell> */}
+                          <FmsTableActions
+                            id={fms._id || fms.id}
+                            handleChangeAction={handleChangeAction}
+                          />
                         </TableRow>
                       ))
                     ) : (
@@ -348,6 +385,17 @@ const UpcomingOngoingFms = () => {
                     )}
                   </TableBody>
                 </Table>
+                <DataPagination
+                  page={page}
+                  limit={limit}
+                  total={pagination?.total || 0}
+                  totalPages={pagination?.pages || 1}
+                  onPageChange={(p) => setPage(p)}
+                  onLimitChange={(l) => {
+                    setLimit(l);
+                    setPage(1); // reset page when limit changes
+                  }}
+                />
               </div>
             </TabsContent>{" "}
             {/* --- Completed FMSs Tab --- */}
@@ -390,9 +438,8 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {getStatusBadge(fms.status) || "-"}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap min-w-[180px]">
+                          {/* <TableCell className="whitespace-nowrap min-w-[180px]">
                             <div className="flex flex-col gap-1">
-                              {/* Top: % + count */}
                               <div className="flex justify-between text-xs text-slate-600">
                                 <span>
                                   {fms.progress?.completedTasks || 0}/
@@ -401,7 +448,6 @@ const UpcomingOngoingFms = () => {
                                 <span>{fms.progress?.rate || 0}%</span>
                               </div>
 
-                              {/* Progress Bar */}
                               <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                                 <div
                                   className={cn(
@@ -418,8 +464,11 @@ const UpcomingOngoingFms = () => {
                                 />
                               </div>
                             </div>
-                          </TableCell>
-                          <FmsTableActions />
+                          </TableCell> */}
+                          <FmsTableActions
+                            id={fms._id || fms.id}
+                            handleChangeAction={handleChangeAction}
+                          />
                         </TableRow>
                       ))
                     ) : (
@@ -437,6 +486,17 @@ const UpcomingOngoingFms = () => {
                     )}
                   </TableBody>
                 </Table>
+                <DataPagination
+                  page={page}
+                  limit={limit}
+                  total={pagination?.total || 0}
+                  totalPages={pagination?.pages || 1}
+                  onPageChange={(p) => setPage(p)}
+                  onLimitChange={(l) => {
+                    setLimit(l);
+                    setPage(1); // reset page when limit changes
+                  }}
+                />
               </div>
             </TabsContent>
           </Tabs>

@@ -62,16 +62,14 @@ const FmsLaunch = () => {
     } finally {
     }
   };
-  const fetchTasks = async () => {
+  const fetchTasks = async (templateID) => {
+    if (!templateID) return;
+
     try {
-      const res = await api.post(
-        `/fms/templates/${selectedTemplate}/tasks-list`,
-        {},
-      );
+      const res = await api.post(`/fms/templates/${templateID}/tasks-list`, {});
       const tasksData = res.data.data || [];
       setTasks(tasksData);
     } catch (err) {
-      console.error(err);
       toast.error("Failed to load tasks");
     }
   };
@@ -79,8 +77,8 @@ const FmsLaunch = () => {
     fetchTemplates();
   }, []);
   useEffect(() => {
-    if (selectedTemplate) {
-      fetchTasks();
+    if (selectedTemplate !== "none") {
+      fetchTasks(selectedTemplate);
     }
   }, [selectedTemplate]);
   useEffect(() => {
@@ -103,9 +101,10 @@ const FmsLaunch = () => {
     fetchUsers();
   }, []);
 
-  const currentTemplate = selectedTemplate
-    ? templates.filter((items) => items._id == selectedTemplate)
-    : null;
+  const currentTemplate =
+    selectedTemplate && selectedTemplate !== "none"
+      ? templates.filter((items) => items._id == selectedTemplate)
+      : null;
   useEffect(() => {
     if (currentTemplate) {
       setEndDate(currentTemplate[0].endDate || null);
@@ -186,37 +185,42 @@ const FmsLaunch = () => {
                 </div>
               </SelectTrigger>
               <SelectContent>
-                {Array.isArray(templates) && templates.length > 0 ? (
-                  templates.map((items) => {
-                    return (
-                      <SelectItem
-                        key={items.id || items._id}
-                        value={items.id || items._id}
-                        disabled={items.isLaunched}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          {/* Left: Name */}
-                          <span>
-                            {items.fmsId} - {items.templateName}
-                          </span>
-
-                          {/* Right: Badge */}
-                          {items.isLaunched && (
-                            <span
-                              className={cn(
-                                "ml-2 px-2 py-0.5 text-xs rounded-md font-medium",
-                                items.isLaunched
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-yellow-100 text-yellow-700",
-                              )}
-                            >
-                              {items.isLaunched ? "Already Launched" : "Draft"}
+                {Array.isArray(templates) &&
+                templates.filter((item) => !item.isLaunched).length > 0 ? (
+                  templates
+                    .filter((items) => !items.isLaunched)
+                    .map((items) => {
+                      return (
+                        <SelectItem
+                          key={items.id || items._id}
+                          value={items.id || items._id}
+                          disabled={items.isLaunched}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            {/* Left: Name */}
+                            <span>
+                              {items.fmsId} - {items.templateName}
                             </span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    );
-                  })
+
+                            {/* Right: Badge */}
+                            {items.isLaunched && (
+                              <span
+                                className={cn(
+                                  "ml-2 px-2 py-0.5 text-xs rounded-md font-medium",
+                                  items.isLaunched
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-yellow-100 text-yellow-700",
+                                )}
+                              >
+                                {items.isLaunched
+                                  ? "Already Launched"
+                                  : "Draft"}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })
                 ) : (
                   <SelectItem value="none">No templates found</SelectItem>
                 )}
@@ -228,15 +232,17 @@ const FmsLaunch = () => {
         <CardContent className="pt-2">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* --- Conditional Form Details (Animated) --- */}
-            {selectedTemplate && (
+            {selectedTemplate !== "none" && currentTemplate?.length > 0 && (
               <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500 ease-out">
                 <div className="flex flex-col gap-1 pb-2 border-b border-slate-100">
                   <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                     <Briefcase className="w-4 h-4 text-blue-600" />
-                    Configuration: {currentTemplate[0].templateName}
+                    Configuration:{" "}
+                    {currentTemplate?.[0]?.templateName || "Untitled"}
                   </h3>
                   <p className="text-sm text-slate-500">
-                    {currentTemplate[0].description}
+                    {currentTemplate?.[0]?.description ||
+                      "No description available"}
                   </p>
                 </div>
 
