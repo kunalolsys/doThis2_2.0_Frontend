@@ -296,7 +296,7 @@ const CreateNewFmsTem = () => {
     try {
       const res = await api.post(`/fms/templates/${id}/tasks-list`, {
         search,
-        departmentId:departmentId=="all"?undefined:departmentId,
+        departmentId: departmentId == "all" ? undefined : departmentId,
       });
       const tasksData = res.data.data || [];
       const formattedTasks = mapTasksToUI(tasksData);
@@ -412,7 +412,9 @@ const CreateNewFmsTem = () => {
     }
 
     newTasks[index][field] = value;
-
+    if (field === "dept") {
+      newTasks[index].doer = ""; // clear selected user
+    }
     setTasks(newTasks);
     formik.setFieldValue("tasks", newTasks);
   };
@@ -791,11 +793,22 @@ const CreateNewFmsTem = () => {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {doers.slice(0, 10).map((u) => (
-                                      <SelectItem key={u._id} value={u._id}>
-                                        {u.name}
-                                      </SelectItem>
-                                    ))}
+                                    {doers
+                                      .filter((u) =>
+                                        task.dept
+                                          ? u.department?.some(
+                                              (d) =>
+                                                String(d._id) ===
+                                                String(task.dept),
+                                            )
+                                          : true,
+                                      )
+                                      .slice(0, 10)
+                                      .map((u) => (
+                                        <SelectItem key={u._id} value={u._id}>
+                                          {u.name}
+                                        </SelectItem>
+                                      ))}
                                   </SelectContent>
                                 </Select>
                               </TableCell>

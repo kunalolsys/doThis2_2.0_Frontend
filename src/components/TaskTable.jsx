@@ -1407,6 +1407,9 @@ const TaskTable = ({
                       Assign To Department
                     </TableHead>
                     <TableHead className="whitespace-nowrap">
+                      Recurring ID
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
                       Start Date
                     </TableHead>
                     <TableHead className="whitespace-nowrap">
@@ -1532,6 +1535,9 @@ const TaskTable = ({
                           <TableCell className="whitespace-nowrap">
                             {task.departmentOfAssignToUser?.name || "-"}
                           </TableCell>
+                          <TableCell className="text-center">
+                            {task.recurringRefId || "-"}
+                          </TableCell>{" "}
                           <TableCell className="whitespace-nowrap">
                             {task.startDate ? formatDate(task.startDate) : "-"}
                           </TableCell>
@@ -1737,7 +1743,7 @@ const TaskTable = ({
                     <TableHead className="whitespace-nowrap">
                       Description
                     </TableHead>
-                    <TableHead className="whitespace-nowrap">
+                    <TableHead className="whitespace-nowrap w-100">
                       Frequency
                     </TableHead>
                     <TableHead className="whitespace-nowrap">

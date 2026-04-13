@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../lib/api"; // Adjust path as per your project structure
+import dayjs from "dayjs";
 
 // --- Thunk to fetch Table Data (Paginated) ---
 export const fetchMyTasks = createAsyncThunk(
@@ -72,6 +73,7 @@ export const getFilterTasks = createAsyncThunk(
         userId,
         page = 1,
         limit = 10,
+        dateRange,
         search,
         filters = {},
         creatorOrAssignorId,
@@ -84,6 +86,14 @@ export const getFilterTasks = createAsyncThunk(
         creatorOrAssignorId,
 
         ...(search && { search }),
+        ...(dateRange && {
+          startDate: dateRange?.[0]
+            ? dayjs(dateRange[0]).format("YYYY-MM-DD")
+            : null,
+          endDate: dateRange?.[1]
+            ? dayjs(dateRange[1]).format("YYYY-MM-DD")
+            : null,
+        }),
 
         filters: {
           // ✅ STAT (overdue, dueToday, completed, total)
@@ -254,6 +264,7 @@ const myTaskSlice = createSlice({
   name: "myTasks",
   initialState: {
     tasks: [],
+    upcomingRecurringTasks:[],
     taskCounts: {
       total: 0,
       overdue: 0,
@@ -292,6 +303,7 @@ const myTaskSlice = createSlice({
       .addCase(getFilterTasks.fulfilled, (state, action) => {
         state.status = "succeeded";
         state.tasks = action.payload.data;
+        state.upcomingRecurringTasks = action.payload.upcomingRecurringTasks;
         state.totalTasks = action.payload.totalTasks;
         state.currentPage = action.payload.currentPage;
         state.perPage = action.payload.perPage;

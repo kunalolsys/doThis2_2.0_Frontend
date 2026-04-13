@@ -66,7 +66,8 @@ import * as XLSX from "xlsx";
 import { formatDate } from "../../lib/utilFunctions";
 import ViewLink from "./attachmentViewer";
 import { useDebounce } from "../../lib/debounce";
-
+import { DatePicker } from "antd";
+const { RangePicker } = DatePicker;
 // --- Helper: Status Badge ---
 const getStatusBadge = (status) => {
   switch (status) {
@@ -111,6 +112,7 @@ const TaskActions = ({
   onDelete,
 }) => {
   const isCompleted = task.status === "Completed";
+  const upComing = task.status == "Upcoming";
 
   return (
     <div className="flex gap-1">
@@ -139,6 +141,7 @@ const TaskActions = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              disabled={upComing}
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-green-600 hover:bg-green-50"
@@ -321,6 +324,8 @@ const FilterBar = ({
   onExport,
   isExporting,
   selectedStatFilter,
+  dateRange,
+  setDateRange,
 }) => (
   <div className="flex flex-col md:flex-row gap-3 mt-6 mb-4 p-4 bg-gray-50 rounded-lg border">
     <div className="relative flex-1">
@@ -330,6 +335,14 @@ const FilterBar = ({
         className="pl-10 bg-white"
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
+      />
+    </div>
+    <div>
+      <RangePicker
+        value={dateRange}
+        onChange={(dates) => setDateRange(dates)}
+        format="DD MMM YYYY"
+        style={{ height: "36px" }}
       />
     </div>
 
@@ -389,6 +402,7 @@ const FilterBar = ({
 // --- Helper: Main Table ---
 const TodayTasksTable = ({
   tasks,
+  upcomingRecurringTasks,
   onChecklist,
   onToggleComplete,
   onViewDescription,
@@ -398,6 +412,7 @@ const TodayTasksTable = ({
   itemsPerPage,
   allUsers,
 }) => {
+  const combinedTasks = [...(tasks || []), ...(upcomingRecurringTasks || [])];
   return (
     <div className="overflow-x-auto border rounded-lg bg-white">
       <Table>
@@ -420,8 +435,8 @@ const TodayTasksTable = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tasks.length > 0 ? (
-            tasks.map((task, index) => {
+          {combinedTasks.length > 0 ? (
+            combinedTasks.map((task, index) => {
               const assignedByUser = allUsers.find(
                 (u) => String(u._id) === String(task.assignedBy?._id),
               );
@@ -559,6 +574,7 @@ const MyTask = () => {
   const dispatch = useDispatch();
   const {
     tasks: fetchedTasks,
+    upcomingRecurringTasks,
     taskCounts,
     status,
     error,
@@ -600,7 +616,8 @@ const MyTask = () => {
   const [editTitle, setEditTitle] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [isFetching, setIsFetching] = useState(false);
-
+  const [dateRange, setDateRange] = useState([]);
+  // console.log(dateRange);
   // --- Initial Data Load ---
   useEffect(() => {
     if (currentUser?._id) {
@@ -719,7 +736,7 @@ const MyTask = () => {
           userId: currentUser._id,
           page: localCurrentPage,
           limit: localItemsPerPage,
-
+          dateRange,
           search: debouncedSearch || undefined,
 
           // ✅ MULTI FILTER OBJECT
@@ -766,6 +783,7 @@ const MyTask = () => {
     localCurrentPage,
     localItemsPerPage,
     debouncedSearch,
+    dateRange,
   ]);
 
   // --- Client-side Search Function (Backup) ---
@@ -1125,6 +1143,8 @@ const MyTask = () => {
                 onExport={handleExport}
                 isExporting={isExporting}
                 selectedStatFilter={selectedStatFilter}
+                dateRange={dateRange}
+                setDateRange={setDateRange}
               />
 
               {/* DATA TABLE */}
@@ -1158,17 +1178,18 @@ const MyTask = () => {
                       <div className="text-sm text-gray-600 mb-2">
                         Searching for: "
                         <span className="font-semibold">{searchTerm}</span>"
-                        {totalTasks === 0 && fetchedTasks.length > 0 && (
+                        {/* {totalTasks === 0 && fetchedTasks.length > 0 && (
                           <span className="ml-2 text-red-500">
                             (No matches found in current view)
                           </span>
-                        )}
+                        )} */}
                       </div>
                     )}
 
                     <TooltipProvider>
                       <TodayTasksTable
                         tasks={fetchedTasks}
+                        upcomingRecurringTasks={upcomingRecurringTasks}
                         onEdit={handleEditClick}
                         onChecklist={handleChecklistClick}
                         onToggleComplete={handleToggleComplete}
