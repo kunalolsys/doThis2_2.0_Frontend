@@ -25,6 +25,7 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
       fieldName: f.fieldName || "",
       fieldType: f.fieldType || "text",
       isMandatory: f.isMandatory || false,
+      options: f.options || [], // ✅ ADD THIS
     })),
   );
   useEffect(() => {
@@ -34,6 +35,7 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
           fieldName: f.fieldName || "",
           fieldType: f.fieldType || "text",
           isMandatory: f.isMandatory || false,
+          options: f.options || [], // ✅ ADD THIS
         })),
       );
     }
@@ -42,6 +44,7 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
     fieldName: "",
     fieldType: "text",
     isMandatory: false,
+    options: [], // ✅ ADD THIS
   });
 
   const fieldTypes = [
@@ -54,31 +57,86 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
     "file",
   ];
 
+  // const addField = () => {
+  //   if (newField.fieldName.trim()) {
+  //     setFields([
+  //       ...fields,
+  //       { ...newField, fieldName: newField.fieldName.trim() },
+  //     ]);
+  //     setNewField({ fieldName: "", fieldType: "text", isMandatory: false });
+  //   }
+  // };
   const addField = () => {
     if (newField.fieldName.trim()) {
       setFields([
         ...fields,
-        { ...newField, fieldName: newField.fieldName.trim() },
+        {
+          ...newField,
+          fieldName: newField.fieldName.trim(),
+          options: newField.options || [],
+        },
       ]);
-      setNewField({ fieldName: "", fieldType: "text", isMandatory: false });
+
+      setNewField({
+        fieldName: "",
+        fieldType: "text",
+        isMandatory: false,
+        options: [], // reset
+      });
     }
   };
-
   const updateField = (index, key, value) => {
     const newFields = [...fields];
+
     newFields[index][key] = value;
+
+    // 🔥 Reset options if not needed
+    if (
+      key === "fieldType" &&
+      !["dropdown", "multiselect", "radio", "checkbox"].includes(value)
+    ) {
+      newFields[index].options = [];
+    }
+
     setFields(newFields);
   };
-
   const removeField = (index) => {
     setFields(fields.filter((_, i) => i !== index));
   };
 
   const handleSave = () => {
-    onSave(fields.filter((f) => f.fieldName.trim()));
+    const cleaned = fields
+      .filter((f) => f.fieldName.trim())
+      .map((f) => ({
+        ...f,
+        options: (f.options || []).filter(
+          (opt) => opt.label.trim() && opt.value.trim(),
+        ),
+      }));
+
+    onSave(cleaned);
     onClose();
   };
+  const addOption = (index) => {
+    const updated = [...fields];
+    updated[index].options = [
+      ...(updated[index].options || []),
+      { label: "", value: "" },
+    ];
+    setFields(updated);
+  };
 
+  const updateOption = (fieldIndex, optIndex, key, value) => {
+    const updated = [...fields];
+    updated[fieldIndex].options[optIndex][key] = value;
+    setFields(updated);
+  };
+
+  const removeOption = (fieldIndex, optIndex) => {
+    const updated = [...fields];
+    updated[fieldIndex].options.splice(optIndex, 1);
+    setFields(updated);
+  };
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
@@ -169,6 +227,59 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
                     </SelectContent>
                   </Select>
                 </div>
+                {["dropdown", "multiselect", "radio", "checkbox"].includes(
+                  field.fieldType,
+                ) && (
+                  <div className="col-span-3 space-y-2">
+                    <Label className="text-xs">Options</Label>
+
+                    {field.options?.map((opt, optIndex) => (
+                      <div key={optIndex} className="flex gap-2">
+                        <Input
+                          placeholder="Label"
+                          value={opt.label}
+                          onChange={(e) =>
+                            updateOption(
+                              index,
+                              optIndex,
+                              "label",
+                              e.target.value,
+                            )
+                          }
+                        />
+                        <Input
+                          placeholder="Value"
+                          value={opt.value}
+                          onChange={(e) =>
+                            updateOption(
+                              index,
+                              optIndex,
+                              "value",
+                              e.target.value,
+                            )
+                          }
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => removeOption(index, optIndex)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => addOption(index)}
+                    >
+                      + Add Option
+                    </Button>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <Checkbox
                     checked={field.isMandatory}

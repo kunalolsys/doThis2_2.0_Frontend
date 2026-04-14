@@ -325,20 +325,6 @@ const TaskTable = ({
     }
   }, [activeTab]);
 
-  // useEffect(() => {
-  //   if (editingTask?.attachmentFile) {
-  //     const files = editingTask.attachmentFile.map((file, index) => ({
-  //       uid: index.toString(),
-  //       name: file.split("/").pop(),
-  //       status: "done",
-  //       url: `${import.meta.env.VITE_API_BASE_URL}/tasks/download?filePath=${encodeURIComponent(file)}`,
-  //       filePath: file, // 🔥 IMPORTANT (keep original path)
-  //     }));
-
-  //     setEditFileList(files);
-  //   }
-  // }, [editingTask]);
-
   const handleRemove = (file) => {
     // store removed file paths
     if (file.filePath) {
@@ -731,7 +717,7 @@ const TaskTable = ({
         onRefreshTasks();
       }
     } catch (err) {
-      toast.error("Failed to update status");
+      toast.error(err.response.data.message||"Failed to update status");
     }
   };
 

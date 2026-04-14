@@ -260,11 +260,72 @@ export const deleteMyTask = createAsyncThunk(
   },
 );
 
+export const updateMyTaskChecklistItems = createAsyncThunk(
+  "myTasks/updateMyTaskChecklistItem",
+  async ({ id, index, completed }, { rejectWithValue }) => {
+    try {
+      const response = await api.patch(`/tasks/${id}/checklist/${index}`, {
+        index,
+        completed,
+      });
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
+export const updateFMSTaskChecklistItems = createAsyncThunk(
+  "myTasks/updateFMSTaskChecklistItem",
+  async ({ id, taskId, index, completed }, { rejectWithValue }) => {
+    try {
+      const response = await api.patch(
+        `/fms/instances/${id}/tasks/${taskId}/checklist`,
+        {
+          index,
+          completed,
+        },
+      );
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || error.message || error,
+      );
+    }
+  },
+);
+export const updateMyTaskFormData = createAsyncThunk(
+  "myTasks/updateMyTaskFormData",
+  async ({ id, taskId, data }, { rejectWithValue }) => {
+    try {
+      const response = await api.patch(
+        `/fms/instances/${id}/tasks/${taskId}/formData`,
+        data,
+      );
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
+export const completeFMSTask = createAsyncThunk(
+  "myTasks/completeFmsTask",
+  async ({ id, taskId, status }, { rejectWithValue }) => {
+    try {
+      const response = await api.put(
+        `/fms/instances/${id}/tasks/${taskId}/complete`,
+        status,
+      );
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || error.message);
+    }
+  },
+);
 const myTaskSlice = createSlice({
   name: "myTasks",
   initialState: {
     tasks: [],
-    upcomingRecurringTasks:[],
+    upcomingRecurringTasks: [],
     taskCounts: {
       total: 0,
       overdue: 0,

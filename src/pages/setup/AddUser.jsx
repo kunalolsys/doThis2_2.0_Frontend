@@ -559,7 +559,7 @@ const AddUser = () => {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end gap-2 border-t pt-6">
-          <Button variant="outline">Cancel</Button>
+          <Button type="button" variant="outline">Cancel</Button>
           <Button type="submit" disabled={userStatus === "loading"}>
             {userStatus === "loading" ? "Saving..." : "Save"}
           </Button>

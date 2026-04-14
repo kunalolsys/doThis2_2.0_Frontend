@@ -606,6 +606,7 @@ const ManagerView = () => {
       setSelectedAssignor(currentUser._id); // Set the current user as the default assignor
     }
   }, [currentUser, dispatch]);
+
   //**Fetch counts for stats */
   const [allTaskCounts, setAllTaskCounts] = useState(null);
 
@@ -842,42 +843,6 @@ const ManagerView = () => {
     });
   };
 
-  // --- Prepare tasks for display (client-side pagination for today/all) ---
-  // const { tasksForDisplay, totalPaginationCount } = useMemo(() => {
-  //   // Helpers
-  //   const isSameDay = (d1, d2) =>
-  //     d1.getFullYear() === d2.getFullYear() &&
-  //     d1.getMonth() === d2.getMonth() &&
-  //     d1.getDate() === d2.getDate();
-  //   const endOfToday = (() => {
-  //     const t = new Date();
-  //     t.setHours(23, 59, 59, 999);
-  //     return t;
-  //   })();
-
-  //   // For 'today' tab and when certain stat filters are selected we prefer client-side pagination/filtering
-  //   if (
-  //     false // Disable complex client-side filtering for now to rely on server
-  //   ) {
-  //     // This block is now disabled. The logic below will run instead.
-  //     // Kept for reference if client-side logic is needed again.
-  //   }
-
-  //   // Otherwise rely on server-side pagination
-  //   let tasks = fetchedTasks || [];
-  //   if (searchTerm && searchTerm.trim())
-  //     tasks = handleClientSideSearch(tasks, searchTerm);
-  //   return { tasksForDisplay: tasks, totalPaginationCount: totalTasks || 0 };
-  // }, [
-  //   fetchedTasks,
-  //   searchTerm,
-  //   activeTab,
-  //   selectedStatFilter,
-  //   localCurrentPage,
-  //   localItemsPerPage,
-  //   totalTasks,
-  // ]);
-
   const allowedRoles = ["Admin", "Owner", "Sr. Manager", "Manager"];
   const hasAccess =
     currentUser &&
@@ -1077,7 +1042,24 @@ const ManagerView = () => {
             )}
           </div>
         </TableCell>{" "}
-        <TableCell>{task.taskType || "-"}</TableCell>
+        {/* <TableCell>{task.taskType || "-"}</TableCell> */}
+        <TableCell>
+          <span
+            className={`px-2 py-1 text-xs font-medium rounded-full ${
+              task.taskType === "FmsInstanceTask"
+                ? "bg-blue-100 text-blue-700"
+                : task.taskType === "RecurringTask"
+                  ? "bg-purple-100 text-purple-700"
+                  : "bg-gray-100 text-gray-700"
+            }`}
+          >
+            {task.taskType === "FmsInstanceTask"
+              ? "FMS"
+              : task.taskType === "RecurringTask"
+                ? "Recurring"
+                : "Delegation"}
+          </span>
+        </TableCell>
         <TableCell>
           {Array.isArray(task?.attachmentFile) &&
           task.attachmentFile.length > 0 ? (
@@ -1091,9 +1073,46 @@ const ManagerView = () => {
           {task.startDate ? formatDate(task.startDate) : "-"}
         </TableCell>
         <TableCell>{task.dueDate ? formatDate(task.dueDate) : "-"}</TableCell>
-        <TableCell className={task.delay ? "text-red-600" : ""}>
+        <TableCell className="whitespace-nowrap">
+          {task.dueDate
+            ? (() => {
+                const today = new Date();
+                const due = new Date(task.dueDate);
+
+                today.setHours(0, 0, 0, 0);
+                due.setHours(0, 0, 0, 0);
+
+                const diffDays = Math.ceil(
+                  (today - due) / (1000 * 60 * 60 * 24),
+                );
+
+                if (diffDays > 0) {
+                  return (
+                    <span className="px-2 py-1 rounded-md text-xs font-semibold bg-red-50 text-red-600 border border-red-200">
+                      {diffDays}d overdue
+                    </span>
+                  );
+                }
+
+                if (diffDays === 0) {
+                  return (
+                    <span className="px-2 py-1 rounded-md text-xs font-semibold bg-yellow-50 text-yellow-600 border border-yellow-200">
+                      Due Today
+                    </span>
+                  );
+                }
+
+                return (
+                  <span className="px-2 py-1 rounded-md text-xs font-semibold bg-green-50 text-green-600 border border-green-200">
+                    {Math.abs(diffDays)}d left
+                  </span>
+                );
+              })()
+            : "-"}
+        </TableCell>{" "}
+        {/* <TableCell className={task.delay ? "text-red-600" : ""}>
           {task.delay || "-"}
-        </TableCell>
+        </TableCell> */}
         <TableCell>{getStatusBadge(task.status)}</TableCell>
         <TableCell>
           {activeTab === "today" && (

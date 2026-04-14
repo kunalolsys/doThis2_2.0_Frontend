@@ -225,44 +225,7 @@ const EditUser = () => {
       formik.setFieldValue("department", [...current, id]);
     }
   };
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
 
-  //   if (formData.password && formData.password !== formData.confirmPassword) {
-  //     toast.error("Passwords do not match");
-  //     return;
-  //   }
-
-  //   if (!formData.role) {
-  //     toast.error("Please select a role");
-  //     return;
-  //   }
-
-  //   if (selectedDepts.size === 0) {
-  //     toast.error("Please select at least one department");
-  //     return;
-  //   }
-
-  //   const userData = {
-  //     ...formData,
-  //     department: Array.from(selectedDepts),
-  //     assignShift: formData.assignShift || undefined,
-  //   };
-  //   delete userData.confirmPassword;
-
-  //   if (!userData.password) {
-  //     delete userData.password;
-  //   }
-
-  //   try {
-  //     await dispatch(updateUser({ userId: id, userData })).unwrap();
-  //     toast.success("User updated successfully!");
-  //     dispatch(fetchUsers()); // Refresh the users list
-  //     navigate("/setup/users"); // Navigate back to users list
-  //   } catch (err) {
-  //     toast.error(err || "Failed to update user.");
-  //   }
-  // };
   const selectedRole = roles.find((r) => r._id === formik.values.role);
   const roleColors = {
     Owner: "bg-red-100 text-red-700",
@@ -617,7 +580,7 @@ const EditUser = () => {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end gap-2 border-t pt-6">
-          <Button variant="outline" onClick={() => navigate("/setup/users")}>
+          <Button type="button" variant="outline" onClick={() => navigate("/setup/users")}>
             Cancel
           </Button>
           <Button type="submit" disabled={userStatus === "loading"}>

@@ -9,3 +9,16 @@ export const formatDate = (dateString) => {
   const year = date.getFullYear();
   return `${day} ${month} ${year}`;
 };
+
+//** format label */
+export const formatLabel = (text = "") => {
+  return text
+    .replace(/_/g, " ") // replace underscores with space
+    .split(" ") // split words
+    .filter(Boolean) // remove empty
+    .map(
+      (word) =>
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    )
+    .join(" ");
+};
