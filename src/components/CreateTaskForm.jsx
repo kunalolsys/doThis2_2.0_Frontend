@@ -389,7 +389,7 @@ const CreateTaskForm = ({
             <div className="p-2 bg-blue-100 rounded-lg group-hover:scale-110 transition-transform duration-300">
               <Zap className="h-5 w-5 text-blue-600" />
             </div>
-            <CardTitle className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+            <CardTitle className="text-lg font-semibold text-gray-900 tracking-tight">
               Delegate a New Task
             </CardTitle>
           </div>
@@ -974,9 +974,7 @@ const CreateTaskForm = ({
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>
-                      End Date
-                    </Label>
+                    <Label>End Date</Label>
                     <DatePicker
                       className="w-full h-10 hover:shadow-md transition-all duration-200"
                       format="DD MMM YYYY"

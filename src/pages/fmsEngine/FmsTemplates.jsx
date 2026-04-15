@@ -33,7 +33,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchTemplates } from "../../redux/slices/fms/fmsSlice";
 import DataPagination from "../../components/ui/commonPagination";
 import { toast } from "sonner";
-import { Modal, Popconfirm, Spin } from "antd";
+import { Checkbox, Modal, Popconfirm, Spin ,Input} from "antd";
+const { TextArea } = Input;
+
 import api from "../../lib/api";
 import { cn } from "../../lib/utils";
 
@@ -99,15 +101,82 @@ const FmsTemplates = () => {
     setIsTaskModalOpen(true);
     fetchTasks(templateId);
   };
-  const handleDeleteTemplate = async (templateId) => {
-    try {
-      await api.delete(`/fms/templates/${templateId}`);
-      toast.success("Template deleted successfully");
-      getTemplates();
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || "Failed to delete template");
-    }
+  // const handleDeleteTemplate = async (templateId) => {
+  //   try {
+  //     await api.delete(`/fms/templates/${templateId}`);
+  //     toast.success("Template deleted successfully");
+  //     getTemplates();
+  //   } catch (err) {
+  //     console.error(err);
+  //     toast.error(err.response?.data?.message || "Failed to delete template");
+  //   }
+  // };
+
+  const handleDeleteTemplate = (templateId) => {
+    let reason = "";
+    let forceDelete = false;
+
+    Modal.confirm({
+      title: "Delete Template",
+      content: (
+        <div className="space-y-3">
+          <p>⚠️ This will delete the template.</p>
+
+          <p className="text-sm text-muted-foreground">
+            If active or On Hold instances exist, deletion may fail unless
+            forced.
+          </p>
+
+          <TextArea
+            rows={3}
+            placeholder="Enter reason (optional)"
+            onChange={(e) => (reason = e.target.value)}
+          />
+
+          <Checkbox onChange={(e) => (forceDelete = e.target.checked)}>
+            Force delete (remove even if instances exist)
+          </Checkbox>
+        </div>
+      ),
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+
+      onOk: async () => {
+        try {
+          // 🔹 Try normal delete first
+          await api.delete(`/fms/templates/${templateId}`, {
+            data: { reason },
+          });
+
+          toast.success("Template deleted successfully");
+          getTemplates();
+        } catch (err) {
+          const message = err.response?.data?.message || "Delete failed";
+
+          // 🔴 If failed and force not checked
+          if (!forceDelete) {
+            toast.error(message);
+            throw new Error("Delete blocked"); // keep modal open
+          }
+
+          // 🔥 Force delete
+          try {
+            await api.delete(`/fms/templates/${templateId}?force=true`, {
+              data: { reason },
+            });
+
+            toast.success("Template force deleted");
+            getTemplates();
+          } catch (forceErr) {
+            toast.error(
+              forceErr.response?.data?.message || "Force delete failed",
+            );
+            throw forceErr;
+          }
+        }
+      },
+    });
   };
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 p-4">

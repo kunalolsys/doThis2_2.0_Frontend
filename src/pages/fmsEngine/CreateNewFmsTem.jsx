@@ -132,6 +132,7 @@ const CreateNewFmsTem = () => {
   const [editingIndex, setEditingIndex] = useState(null);
   const [newRowIndex, setNewRowIndex] = useState(null);
   const [loadUpdate, setLoadUpdate] = useState(false);
+  const [isAlreadyLaunched, setIsAlreadyLaunched] = useState(false);
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -268,7 +269,7 @@ const CreateNewFmsTem = () => {
     try {
       const res = await api.get(`/fms/templates-details/${id}`);
       const data = res.data.data;
-
+      setIsAlreadyLaunched(data.isLaunched);
       setTemplateId(data._id);
       setTemplateFMSId(data.fmsId);
       setTemplateCreated(true);
@@ -494,7 +495,12 @@ const CreateNewFmsTem = () => {
           {/* Left Side */}
           <div className="flex flex-col">
             <CardTitle className="text-lg font-semibold">
-              {templateCreated ? "Edit" : "Create New"} FMS Template
+              {templateCreated
+                ? isAlreadyLaunched
+                  ? "View"
+                  : "Edit"
+                : "Create New"}{" "}
+              FMS Template
             </CardTitle>
 
             {templateCreated && (
@@ -505,11 +511,29 @@ const CreateNewFmsTem = () => {
           </div>
 
           {/* Right Side */}
-          {templateCreated && (
-            <Button type="button" variant="outline" size="sm">
-              Bulk Upload Tasks
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* ✅ STATUS BADGE */}
+            {templateCreated && (
+              <Badge
+                variant="outline"
+                className={`capitalize px-2 py-1 text-xs font-medium
+            ${
+              isAlreadyLaunched
+                ? "bg-green-50 text-green-600 border-green-200"
+                : "bg-yellow-50 text-yellow-600 border-yellow-200"
+            }`}
+              >
+                {isAlreadyLaunched ? "Launched" : "Draft"}
+              </Badge>
+            )}
+
+            {/* Bulk Upload Button */}
+            {templateCreated && !isAlreadyLaunched && (
+              <Button type="button" variant="outline" size="sm">
+                Bulk Upload Tasks
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="">
@@ -536,6 +560,7 @@ const CreateNewFmsTem = () => {
                 <Label>Template Name *</Label>
                 <Input
                   name="templateName"
+                  readOnly={isAlreadyLaunched}
                   value={formik.values.templateName}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
@@ -547,6 +572,7 @@ const CreateNewFmsTem = () => {
               <div className="space-y-2">
                 <Label>Manager *</Label>
                 <Select
+                  disabled={isAlreadyLaunched}
                   value={formik.values.manager}
                   onValueChange={(v) => formik.setFieldValue("manager", v)}
                 >
@@ -567,6 +593,7 @@ const CreateNewFmsTem = () => {
               <div className="space-y-2">
                 <Label>Sr Manager *</Label>
                 <Select
+                  disabled={isAlreadyLaunched}
                   value={formik.values.srManager}
                   onValueChange={(v) => formik.setFieldValue("srManager", v)}
                 >
@@ -587,6 +614,7 @@ const CreateNewFmsTem = () => {
 
                 <div className="border rounded-lg" style={{ padding: "8px" }}>
                   <RadioGroup
+                    disabled={isAlreadyLaunched}
                     value={formik.values.fmsDuration}
                     onValueChange={(val) =>
                       formik.setFieldValue("fmsDuration", val)
@@ -611,6 +639,7 @@ const CreateNewFmsTem = () => {
                 <div className="space-y-2">
                   <Label>End Date *</Label>
                   <DatePicker
+                    disabled={isAlreadyLaunched}
                     className="w-full"
                     value={
                       formik.values.endDate
@@ -632,6 +661,7 @@ const CreateNewFmsTem = () => {
             <div className="space-y-2">
               <Label>Description *</Label>
               <Textarea
+                disabled={isAlreadyLaunched}
                 name="description"
                 value={formik.values.description}
                 onChange={formik.handleChange}
@@ -640,7 +670,7 @@ const CreateNewFmsTem = () => {
                 placeholder="Enter description..."
               />
             </div>
-            {templateCreated && (
+            {templateCreated && !isAlreadyLaunched && (
               <div className="flex justify-end gap-2 pt-6 border-t">
                 <Button
                   type="button"
@@ -659,9 +689,11 @@ const CreateNewFmsTem = () => {
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <h3 className="text-lg font-semibold">Task List</h3>
-                  <Button type="button" onClick={addTask} variant="outline">
-                    <Plus className="w-4 h-4 mr-1" /> Add Task
-                  </Button>
+                  {!isAlreadyLaunched && (
+                    <Button type="button" onClick={addTask} variant="outline">
+                      <Plus className="w-4 h-4 mr-1" /> Add Task
+                    </Button>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
                   {/* Search (takes more space) */}
@@ -1111,6 +1143,7 @@ const CreateNewFmsTem = () => {
                                           type="button"
                                           variant="ghost"
                                           size="icon"
+                                          disabled={isAlreadyLaunched}
                                           onClick={() => handleSave(index)}
                                         >
                                           <Check className="h-4 w-4 text-green-600" />
@@ -1120,6 +1153,7 @@ const CreateNewFmsTem = () => {
                                           type="button"
                                           variant="ghost"
                                           size="icon"
+                                          disabled={isAlreadyLaunched}
                                           onClick={() => handleEdit(index)}
                                         >
                                           <Pencil className="h-4 w-4 text-blue-600" />
@@ -1138,6 +1172,7 @@ const CreateNewFmsTem = () => {
                                       type="button"
                                       variant="ghost"
                                       size="icon"
+                                      disabled={isAlreadyLaunched}
                                       className="h-8 w-8 p-0"
                                     >
                                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -1168,22 +1203,24 @@ const CreateNewFmsTem = () => {
               </div>
             </>
           )}
-          <div className="flex justify-end gap-2 pt-6 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate(-1)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading
-                ? "Saving..."
-                : templateCreated
-                  ? "Save Tasks"
-                  : "Create Template"}
-            </Button>
-          </div>
+          {!isAlreadyLaunched && (
+            <div className="flex justify-end gap-2 pt-6 border-t">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate(-1)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading
+                  ? "Saving..."
+                  : templateCreated
+                    ? "Save Tasks"
+                    : "Create Template"}
+              </Button>
+            </div>
+          )}
         </form>
 
         {/* Modals */}

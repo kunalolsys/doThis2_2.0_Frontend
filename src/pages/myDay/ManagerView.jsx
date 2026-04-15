@@ -75,8 +75,10 @@ import {
 import { Checkbox } from "../../components/ui/checkbox";
 import { useDebounce } from "../../lib/debounce.js";
 import ViewLink from "./attachmentViewer.jsx";
-import { formatDate } from "../../lib/utilFunctions.js";
+import { formatDate, formatLabel } from "../../lib/utilFunctions.js";
 import { fetchTasksWithStats } from "../../redux/slices/task/taskSlice.js";
+import { Label } from "../../components/ui/index.jsx";
+import dayjs from "dayjs";
 
 // --- Helper Components ---
 
@@ -172,43 +174,50 @@ const getStatusBadge = (status) => {
 // };
 
 // Enhanced Today's Task Actions
-const TodayTaskActions = ({ task, onChecklist, onFillForm }) => (
-  <TooltipProvider>
-    <div className="flex gap-1">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-gray-600 hover:bg-gray-50"
-            onClick={() => onChecklist(task)}
-            disabled={!task.checklist || task.checklist.length === 0}
-          >
-            <ClipboardList className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>View Checklist</p>
-        </TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-            onClick={() => onFillForm(task)}
-          >
-            <FileText className="h-4 w-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Fill Form</p>
-        </TooltipContent>
-      </Tooltip>
-    </div>
-  </TooltipProvider>
-);
+const TodayTaskActions = ({ task, onChecklist, onFillForm }) => {
+  const checkList =
+    task.checklist && Array.isArray(task.checklist) ? task.checklist : [];
+  const form =
+    task.createdForm && Array.isArray(task.createdForm) ? task.createdForm : [];
+  return (
+    <TooltipProvider>
+      <div className="flex gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-gray-600 hover:bg-gray-50"
+              onClick={() => onChecklist(task)}
+              disabled={checkList && checkList.length === 0}
+            >
+              <ClipboardList className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>View Checklist</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={form && form.length === 0}
+              className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+              onClick={() => onFillForm(task)}
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Fill Form</p>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </TooltipProvider>
+  );
+};
 
 // Task Progress Component
 const TaskProgress = ({ completed, total }) => {
@@ -614,8 +623,8 @@ const ManagerView = () => {
     try {
       const res = await dispatch(
         fetchTasksWithStats({
-          userId: currentUser._id,
-          role: currentUser.role?.name,
+          userId: currentUser?._id,
+          role: currentUser?.role?.name,
         }),
       ).unwrap();
       setAllTaskCounts(res);
@@ -1309,7 +1318,7 @@ const ManagerView = () => {
       </div>
 
       {/* --- DIALOGS --- */}
-      <Dialog
+      {/* <Dialog
         open={isChecklistDialogOpen}
         onOpenChange={setIsChecklistDialogOpen}
       >
@@ -1355,8 +1364,72 @@ const ManagerView = () => {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
+      <Dialog
+        open={isChecklistDialogOpen}
+        onOpenChange={setIsChecklistDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Checklist: {selectedTaskForChecklist?.title}
+            </DialogTitle>
+          </DialogHeader>
 
+          <div className="py-4 max-h-60 overflow-y-auto">
+            {checklistItems?.length > 0 ? (
+              <ul className="space-y-2">
+                {checklistItems.map((item, index) => {
+                  // ✅ Normalize item
+                  const isObject = typeof item === "object";
+
+                  const text = isObject
+                    ? item.text || item.title || "Untitled"
+                    : item;
+
+                  const isCompleted = isObject
+                    ? (item.isCompleted ?? item.completed ?? false)
+                    : false;
+
+                  return (
+                    <li
+                      key={item?._id || index}
+                      className="flex items-center p-2 bg-gray-50 rounded-md border"
+                    >
+                      <Checkbox
+                        id={`chk-${index}`}
+                        checked={isCompleted}
+                        disabled
+                        className="mr-3"
+                      />
+
+                      <label
+                        className={`text-sm ${
+                          isCompleted
+                            ? "line-through text-gray-500"
+                            : "text-gray-800"
+                        }`}
+                      >
+                        {text}
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500 text-center">
+                No checklist items for this task.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setIsChecklistDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={isFillFormDialogOpen}
         onOpenChange={setIsFillFormDialogOpen}
@@ -1369,16 +1442,104 @@ const ManagerView = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <Input
-              label="Name"
-              value={selectedTaskForForm?.assignedTo?.name || "N/A"}
-              readOnly
-            />
-            <Input
-              label="Email"
-              value={selectedTaskForForm?.assignedTo?.email || "N/A"}
-              readOnly
-            />
+            {/* User Info */}
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                label="Name"
+                value={selectedTaskForForm?.assignedTo?.name || "N/A"}
+                readOnly
+              />
+              <Input
+                label="Email"
+                value={selectedTaskForForm?.assignedTo?.email || "N/A"}
+                readOnly
+              />
+            </div>
+
+            {/* Dynamic Form Fields */}
+            {selectedTaskForForm?.createdForm?.length > 0 && (
+              <div className="border rounded-lg p-4 space-y-4">
+                <h3 className="font-semibold text-sm text-gray-600">
+                  Submitted Details
+                </h3>
+
+                {selectedTaskForForm.createdForm.map((field) => {
+                  const value =
+                    selectedTaskForForm?.formData?.[field.fieldName];
+
+                  return (
+                    <div key={field._id} className="space-y-1">
+                      <Label className="text-xs text-gray-500">
+                        {formatLabel(field.fieldName)}
+                      </Label>
+
+                      {/* TEXT / NUMBER */}
+                      {(field.fieldType === "text" ||
+                        field.fieldType === "number") && (
+                        <Input value={value || "-"} readOnly />
+                      )}
+
+                      {/* TEXTAREA */}
+                      {field.fieldType === "textarea" && (
+                        <textarea
+                          className="w-full border rounded-md p-2 text-sm bg-gray-50"
+                          value={value || "-"}
+                          readOnly
+                        />
+                      )}
+
+                      {/* DATE */}
+                      {field.fieldType === "date" && (
+                        <Input
+                          value={
+                            value ? dayjs(value).format("DD MMM YYYY") : "-"
+                          }
+                          readOnly
+                        />
+                      )}
+
+                      {/* DROPDOWN */}
+                      {field.fieldType === "dropdown" && (
+                        <Input
+                          value={
+                            field.options?.find((o) => o.value === value)
+                              ?.label ||
+                            value ||
+                            "-"
+                          }
+                          readOnly
+                        />
+                      )}
+
+                      {/* CHECKBOX */}
+                      {field.fieldType === "checkbox" && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <input type="checkbox" checked={!!value} readOnly />
+                          <span>{value ? "Yes" : "No"}</span>
+                        </div>
+                      )}
+
+                      {/* FILE */}
+                      {field.fieldType === "file" &&
+                        (value ? (
+                          <a
+                            href={value}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline text-sm"
+                          >
+                            View File
+                          </a>
+                        ) : (
+                          <span className="text-gray-400 text-sm">
+                            No file uploaded
+                          </span>
+                        ))}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button onClick={() => setIsFillFormDialogOpen(false)}>

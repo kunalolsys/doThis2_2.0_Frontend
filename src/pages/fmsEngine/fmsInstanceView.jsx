@@ -19,6 +19,8 @@ import {
   TrendingUp,
   AlertTriangleIcon,
   RefreshCw,
+  PauseCircle,
+  StopCircle,
 } from "lucide-react";
 
 const STATUS_COLUMNS = [
@@ -56,6 +58,20 @@ const STATUS_COLUMNS = [
     icon: CheckCircle2,
     gradient: "from-emerald-400 to-green-500",
     iconBg: "from-emerald-500 to-green-600",
+  },
+  {
+    key: "onhold",
+    label: "On Hold",
+    icon: PauseCircle, // or Pause
+    gradient: "from-yellow-400 to-amber-500",
+    iconBg: "from-yellow-500 to-amber-600",
+  },
+  {
+    key: "stopped",
+    label: "Stopped",
+    icon: StopCircle, // or XCircle
+    gradient: "from-red-400 to-rose-500",
+    iconBg: "from-red-500 to-rose-600",
   },
 ];
 

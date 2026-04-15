@@ -37,9 +37,9 @@ import { cn } from "../../lib/utils";
 import { toast } from "sonner";
 import api from "../../lib/api";
 import dayjs from "dayjs";
-import { DatePicker } from "antd";
+import { DatePicker, Modal, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
-
+const { Text } = Typography;
 const FmsLaunch = () => {
   const navigate = useNavigate();
   const [selectedTemplate, setSelectedTemplate] = useState(null);
@@ -118,35 +118,103 @@ const FmsLaunch = () => {
     setEndDate(null);
   };
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   setLoading(true);
+  //   if (!startDate) {
+  //     setLoading(false);
+  //     toast.error("Start date is required.");
+  //     return;
+  //   }
+  //   const payload = {
+  //     launchDate: startDate ? dayjs(startDate).format("YYYY-MM-DD") : null,
+  //     endDate,
+  //   };
+  //   try {
+  //     const res = await api.post(
+  //       `/fms/instances/${selectedTemplate}/launch`,
+  //       payload,
+  //     );
+  //     if (res.data.success) {
+  //       toast.success("FMS has been launched successfully 🚀");
+  //       navigate("/fms-engine/upcoming");
+  //     }
+  //   } catch (error) {
+  //     console.log(error);
+  //     toast.error(error.response.data.message || "Something went wrong");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+
     if (!startDate) {
-      setLoading(false);
       toast.error("Start date is required.");
       return;
     }
-    const payload = {
-      launchDate: startDate ? dayjs(startDate).format("YYYY-MM-DD") : null,
-      endDate,
-    };
-    try {
-      const res = await api.post(
-        `/fms/instances/${selectedTemplate}/launch`,
-        payload,
-      );
-      if (res.data.success) {
-        toast.success("FMS has been launched successfully 🚀");
-        navigate("/fms-engine/upcoming");
-      }
-    } catch (error) {
-      console.log(error);
-      toast.error(error.response.data.message || "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  };
 
+    Modal.confirm({
+      title: "🚀 Confirm Launch FMS",
+      content: (
+        <div className="space-y-2">
+          <Text strong>Are you sure you want to launch this FMS?</Text>
+
+          <div className="text-sm text-gray-600">
+            <p>⚠️ Once launched:</p>
+            <ul className="list-disc ml-5">
+              <li>Tasks will be auto-generated</li>
+              <li>Template structure cannot be edited</li>
+              <li>Assigned users will start receiving tasks</li>
+            </ul>
+          </div>
+
+          <div className="mt-2 text-sm">
+            <p>
+              <strong>Start Date:</strong>{" "}
+              {dayjs(startDate).format("DD MMM YYYY")}
+            </p>
+
+            {endDate && (
+              <p>
+                <strong>End Date:</strong>{" "}
+                {dayjs(endDate).format("DD MMM YYYY")}
+              </p>
+            )}
+          </div>
+        </div>
+      ),
+      okText: "Yes, Launch",
+      okType: "primary",
+      cancelText: "Cancel",
+
+      onOk: async () => {
+        setLoading(true);
+
+        const payload = {
+          launchDate: dayjs(startDate).format("YYYY-MM-DD"),
+          endDate,
+        };
+
+        try {
+          const res = await api.post(
+            `/fms/instances/${selectedTemplate}/launch`,
+            payload,
+          );
+
+          if (res.data.success) {
+            toast.success("FMS has been launched successfully 🚀");
+            navigate("/fms-engine/upcoming");
+          }
+        } catch (error) {
+          console.log(error);
+          toast.error(error.response?.data?.message || "Something went wrong");
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
   return (
     <div className="bg-gray-50/50 flex items-center justify-center p-6">
       <Card className="w-full shadow-xl border-slate-200 bg-white">
@@ -272,6 +340,7 @@ const FmsLaunch = () => {
 
                       <DatePicker
                         className="w-full h-9"
+                        disabled
                         value={endDate ? dayjs(endDate) : null}
                         onChange={(date) =>
                           setEndDate(date ? date.toDate() : null)

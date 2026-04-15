@@ -27,6 +27,11 @@ import {
   FormInputIcon,
   ListChecks,
   RotateCcw,
+  Calendar,
+  Activity,
+  PauseCircle,
+  StopCircle,
+  XCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -85,29 +90,76 @@ const getStatusBadge = (status) => {
       return (
         <Badge variant="destructive" className="flex items-center gap-1">
           <AlertCircle className="h-3 w-3" />
-          {status}
+          Overdue
         </Badge>
       );
+
     case "Due Today":
+    case "Delayed":
       return (
-        <Badge
-          variant="outline"
-          className="flex items-center gap-1 text-yellow-600 border-yellow-300 bg-yellow-50"
-        >
+        <Badge className="flex items-center gap-1 text-yellow-600 border-yellow-300 bg-yellow-50">
           <Clock className="h-3 w-3" />
           {status}
         </Badge>
       );
+
     case "Completed":
       return (
-        <Badge
-          variant="outline"
-          className="flex items-center gap-1 text-green-600 border-green-300 bg-green-50"
-        >
+        <Badge className="flex items-center gap-1 text-green-600 border-green-300 bg-green-50">
           <CheckCircle2 className="h-3 w-3" />
           Completed
         </Badge>
       );
+
+    case "Pending":
+      return (
+        <Badge className="flex items-center gap-1 text-blue-600 border-blue-300 bg-blue-50">
+          <Clock className="h-3 w-3" />
+          Pending
+        </Badge>
+      );
+
+    case "Upcoming":
+      return (
+        <Badge className="flex items-center gap-1 text-indigo-600 border-indigo-300 bg-indigo-50">
+          <Calendar className="h-3 w-3" />
+          Upcoming
+        </Badge>
+      );
+
+    case "Ongoing":
+    case "InProcess":
+      return (
+        <Badge className="flex items-center gap-1 text-cyan-600 border-cyan-300 bg-cyan-50">
+          <Activity className="h-3 w-3" />
+          In Process
+        </Badge>
+      );
+
+    case "Onhold":
+      return (
+        <Badge className="flex items-center gap-1 text-orange-600 border-orange-300 bg-orange-50">
+          <PauseCircle className="h-3 w-3" />
+          On Hold
+        </Badge>
+      );
+
+    case "Stopped":
+      return (
+        <Badge className="flex items-center gap-1 text-red-600 border-red-300 bg-red-50">
+          <StopCircle className="h-3 w-3" />
+          Stopped
+        </Badge>
+      );
+
+    case "Cancelled":
+      return (
+        <Badge className="flex items-center gap-1 text-gray-600 border-gray-300 bg-gray-100">
+          <XCircle className="h-3 w-3" />
+          Cancelled
+        </Badge>
+      );
+
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -122,6 +174,8 @@ const TaskActions = ({
 }) => {
   const isCompleted = task.status === "Completed";
   const upComing = task.status == "Upcoming";
+  const onHold = task.status == "Onhold";
+  const stopped = task.status == "Stopped";
   const isFms = task.taskType == "FmsInstanceTask";
   return (
     <div className="flex gap-1">
@@ -134,7 +188,10 @@ const TaskActions = ({
             className="h-8 w-8 text-gray-600 hover:bg-gray-50"
             onClick={() => onChecklist(task)}
             disabled={
-              (!task.checklist || task.checklist.length === 0) && !isCompleted
+              ((!task.checklist || task.checklist.length === 0) &&
+                !isCompleted) ||
+              onHold ||
+              stopped
             }
           >
             <ClipboardList className="h-4 w-4" />
@@ -152,8 +209,10 @@ const TaskActions = ({
             className="h-8 w-8 text-gray-600 hover:bg-gray-50"
             onClick={() => handleCompleteClick(task)}
             disabled={
-              (!task.createdForm || task.createdForm.length === 0) &&
-              !isCompleted
+              ((!task.createdForm || task.createdForm.length === 0) &&
+                !isCompleted) ||
+              onHold ||
+              stopped
             }
           >
             <ListChecks className="h-4 w-4" />
@@ -169,7 +228,7 @@ const TaskActions = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              disabled={upComing}
+              disabled={upComing || onHold || stopped}
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-green-600 hover:bg-green-50"
@@ -190,6 +249,7 @@ const TaskActions = ({
               size="icon"
               className="h-8 w-8 text-yellow-600 hover:bg-yellow-50"
               onClick={() => onToggleComplete(task)}
+              disabled={onHold || stopped}
             >
               {/* You can change icon if you want */}
               <RotateCcw className="h-4 w-4" />
@@ -389,13 +449,15 @@ const FmsFormModal = ({ open, onClose, task, onSubmit }) => {
             Cancel
           </button>
 
-          <button
-            onClick={formik.handleSubmit}
-            disabled={!formik.isValid}
-            className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md disabled:opacity-50"
-          >
-            Submit
-          </button>
+          {task.status != "Completed" && (
+            <button
+              onClick={formik.handleSubmit}
+              disabled={!formik.isValid}
+              className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md disabled:opacity-50"
+            >
+              Submit
+            </button>
+          )}
         </div>
       </div>
     </div>
