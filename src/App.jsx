@@ -42,6 +42,7 @@ import Profile from "./pages/Profile";
 import SessionTimeoutDialog from "./components/SessionTimeoutDialog";
 import LogsDashboard from "./pages/logs";
 import FmsLaunchedView from "./pages/fmsEngine/fmsInstanceView";
+import { SocketProvider } from "./context/SocketContext";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -75,7 +76,8 @@ function App() {
           open={isSessionTimeoutModalOpen}
           onCancel={handleCloseSessionTimeoutModal}
         />
-        <Routes>
+        <SocketProvider>
+          <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/page-restrict-found" element={<AccessDenied />} />
@@ -227,6 +229,7 @@ function App() {
           </Route>
           <Route path="*" element={<PageNotFound />} />
         </Routes>
+        </SocketProvider>
       </BrowserRouter>
     </>
   );

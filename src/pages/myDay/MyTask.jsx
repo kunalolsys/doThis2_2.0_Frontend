@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useSocket } from "../../context/SocketContext";
+import QuickTaskActions from "../../components/QuickTaskActions";
 import {
   completeFMSTask,
   fetchMyTasks,
@@ -901,6 +903,8 @@ const MyTask = () => {
 
   // UI State
   const [activeTab, setActiveTab] = useState("today");
+  const [configOpen, setConfigOpen] = useState(false);
+  const { isConnected, socket: sock, events } = useSocket();
 
   // NOTE: selectedStatFilter can be: 'total', 'overdue', 'completed', 'dueToday', or null (no stat filter)
   const [selectedStatFilter, setSelectedStatFilter] = useState(null);
@@ -1477,6 +1481,45 @@ const MyTask = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
       <div className="mx-auto">
+        {/* SOCKET STATUS BAR */}
+        <div className="mb-6 p-3 bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-3 h-3 rounded-full ${isConnected ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`}
+              />
+              <div>
+                <div className="font-semibold text-emerald-900 text-sm">
+                  Live Mode{" "}
+                  {isConnected
+                    ? `🔌 Connected (${events.length} events)`
+                    : "(Disconnected)"}
+                </div>
+                {isConnected && sock?.id && (
+                  <div className="text-xs text-emerald-700 font-mono bg-emerald-100 px-2 py-0.5 rounded">
+                    {sock.id.slice(0, 8)}...
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => setConfigOpen(true)}
+                variant="outline"
+              >
+                ⚙️ Config
+              </Button>
+              <Button
+                size="sm"
+                variant={isConnected ? "destructive" : "secondary"}
+              >
+                {isConnected ? "Disconnect" : "Connect"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
         <Card className="shadow-xl border-0 overflow-hidden">
           <div className="flex justify-between items-center px-6">
             <h1 className="text-2xl font-bold">My Task</h1>
