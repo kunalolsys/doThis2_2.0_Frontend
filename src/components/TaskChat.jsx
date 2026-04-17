@@ -1,11 +1,34 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Card, Badge, Avatar, Progress, Button, Spin, Empty, Collapse, Tag, Input } from "antd";
-import { Send, Clock, CheckCircle2, ClipboardList, MessageCircle, User, Phone, Video, Paperclip, Smile, AlertTriangle } from "lucide-react";
+import {
+  Card,
+  Badge,
+  Avatar,
+  Progress,
+  Button,
+  Spin,
+  Empty,
+  Collapse,
+  Tag,
+  Input,
+} from "antd";
+import {
+  Send,
+  Clock,
+  CheckCircle2,
+  ClipboardList,
+  MessageCircle,
+  User,
+  Phone,
+  Video,
+  Paperclip,
+  Smile,
+  AlertTriangle,
+} from "lucide-react";
 import { useSelector } from "react-redux";
 import { useSocket } from "../context/SocketContext";
 import api from "../lib/api";
 import { toast } from "sonner";
-import dayjs from 'dayjs';
+import dayjs from "dayjs";
 
 const { Panel } = Collapse;
 const { TextArea } = Input;
@@ -14,11 +37,11 @@ const TaskChat = ({ task, open, onClose }) => {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const [replyText, setReplyText] = useState('');
+  const [replyText, setReplyText] = useState("");
   const [onlineUsers, setOnlineUsers] = useState([]);
   const messagesEndRef = useRef(null);
 
-  const currentUser = useSelector(state => state.users.currentUser);
+  const currentUser = useSelector((state) => state.users.currentUser);
   const { socket, addEvent, isConnected } = useSocket();
 
   const scrollToBottom = useCallback(() => {
@@ -36,35 +59,35 @@ const TaskChat = ({ task, open, onClose }) => {
     try {
       const [queriesRes, messagesRes] = await Promise.all([
         api.get(`/queries/task/${task._id}`),
-        api.get(`/thread/conversation/${task.conversationId}`)
+        api.get(`/thread/conversation/${task.conversationId}`),
       ]);
 
       const queries = queriesRes.data.data || [];
       const msgs = messagesRes.data.data || [];
 
       const combined = [
-        ...queries.map(q => ({
+        ...queries.map((q) => ({
           id: `q_${q._id}`,
-          type: 'query',
+          type: "query",
           text: q.message,
           user: q.raisedBy,
           timestamp: q.createdAt,
           status: q.status,
           assignedToMe: q.assignedTo._id === currentUser._id,
         })),
-        ...msgs.map(m => ({
+        ...msgs.map((m) => ({
           id: m._id,
-          type: 'message',
+          type: "message",
           text: m.text,
           user: m.sender,
           timestamp: m.createdAt,
-          seen: m.seenBy?.some(s => s.user.toString() === currentUser._id),
-        }))
+          seen: m.seenBy?.some((s) => s.user.toString() === currentUser._id),
+        })),
       ].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
       setMessages(combined);
     } catch {
-      toast.error('Failed to load chat');
+      toast.error("Failed to load chat");
     } finally {
       setLoading(false);
     }
@@ -76,63 +99,75 @@ const TaskChat = ({ task, open, onClose }) => {
     const tempId = `temp_${Date.now()}`;
     const optimistic = {
       id: tempId,
-      type: 'message',
+      type: "message",
       text: replyText,
       user: { _id: currentUser._id, name: currentUser.name },
       timestamp: new Date(),
       seen: true,
     };
 
-    setMessages(prev => [...prev, optimistic]);
+    setMessages((prev) => [...prev, optimistic]);
     const textSent = replyText;
-    setReplyText('');
+    setReplyText("");
     setSending(true);
 
     try {
-      await api.post('/thread/message', {
+      await api.post("/thread/message", {
         conversationId: task.conversationId,
-        text: textSent
+        text: textSent,
       });
-      toast.success('Sent!');
-      addEvent('chat-message', task._id);
+      toast.success("Sent!");
+      addEvent("chat-message", task._id);
     } catch {
-      setMessages(prev => prev.filter(m => m.id !== tempId));
-      toast.error('Send failed');
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      toast.error("Send failed");
     } finally {
       setSending(false);
     }
   };
 
-  const formatTime = (timestamp) => dayjs(timestamp).format('HH:mm');
+  const formatTime = (timestamp) => dayjs(timestamp).format("HH:mm");
 
   const getStatusColor = (status) => {
     const colors = {
-      'Pending': 'orange',
-      'Open': 'yellow',
-      'Responded': 'blue',
-      'Resolved': 'green'
+      Pending: "orange",
+      Open: "yellow",
+      Responded: "blue",
+      Resolved: "green",
     };
-    return colors[status] || 'gray';
+    return colors[status] || "gray";
   };
-
+  if (!task) return;
   return (
-    <div className={`fixed inset-0 z-50 bg-black/50 flex ${open ? '' : 'hidden'}`} onClick={onClose}>
-      <div className="w-full max-w-6xl mx-auto h-[90vh] flex bg-white rounded-t-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-        
+    <div
+      className={`fixed inset-0 z-50 bg-black/50 flex ${open ? "" : "hidden"}`}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-6xl mx-auto h-[90vh] flex bg-white rounded-t-2xl overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* LEFT: Task Details */}
         <div className="w-1/3 border-r p-6 bg-gradient-to-b from-slate-50 to-white max-h-full overflow-y-auto">
           <div className="sticky top-0 pb-6">
             <div className="flex items-center gap-3 mb-6">
-              <Avatar size={48} className="bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg">
+              <Avatar
+                size={48}
+                className="bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg"
+              >
                 {task?.assignedBy?.name?.[0]?.toUpperCase()}
               </Avatar>
               <div>
-                <h2 className="font-bold text-xl text-gray-900">{task?.title}</h2>
+                <h2 className="font-bold text-xl text-gray-900">
+                  {task?.title}
+                </h2>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge className="px-3 py-1 bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-800 border-indigo-200">
                     Task #{task?.TaskId}
                   </Badge>
-                  <Badge color={getStatusColor(task?.status)}>{task?.status}</Badge>
+                  <Badge color={getStatusColor(task?.status)}>
+                    {task?.status}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -140,26 +175,44 @@ const TaskChat = ({ task, open, onClose }) => {
             {/* Task Stats */}
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Assignee</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
+                  Assignee
+                </div>
                 <div className="flex items-center gap-2">
                   <Avatar size={28}>{task?.assignedTo?.name?.[0]}</Avatar>
-                  <span className="font-semibold">{task?.assignedTo?.name}</span>
+                  <span className="font-semibold">
+                    {task?.assignedTo?.name}
+                  </span>
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">Due Date</div>
-                <Tag color={dayjs(task?.dueDate).isBefore(dayjs()) ? 'red' : 'green'}>
-                  {dayjs(task?.dueDate).format('MMM DD')}
+                <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
+                  Due Date
+                </div>
+                <Tag
+                  color={
+                    dayjs(task?.dueDate).isBefore(dayjs()) ? "red" : "green"
+                  }
+                >
+                  {dayjs(task?.dueDate).format("MMM DD")}
                 </Tag>
               </div>
             </div>
 
             {/* Progress */}
             <div className="mb-6">
-              <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">Progress</div>
+              <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">
+                Progress
+              </div>
               <div className="flex items-center gap-2 mb-2">
-                <Progress percent={task?.checklistProgress || 0} size="small" showInfo={false} />
-                <span className="text-sm font-medium">{task?.completedChecklist || 0}/{task?.totalChecklist || 0}</span>
+                <Progress
+                  percent={task?.checklistProgress || 0}
+                  size="small"
+                  showInfo={false}
+                />
+                <span className="text-sm font-medium">
+                  {task?.completedChecklist || 0}/{task?.totalChecklist || 0}
+                </span>
               </div>
             </div>
 
@@ -169,17 +222,22 @@ const TaskChat = ({ task, open, onClose }) => {
                 <ClipboardList size={16} className="mr-2" />
                 Checklist
               </Button>
-              <Button block size="small" className="h-10 shadow-sm" disabled={!task?.attachmentFile}>
+              <Button
+                block
+                size="small"
+                className="h-10 shadow-sm"
+                disabled={!task?.attachmentFile}
+              >
                 <Paperclip size={16} className="mr-2" />
                 Attachments ({task?.attachmentFile?.length || 0})
               </Button>
             </div>
 
             {/* Collapsible Description */}
-            <Collapse ghost bordered={false} defaultActiveKey={['1']}>
+            <Collapse ghost bordered={false} defaultActiveKey={["1"]}>
               <Panel header="Description" key="1">
                 <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {task?.description || 'No description'}
+                  {task?.description || "No description"}
                 </p>
               </Panel>
             </Collapse>
@@ -192,8 +250,11 @@ const TaskChat = ({ task, open, onClose }) => {
           <div className="p-4 border-b flex items-center justify-between bg-gradient-to-r from-emerald-50 to-green-50">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Avatar.Group maxCount={3} maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf' }}>
-                  {onlineUsers.map(u => (
+                <Avatar.Group
+                  maxCount={3}
+                  maxStyle={{ color: "#f56a00", backgroundColor: "#fde3cf" }}
+                >
+                  {onlineUsers.map((u) => (
                     <Avatar key={u._id}>{u.name[0]}</Avatar>
                   ))}
                   <Avatar>{task.assignedBy?.name?.[0]}</Avatar>
@@ -201,15 +262,22 @@ const TaskChat = ({ task, open, onClose }) => {
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></div>
               </div>
               <div>
-                <div className="font-semibold text-gray-900">Task Conversation</div>
+                <div className="font-semibold text-gray-900">
+                  Task Conversation
+                </div>
                 <div className="text-xs text-gray-500">
-                  {isConnected ? '🟢 Online' : '🔄 Connecting'} · {messages.length} messages
+                  {isConnected ? "🟢 Online" : "🔄 Connecting"} ·{" "}
+                  {messages.length} messages
                 </div>
               </div>
             </div>
             <div className="flex gap-2">
-              <Button size="small" icon={<Phone size={16} />}>Call</Button>
-              <Button size="small" icon={<Video size={16} />}>Video</Button>
+              <Button size="small" icon={<Phone size={16} />}>
+                Call
+              </Button>
+              <Button size="small" icon={<Video size={16} />}>
+                Video
+              </Button>
             </div>
           </div>
 
@@ -222,26 +290,38 @@ const TaskChat = ({ task, open, onClose }) => {
             ) : messages.length === 0 ? (
               <Empty description="No messages yet" />
             ) : (
-              messages.map(msg => (
-                <div key={msg.id} className={`flex ${msg.user._id === currentUser._id ? 'justify-end' : 'justify-start gap-3'}`}>
-                  <div className={`max-w-3xl p-4 rounded-2xl shadow-sm ${
-                    msg.user._id === currentUser._id 
-                      ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-br-sm' 
-                      : 'bg-white border rounded-bl-sm'
-                  }`}>
-                    {msg.type === 'query' ? (
+              messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex ${msg.user._id === currentUser._id ? "justify-end" : "justify-start gap-3"}`}
+                >
+                  <div
+                    className={`max-w-3xl p-4 rounded-2xl shadow-sm ${
+                      msg.user._id === currentUser._id
+                        ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-br-sm"
+                        : "bg-white border rounded-bl-sm"
+                    }`}
+                  >
+                    {msg.type === "query" ? (
                       <div className="flex items-start gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold shadow-lg ${
-                          msg.assignedToMe ? 'bg-orange-500 ring-orange-200' : 'bg-yellow-500'
-                        }`}>
+                        <div
+                          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold shadow-lg ${
+                            msg.assignedToMe
+                              ? "bg-orange-500 ring-orange-200"
+                              : "bg-yellow-500"
+                          }`}
+                        >
                           Q
                         </div>
                         <div className="flex-1">
                           <div className="font-bold mb-1 text-sm">
-                            {msg.assignedToMe ? 'YOUR QUERY' : 'Query'}
+                            {msg.assignedToMe ? "YOUR QUERY" : "Query"}
                           </div>
                           <p className="mb-2 leading-relaxed">{msg.text}</p>
-                          <Badge color={getStatusColor(msg.status)} size="small">
+                          <Badge
+                            color={getStatusColor(msg.status)}
+                            size="small"
+                          >
                             {msg.status}
                           </Badge>
                         </div>
@@ -268,10 +348,10 @@ const TaskChat = ({ task, open, onClose }) => {
               <div className="flex-1">
                 <TextArea
                   value={replyText}
-                  onChange={e => setReplyText(e.target.value)}
+                  onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Message task conversation..."
                   autoSize={{ minRows: 1, maxRows: 4 }}
-                  onPressEnter={e => {
+                  onPressEnter={(e) => {
                     if (!e.shiftKey) {
                       e.preventDefault();
                       sendMessage();
@@ -280,8 +360,8 @@ const TaskChat = ({ task, open, onClose }) => {
                   disabled={sending || !isConnected}
                 />
               </div>
-              <Button 
-                type="primary" 
+              <Button
+                type="primary"
                 size="large"
                 icon={<Send size={20} />}
                 onClick={sendMessage}
@@ -289,11 +369,17 @@ const TaskChat = ({ task, open, onClose }) => {
                 disabled={!replyText.trim()}
                 className="w-14 h-14 flex items-center justify-center shadow-lg"
               />
-              <Button icon={<Smile size={20} />} size="large" className="w-14 h-14" />
+              <Button
+                icon={<Smile size={20} />}
+                size="large"
+                className="w-14 h-14"
+              />
             </div>
             <div className="flex items-center gap-2 text-xs mt-2 opacity-75">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`} />
-              {isConnected ? 'Connected' : 'Reconnecting'}
+              <div
+                className={`w-2 h-2 rounded-full ${isConnected ? "bg-green-500" : "bg-yellow-500 animate-pulse"}`}
+              />
+              {isConnected ? "Connected" : "Reconnecting"}
             </div>
           </div>
         </div>

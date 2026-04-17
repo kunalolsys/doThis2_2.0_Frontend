@@ -1,11 +1,8 @@
-import { io } from "socket.io-client";
-import api from "./api.js"; // Reuse axios config (baseURL, cookies)
+import { io } from 'socket.io-client';
+import api from './api.js'; // Reuse axios config (baseURL, cookies)
 
 // Socket base URL (match backend server)
-// Extract base server URL from API_BASE_URL (remove /api/v1)
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api/v1";
-const SOCKET_URL = API_BASE_URL.replace("/api/v1", "");
+const SOCKET_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api/v1', '') || 'http://localhost:4000';
 
 let socket = null;
 
@@ -14,9 +11,11 @@ let socket = null;
  */
 export const initSocket = () => {
   if (socket) return socket;
-
-  socket = io("http://localhost:4000", {
-    withCredentials: true,
+  
+  socket = io(SOCKET_URL, {
+    withCredentials: true, // Send auth cookies
+    autoConnect: false,    // Manual connect
+    transports: ['websocket', 'polling']
   });
 
   return socket;
@@ -25,13 +24,24 @@ export const initSocket = () => {
 /**
  * Connect with user/task rooms
  */
-// DEPRECATED - Use Context auto-connect only
 export const connectSocket = async (userId, taskIds = []) => {
-  console.warn("connectSocket called - use auto-connect");
   const sock = initSocket();
-  sock.emit("join", userId);
-  sock.emit("join-tasks", userId);
-  taskIds.forEach((taskId) => sock.emit("join-task", taskId));
+  
+  if (!sock.connected) {
+    await sock.connect();
+  }
+
+  // Personal room
+  sock.emit('join', userId);
+
+  // Task rooms
+  sock.emit('join-tasks', userId);
+  
+  // Conversation/task rooms (if known)
+  taskIds.forEach(taskId => {
+    sock.emit('join-task', taskId);
+  });
+
   return sock;
 };
 
@@ -50,43 +60,47 @@ export const disconnectSocket = () => {
  */
 export const joinConversation = (convId) => {
   if (socket) {
-    socket.emit("join-conversation", convId);
+    socket.emit('join-conversation', convId);
   }
+};
+
+/**
+ * Send message/reply
+ */
+export const sendMessage = async (conversationId, text, queryId = null) => {
+  return api.post('/thread/message', { 
+    conversationId, 
+    text, 
+    queryId 
+  });
 };
 
 // === QUICK ACTIONS (match backend APIs) ===
 export const raiseQuery = async (taskId, message, assignedTo) => {
-  return api.post("/queries/raise", { taskId, message, assignedTo });
-};
-
-export const sendMessage = async (conversationId, text, queryId = null) => {
-  return api.post("/thread/message", {
-    conversationId,
-    text,
-    queryId,
-  });
+  return api.post('/queries/raise', { taskId, message, assignedTo });
 };
 
 export const replyToQuery = async (queryId, conversationId, text) => {
-  return api.post("/queries/reply", {
-    queryId,
-    conversationId,
-    text,
+  return api.post('/queries/reply', { 
+    queryId, 
+    conversationId, 
+    text 
   });
 };
 
 export const markMessageSeen = async (messageId) => {
-  return api.post("/thread/seen", { messageId });
+  return api.post('/thread/seen', { messageId });
 };
 
 export const markAllNotificationsRead = async () => {
-  return api.post("/thread/notifications/read-all");
+  return api.post('/thread/notifications/read-all');
 };
 
 export const getUnreadCount = async () => {
-  const res = await api.get("/thread/notifications/unread-count");
+  const res = await api.get('/thread/notifications/unread-count');
   return res.data.unreadCount;
 };
 
 // Socket instance getter
 export const getSocket = () => socket;
+

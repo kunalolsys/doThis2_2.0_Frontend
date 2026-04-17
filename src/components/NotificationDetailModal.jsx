@@ -14,6 +14,7 @@ import {
   fetchNotifications,
   markNotificationRead,
 } from "../redux/slices/notification/notificationSlice";
+import { useTaskChat } from "../context/TaskChatContext";
 
 const TYPE_CONFIG = {
   MESSAGE: { icon: MessageSquare, accent: "#3b82f6" },
@@ -27,11 +28,26 @@ const TYPE_CONFIG = {
 const NotificationDetailModal = ({ notification, open, onClose }) => {
   const dispatch = useDispatch();
 
+  const { openTaskChat } = useTaskChat();
+
   const handleMarkRead = async () => {
     if (!notification.isRead)
       await dispatch(markNotificationRead(notification._id));
     await dispatch(fetchNotifications());
-    onClose();
+
+    // Open TaskChat for MESSAGE/QUERY notifications
+    if (
+      ["MESSAGE", "QUERY", "QUERY_RAISED", "QUERY_REPLIED"].includes(
+        notification.type,
+      ) &&
+      notification.taskId
+    ) {
+      console.log("object");
+      await openTaskChat(notification.taskId, "notification");
+      onClose();
+    } else {
+      onClose();
+    }
   };
   if (!notification) return null;
 
@@ -197,29 +213,27 @@ const NotificationDetailModal = ({ notification, open, onClose }) => {
             >
               Close
             </button>
-            {!notification.isRead && (
-              <button
-                onClick={handleMarkRead}
-                style={{
-                  flex: 1,
-                  padding: "8px 0",
-                  borderRadius: 8,
-                  fontSize: 13,
-                  fontWeight: 500,
-                  border: "none",
-                  background: "#111",
-                  color: "#fff",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 5,
-                }}
-              >
-                <CheckCircle2 size={13} />
-                Mark read
-              </button>
-            )}
+            <button
+              onClick={handleMarkRead}
+              style={{
+                flex: 1,
+                padding: "8px 0",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 500,
+                border: "none",
+                background: "#3b82f6",
+                color: "#fff",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 5,
+              }}
+            >
+              <MessageSquare size={13} />
+              {notification.isRead ? 'Reply' : 'Reply & Mark read'}
+            </button>
           </div>
         </div>
       </DialogContent>

@@ -43,6 +43,7 @@ import SessionTimeoutDialog from "./components/SessionTimeoutDialog";
 import LogsDashboard from "./pages/logs";
 import FmsLaunchedView from "./pages/fmsEngine/fmsInstanceView";
 import { SocketProvider } from "./context/SocketContext";
+import { TaskChatProvider } from "./context/TaskChatContext";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -77,12 +78,14 @@ function App() {
           onCancel={handleCloseSessionTimeoutModal}
         />
         <SocketProvider>
-          <Routes>
-          <Route path="/" element={<Login />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/page-restrict-found" element={<AccessDenied />} />
+          <TaskChatProvider>
+            <Routes>
+            <Route path="/" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/page-restrict-found" element={<AccessDenied />} />
 
-          <Route element={<ProtectedLayout />}>
+            <Route element={<ProtectedLayout />}>
+
             {/* dashboard routes - assuming all logged-in users can see this */}
             <Route path="/dashboard" element={<AdminDashboard />} />
             <Route path="/logs" element={<LogsDashboard />} />
@@ -226,9 +229,10 @@ function App() {
                 </PermissionRoute>
               }
             />
-          </Route>
-          <Route path="*" element={<PageNotFound />} />
-        </Routes>
+            </Route>
+            <Route path="*" element={<PageNotFound />} />
+          </Routes>
+          </TaskChatProvider>
         </SocketProvider>
       </BrowserRouter>
     </>

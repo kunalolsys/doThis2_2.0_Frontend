@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSocket } from "../../context/SocketContext";
-import QuickTaskActions from "../../components/QuickTaskActions";
 import {
   completeFMSTask,
   fetchMyTasks,
@@ -34,6 +33,8 @@ import {
   PauseCircle,
   StopCircle,
   XCircle,
+  MessageCircle,
+  MessageSquarePlus,
 } from "lucide-react";
 import {
   Dialog,
@@ -84,6 +85,9 @@ import { DatePicker } from "antd";
 const { RangePicker } = DatePicker;
 import * as Yup from "yup";
 import { useFormik } from "formik";
+import RaiseQueryModal from "../../components/RaiseQueryModal";
+import QueryDrawer from "../../components/QueryDrawer";
+import TaskChat from "../../components/TaskChat";
 
 // --- Helper: Status Badge ---
 const getStatusBadge = (status) => {
@@ -715,6 +719,9 @@ const TodayTasksTable = ({
   itemsPerPage,
   allUsers,
   handleCompleteClick,
+  setSelectedQueryTask,
+  setQueryDrawerOpen,
+  setRaiseQueryModalOpen,
 }) => {
   const combinedTasks = [...(tasks || []), ...(upcomingRecurringTasks || [])];
   return (
@@ -867,6 +874,30 @@ const TodayTasksTable = ({
                         onToggleComplete={onToggleComplete}
                         handleCompleteClick={handleCompleteClick}
                       />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 ml-1"
+                        onClick={() => {
+                          setSelectedQueryTask(task);
+                          setQueryDrawerOpen(true);
+                        }}
+                        title="View Conversation"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setSelectedQueryTask(task);
+                          setRaiseQueryModalOpen(true);
+                        }}
+                        title="Raise Query"
+                      >
+                        <MessageSquarePlus className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 </React.Fragment>
@@ -941,6 +972,9 @@ const MyTask = () => {
   const [refetch, setRefetch] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [queryDrawerOpen, setQueryDrawerOpen] = useState(false);
+  const [selectedQueryTask, setSelectedQueryTask] = useState(null);
+  const [raiseQueryModalOpen, setRaiseQueryModalOpen] = useState(false);
   // console.log(dateRange);
   // --- Initial Data Load ---
   useEffect(() => {
@@ -1663,6 +1697,9 @@ const MyTask = () => {
                         itemsPerPage={localItemsPerPage}
                         allUsers={allUsers}
                         handleCompleteClick={handleCompleteClick}
+                        setSelectedQueryTask={setSelectedQueryTask}
+                        setQueryDrawerOpen={setQueryDrawerOpen}
+                        setRaiseQueryModalOpen={setRaiseQueryModalOpen}
                       />
                     </TooltipProvider>
 
@@ -1681,9 +1718,7 @@ const MyTask = () => {
           </CardContent>
         </Card>
       </div>
-
       {/* --- DIALOGS --- */}
-
       {/* Delete Confirmation */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent className="sm:max-w-md">
@@ -1701,7 +1736,6 @@ const MyTask = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Edit Dialog (Minimal Placeholder) */}
       <Dialog
         open={isEditOpen}
@@ -1724,7 +1758,6 @@ const MyTask = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Description Dialog */}
       <Dialog
         open={isDescriptionDialogOpen}
@@ -1744,7 +1777,6 @@ const MyTask = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Checklist Dialog */}
       <Dialog
         open={isChecklistDialogOpen}
@@ -1804,7 +1836,6 @@ const MyTask = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Form Modal */}
       <FmsFormModal
         open={showFormModal}
@@ -1812,6 +1843,25 @@ const MyTask = () => {
         onClose={() => setShowFormModal(false)}
         onSubmit={handleFormSubmit}
       />
+      <RaiseQueryModal
+        task={selectedQueryTask}
+        open={raiseQueryModalOpen}
+        onClose={() => setRaiseQueryModalOpen(false)}
+      />
+      {/* <QueryDrawer
+        task={selectedQueryTask}
+        open={queryDrawerOpen}
+        onClose={() => setQueryDrawerOpen(false)}
+      />{" "} */}
+      {/* Legacy local TaskChat - kept for compatibility */}
+      {/* <TaskChat
+        task={selectedQueryTask}
+        open={queryDrawerOpen}
+        onClose={() => setQueryDrawerOpen(false)}
+      /> */}
+      {queryDrawerOpen && selectedQueryTask && (
+        <TaskChat task={selectedQueryTask} open={queryDrawerOpen} onClose={() => setQueryDrawerOpen(false)} />
+      )}
     </div>
   );
 };
