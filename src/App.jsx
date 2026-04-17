@@ -29,7 +29,6 @@ import UpcomingOngoingFms from "./pages/fmsEngine/UpcomingOngoingFms";
 import FmsTemplates from "./pages/fmsEngine/FmsTemplates";
 import FmsLaunch from "./pages/fmsEngine/FmsLaunch";
 import CreateNewFmsTem from "./pages/fmsEngine/CreateNewFmsTem";
-import EditFmsTem from "./pages/fmsEngine/EditFmsTem";
 import AddUser from "./pages/setup/AddUser";
 
 import { Toaster } from "sonner";
@@ -149,14 +148,6 @@ function App() {
             <Route
               path="/fms-engine/instance/:id"
               element={<FmsLaunchedView />}
-            />
-            <Route
-              path="/fms-engine/edit-template"
-              element={
-                <PermissionRoute requiredPermission="fmsengine_view">
-                  <EditFmsTem />
-                </PermissionRoute>
-              }
             />
             {/* Reports Routes */}
             <Route

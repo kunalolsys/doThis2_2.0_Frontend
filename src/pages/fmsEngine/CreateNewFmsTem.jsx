@@ -282,8 +282,8 @@ const CreateNewFmsTem = () => {
         description: data.description,
         fmsDuration: data.fmsDuration,
         endDate: data.endDate,
-        manager: data.manager._id,
-        srManager: data.srManager._id,
+        manager: data.manager?._id,
+        srManager: data.srManager?._id,
         // tasks: data.tasks || [],
       });
     } catch (err) {
@@ -528,11 +528,11 @@ const CreateNewFmsTem = () => {
             )}
 
             {/* Bulk Upload Button */}
-            {templateCreated && !isAlreadyLaunched && (
+            {/* {templateCreated && !isAlreadyLaunched && (
               <Button type="button" variant="outline" size="sm">
                 Bulk Upload Tasks
               </Button>
-            )}
+            )} */}
           </div>
         </div>
       </CardHeader>
