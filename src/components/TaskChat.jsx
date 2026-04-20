@@ -150,7 +150,7 @@ const TaskChat = ({ task, open, onClose }) => {
       }
       toast.success(replyingTo ? "Replied!" : "Sent!");
       addEvent("chat-message", task._id);
-      await loadTaskChat();
+      // await loadTaskChat();
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       toast.error("Send failed");
@@ -218,7 +218,7 @@ const TaskChat = ({ task, open, onClose }) => {
               }
             : null),
         seen: (msg.seenBy || []).some((s) => s.user?._id === currentUser?._id),
-        status: msg.status || "Open",
+        status: msg.status || "Responded",
       };
 
       // avoid duplicate
@@ -230,7 +230,6 @@ const TaskChat = ({ task, open, onClose }) => {
         );
       });
     };
-
     socket.on("chat-message", handleMessage);
     socket.on("new-query", handleMessage);
     socket.on("query-reply", handleMessage);
