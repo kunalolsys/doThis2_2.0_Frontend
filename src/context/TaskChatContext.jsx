@@ -21,7 +21,7 @@ export const TaskChatProvider = ({ children }) => {
         const response = await api.get(`/tasks/${taskId}`);
         task = response.data.data;
       }
-
+console.log(task)
       // Ensure conversation exists
       if (!task.conversationId) {
         const convRes = await api.post('/thread/conversation', {
@@ -33,7 +33,7 @@ export const TaskChatProvider = ({ children }) => {
 
       setTaskChatTask(task);
       setTaskChatOpen(true);
-      toast.success(`Opened chat for Task #${task.TaskId || task._id}`);
+      // toast.success(`Opened chat for Task #${task.TaskId || task._id}`);
     } catch (error) {
       toast.error('Failed to open task chat');
       console.error('TaskChat open error:', error);

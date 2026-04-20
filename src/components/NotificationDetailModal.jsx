@@ -31,23 +31,12 @@ const NotificationDetailModal = ({ notification, open, onClose }) => {
   const { openTaskChat } = useTaskChat();
 
   const handleMarkRead = async () => {
-    if (!notification.isRead)
+    if (!notification.isRead) {
       await dispatch(markNotificationRead(notification._id));
-    await dispatch(fetchNotifications());
-
-    // Open TaskChat for MESSAGE/QUERY notifications
-    if (
-      ["MESSAGE", "QUERY", "QUERY_RAISED", "QUERY_REPLIED"].includes(
-        notification.type,
-      ) &&
-      notification.taskId
-    ) {
-      console.log("object");
-      await openTaskChat(notification.taskId, "notification");
-      onClose();
-    } else {
-      onClose();
+      await dispatch(fetchNotifications());
     }
+    await openTaskChat(notification.conversationId.taskId, "notification");
+    onClose();
   };
   if (!notification) return null;
 
@@ -232,7 +221,7 @@ const NotificationDetailModal = ({ notification, open, onClose }) => {
               }}
             >
               <MessageSquare size={13} />
-              {notification.isRead ? 'Reply' : 'Reply & Mark read'}
+              {notification.isRead ? "Reply" : "Reply & Mark read"}
             </button>
           </div>
         </div>

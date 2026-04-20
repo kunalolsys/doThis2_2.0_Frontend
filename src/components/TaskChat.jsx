@@ -35,7 +35,7 @@ const { TextArea } = Input;
 
 const TaskChat = ({ task, open, onClose }) => {
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [onlineUsers, setOnlineUsers] = useState([]);
@@ -59,32 +59,40 @@ const TaskChat = ({ task, open, onClose }) => {
     try {
       const [queriesRes, messagesRes] = await Promise.all([
         api.get(`/queries/task/${task._id}`),
-        api.get(`/thread/conversation/${task.conversationId}`),
+        api.get(`/thread/${task.conversationId}/messages`),
       ]);
-
-      const queries = queriesRes.data.data || [];
-      const msgs = messagesRes.data.data || [];
-
+      console.log(queriesRes,messagesRes)
+      const queries = queriesRes?.data?.data || [];
+      const msgs = messagesRes?.data?.data?.messages || [];
+      
       const combined = [
+        // ✅ Queries
         ...queries.map((q) => ({
           id: `q_${q._id}`,
           type: "query",
-          text: q.message,
-          user: q.raisedBy,
+          text: q.message || "",
+          user: q.raisedBy || {},
           timestamp: q.createdAt,
+
           status: q.status,
-          assignedToMe: q.assignedTo._id === currentUser._id,
+
+          assignedToMe: String(q.assignedTo?._id) === String(currentUser?._id),
         })),
+
+        // ✅ Messages
         ...msgs.map((m) => ({
           id: m._id,
           type: "message",
-          text: m.text,
-          user: m.sender,
+          text: m.text || "",
+          user: m.sender || {},
           timestamp: m.createdAt,
-          seen: m.seenBy?.some((s) => s.user.toString() === currentUser._id),
+
+          seen: (m.seenBy || []).some(
+            (s) => String(s.user?._id || s.user) === String(currentUser?._id),
+          ),
         })),
       ].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-
+      
       setMessages(combined);
     } catch {
       toast.error("Failed to load chat");
@@ -144,7 +152,7 @@ const TaskChat = ({ task, open, onClose }) => {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-6xl mx-auto h-[90vh] flex bg-white rounded-t-2xl overflow-hidden shadow-2xl"
+        className="w-full mt-5 max-w-6xl mx-auto h-[90vh] flex bg-white rounded-2xl overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* LEFT: Task Details */}
@@ -271,14 +279,14 @@ const TaskChat = ({ task, open, onClose }) => {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+            {/* <div className="flex gap-2">
               <Button size="small" icon={<Phone size={16} />}>
                 Call
               </Button>
               <Button size="small" icon={<Video size={16} />}>
                 Video
               </Button>
-            </div>
+            </div> */}
           </div>
 
           {/* Messages */}
@@ -350,7 +358,7 @@ const TaskChat = ({ task, open, onClose }) => {
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Message task conversation..."
-                  autoSize={{ minRows: 1, maxRows: 4 }}
+                  autoSize={{ minRows: 2, maxRows: 4 }}
                   onPressEnter={(e) => {
                     if (!e.shiftKey) {
                       e.preventDefault();

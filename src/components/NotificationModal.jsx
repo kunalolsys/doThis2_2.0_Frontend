@@ -76,17 +76,17 @@ const NotificationModal = ({ open, onClose }) => {
           {/* Header */}
           <div
             className="flex items-center justify-between"
-            style={{ padding: "12px 16px" }}
+            // style={{ padding: "12px 16px" }}
           >
             <span className="text-base font-medium text-gray-900">
-              Notification
+              Notifications
             </span>
 
             <div className="flex items-center gap-3 text-gray-400">
-              <Settings
+              {/* <Settings
                 size={17}
                 className="cursor-pointer hover:text-gray-600"
-              />
+              /> */}
               <X
                 size={17}
                 className="cursor-pointer hover:text-gray-600"
@@ -96,7 +96,7 @@ const NotificationModal = ({ open, onClose }) => {
           </div>
 
           {/* Tabs */}
-          <div className="flex items-center justify-between px-4 pb-2 pt-1">
+          <div className="flex items-center justify-between pb-2 pt-1">
             <div className="flex gap-1.5">
               {TABS.map((tab) => {
                 const label =
