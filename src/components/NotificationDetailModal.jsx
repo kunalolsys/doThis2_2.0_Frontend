@@ -27,7 +27,6 @@ const TYPE_CONFIG = {
 
 const NotificationDetailModal = ({ notification, open, onClose }) => {
   const dispatch = useDispatch();
-  console.log(notification)
   const { openTaskChat } = useTaskChat();
 
   const handleMarkRead = async () => {

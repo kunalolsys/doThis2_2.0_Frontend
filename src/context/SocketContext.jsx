@@ -83,6 +83,7 @@ export const SocketProvider = ({ children }) => {
         setUnreadCount((prev) => prev + 1);
       });
       sock.on("query-reply", (data) => addEvent("query-reply", data));
+      sock.on("chat-message", (data) => addEvent("chat-message", data));
       sock.on("new-message", (data) => addEvent("new-message", data));
       sock.on("notification", (data) => {
         addEvent("notification", data);

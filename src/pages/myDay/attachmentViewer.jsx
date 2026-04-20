@@ -2,7 +2,7 @@ import { Modal, Button, Checkbox } from "antd";
 import { EyeOutlined, DownloadOutlined } from "@ant-design/icons";
 import { useState } from "react";
 
-const ViewLink = ({ file }) => {
+const ViewLink = ({ file, text = "View" }) => {
   const attachments = Array.isArray(file) ? file : [];
 
   const [open, setOpen] = useState(false);
@@ -67,10 +67,12 @@ const ViewLink = ({ file }) => {
     <>
       {/* 🔥 ONLY BUTTON */}
       <span
-        className="text-blue-600 text-xs cursor-pointer hover:underline flex items-center gap-1"
+        className={`text-xs cursor-pointer hover:underline flex items-center gap-1 ${
+          text ? "text-white-600" : "text-blue-400"
+        }`}
         onClick={() => setOpen(true)}
       >
-        <EyeOutlined /> View ({attachments.length})
+        <EyeOutlined /> {text ?? "View"} ({attachments.length})
       </span>
 
       {/* 🔥 MODAL */}

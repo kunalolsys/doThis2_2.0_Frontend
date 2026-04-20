@@ -29,6 +29,7 @@ import { useSocket } from "../context/SocketContext";
 import api from "../lib/api";
 import { toast } from "sonner";
 import dayjs from "dayjs";
+import ViewLink from "../pages/myDay/attachmentViewer";
 
 const { Panel } = Collapse;
 const { TextArea } = Input;
@@ -58,7 +59,6 @@ const TaskChat = ({ task, open, onClose }) => {
       loadTaskChat();
     }
   }, [open, task]);
-
   const loadTaskChat = async () => {
     setLoading(true);
     try {
@@ -118,13 +118,15 @@ const TaskChat = ({ task, open, onClose }) => {
     const payload = {
       conversationId: task.conversationId,
       text: replyText.trim(),
-      queryId: replyingTo.id,
+      // queryId: replyingTo.id,
     };
 
     if (replyingTo) {
       payload.parentMessage = replyingTo.id;
+      if (replyingTo?.type === "query") {
+        payload.queryId = replyingTo.id;
+      }
     }
-
     const optimistic = {
       id: tempId,
       type: "message",
@@ -186,6 +188,60 @@ const TaskChat = ({ task, open, onClose }) => {
     socket.disconnect();
     socket.connect();
   };
+
+  //**for getting live chats */
+  useEffect(() => {
+    if (socket && task?.conversationId) {
+      socket.emit("join-conversation", task.conversationId);
+    }
+  }, [socket, task?.conversationId]);
+  // 🔥 LIVE MESSAGES
+  useEffect(() => {
+    if (!socket || !open || !task?.conversationId) return;
+
+    const handleMessage = (msg) => {
+      // only for current chat
+      if (msg.conversationId !== task.conversationId) return;
+
+      const formatted = {
+        id: msg._id,
+        type: msg.type || (msg.queryId ? "query" : "message"),
+        text: msg.text,
+        user: msg.sender,
+        timestamp: msg.createdAt,
+        parentMessage:
+          msg.parentMessage ||
+          (msg.queryId
+            ? {
+                text: msg.queryId.message || msg.queryId.text,
+                sender: msg.queryId.raisedBy || msg.queryId.sender || {},
+              }
+            : null),
+        seen: (msg.seenBy || []).some((s) => s.user?._id === currentUser?._id),
+        status: msg.status || "Open",
+      };
+
+      // avoid duplicate
+      setMessages((prev) => {
+        const exists = prev.some((m) => m.id === formatted.id);
+        if (exists) return prev;
+        return [...prev, formatted].sort(
+          (a, b) => new Date(a.timestamp) - new Date(b.timestamp),
+        );
+      });
+    };
+
+    socket.on("chat-message", handleMessage);
+    socket.on("new-query", handleMessage);
+    socket.on("query-reply", handleMessage);
+
+    return () => {
+      socket.off("chat-message", handleMessage);
+      socket.off("new-query", handleMessage);
+      socket.off("query-reply", handleMessage);
+    };
+  }, [socket, task?.conversationId, currentUser?._id]);
+
   if (!task) return;
   return (
     <div
@@ -197,26 +253,29 @@ const TaskChat = ({ task, open, onClose }) => {
         onClick={(e) => e.stopPropagation()}
       >
         {/* LEFT: Task Details */}
-        <div className="w-1/3 border-r p-6 bg-gradient-to-b from-slate-50 to-white max-h-full overflow-y-auto">
+        <div className="w-1/3 border-r p-6 bg-gradient-to-b from-slate-900 to-slate-800 text-white max-h-full overflow-y-auto">
           <div className="sticky top-0 pb-6">
             <div className="flex items-center gap-3 mb-6">
-              <Avatar
+              {/* <Avatar
                 size={48}
-                className="bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg"
+                className="bg-gradient-to-br from-indigo-100 to-purple-100 text-gray-800 font-semibold shadow-sm"
               >
                 {task?.assignedBy?.name?.[0]?.toUpperCase()}
-              </Avatar>
+              </Avatar> */}
+
               <div>
-                <h2 className="font-bold text-xl text-gray-900">
-                  {task?.title}
-                </h2>
+                <h2 className="font-bold text-xl">{task?.title}</h2>
+
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge className="px-3 py-1 bg-gradient-to-r from-indigo-100 to-blue-100 text-indigo-800 border-indigo-200">
+                  {/* Task ID */}
+                  <span className="px-2 py-[2px] text-[11px] rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
                     Task #{task?.TaskId}
-                  </Badge>
-                  <Badge color={getStatusColor(task?.status)}>
+                  </span>
+
+                  {/* Status */}
+                  <span className="px-2 py-[2px] text-[11px] rounded-full bg-gray-100 text-gray-600 border">
                     {task?.status}
-                  </Badge>
+                  </span>
                 </div>
               </div>
             </div>
@@ -224,23 +283,27 @@ const TaskChat = ({ task, open, onClose }) => {
             {/* Task Stats */}
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
+                <div className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">
                   Assignee
                 </div>
                 <div className="flex items-center gap-2">
-                  <Avatar size={28}>{task?.assignedTo?.name?.[0]}</Avatar>
-                  <span className="font-semibold">
+                  <Avatar size={28} style={{ background: "#64748b" }}>
+                    {task?.assignedTo?.name?.[0]}
+                  </Avatar>
+                  <span className="font-semibold text-slate-200">
                     {task?.assignedTo?.name}
                   </span>
                 </div>
               </div>
               <div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-1">
+                <div className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">
                   Due Date
                 </div>
                 <Tag
                   color={
-                    dayjs(task?.dueDate).isBefore(dayjs()) ? "red" : "green"
+                    dayjs(task?.dueDate).isBefore(dayjs())
+                      ? "red-inverse"
+                      : "green-inverse"
                   }
                 >
                   {dayjs(task?.dueDate).format("MMM DD")}
@@ -248,48 +311,55 @@ const TaskChat = ({ task, open, onClose }) => {
               </div>
             </div>
 
-            {/* Progress */}
+            {/* Checklist */}
             <div className="mb-6">
-              <div className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-2">
-                Progress
+              <div className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-3">
+                Checklist (
+                {task?.checklist?.filter((item) => item.isCompleted).length ||
+                  0}
+                /{task?.checklist?.length || 0})
               </div>
-              <div className="flex items-center gap-2 mb-2">
-                <Progress
-                  percent={task?.checklistProgress || 0}
-                  size="small"
-                  showInfo={false}
-                />
-                <span className="text-sm font-medium">
-                  {task?.completedChecklist || 0}/{task?.totalChecklist || 0}
-                </span>
-              </div>
+              {task?.checklist?.length != 0 && (
+                <div className="max-h-50 overflow-y-auto space-y-2 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
+                  {task?.checklist?.map((item, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${item.isCompleted ? "bg-emerald-400" : "bg-slate-500"}`}
+                      ></span>
+                      <span
+                        className={`flex-1 ${item.isCompleted ? "line-through text-slate-400" : "text-slate-200"}`}
+                      >
+                        {item.text}
+                      </span>
+                    </div>
+                  )) || (
+                    <span className="text-slate-500 text-sm">
+                      No checklist items
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Quick Actions */}
-            <div className="space-y-2 mb-8">
-              <Button block size="small" className="h-10 shadow-sm">
-                <ClipboardList size={16} className="mr-2" />
-                Checklist
-              </Button>
-              <Button
-                block
-                size="small"
-                className="h-10 shadow-sm"
-                disabled={!task?.attachmentFile}
-              >
-                <Paperclip size={16} className="mr-2" />
-                Attachments ({task?.attachmentFile?.length || 0})
-              </Button>
-            </div>
+            {task?.attachmentFile?.length > 0 && (
+              <div className="space-y-2 mb-8">
+                <ViewLink file={task?.attachmentFile} text={"Attachments"} />
+              </div>
+            )}
 
-            {/* Collapsible Description */}
-            <Collapse ghost bordered={false} defaultActiveKey={["1"]}>
-              <Panel header="Description" key="1">
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {task?.description || "No description"}
-                </p>
-              </Panel>
-            </Collapse>
+            {/* Description - no accordion */}
+            <div className="mb-6">
+              <div className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-3">
+                Description
+              </div>
+              <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap bg-slate-700/30 p-3 rounded-lg border border-slate-600">
+                {task?.description || "No description"}
+              </p>
+            </div>
           </div>
         </div>
 
