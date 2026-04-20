@@ -21,7 +21,6 @@ export const TaskChatProvider = ({ children }) => {
         const response = await api.get(`/tasks/${taskId}`);
         task = response.data.data;
       }
-console.log(task)
       // Ensure conversation exists
       if (!task.conversationId) {
         const convRes = await api.post('/thread/conversation', {

@@ -61,7 +61,6 @@ const TaskChat = ({ task, open, onClose }) => {
         api.get(`/queries/task/${task._id}`),
         api.get(`/thread/${task.conversationId}/messages`),
       ]);
-      console.log(queriesRes,messagesRes)
       const queries = queriesRes?.data?.data || [];
       const msgs = messagesRes?.data?.data?.messages || [];
       
