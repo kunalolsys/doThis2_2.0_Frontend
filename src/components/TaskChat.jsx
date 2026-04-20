@@ -38,6 +38,7 @@ const TaskChat = ({ task, open, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [replyingTo, setReplyingTo] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const messagesEndRef = useRef(null);
 
@@ -47,7 +48,11 @@ const TaskChat = ({ task, open, onClose }) => {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
-
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages]);
   useEffect(() => {
     if (open && task?.conversationId) {
       loadTaskChat();
@@ -63,18 +68,17 @@ const TaskChat = ({ task, open, onClose }) => {
       ]);
       const queries = queriesRes?.data?.data || [];
       const msgs = messagesRes?.data?.data?.messages || [];
-      
+
       const combined = [
         // ✅ Queries
         ...queries.map((q) => ({
-          id: `q_${q._id}`,
+          id: q._id,
           type: "query",
           text: q.message || "",
           user: q.raisedBy || {},
           timestamp: q.createdAt,
-
+          parentMessage: q.parentMessage,
           status: q.status,
-
           assignedToMe: String(q.assignedTo?._id) === String(currentUser?._id),
         })),
 
@@ -85,13 +89,20 @@ const TaskChat = ({ task, open, onClose }) => {
           text: m.text || "",
           user: m.sender || {},
           timestamp: m.createdAt,
-
+          parentMessage: m.queryId
+            ? m.queryId
+              ? {
+                  text: m.queryId.message,
+                  sender: m.queryId.raisedBy || {},
+                }
+              : null
+            : m.parentMessage,
           seen: (m.seenBy || []).some(
             (s) => String(s.user?._id || s.user) === String(currentUser?._id),
           ),
         })),
       ].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-      
+
       setMessages(combined);
     } catch {
       toast.error("Failed to load chat");
@@ -102,8 +113,18 @@ const TaskChat = ({ task, open, onClose }) => {
 
   const sendMessage = async () => {
     if (!replyText.trim()) return;
-
     const tempId = `temp_${Date.now()}`;
+    const isMe = replyingTo?.user?._id == currentUser?._id;
+    const payload = {
+      conversationId: task.conversationId,
+      text: replyText.trim(),
+      queryId: replyingTo.id,
+    };
+
+    if (replyingTo) {
+      payload.parentMessage = replyingTo.id;
+    }
+
     const optimistic = {
       id: tempId,
       type: "message",
@@ -111,20 +132,23 @@ const TaskChat = ({ task, open, onClose }) => {
       user: { _id: currentUser._id, name: currentUser.name },
       timestamp: new Date(),
       seen: true,
+      parentMessage: replyingTo?.id || null,
+      // parentPreview: replyingTo,
     };
 
-    setMessages((prev) => [...prev, optimistic]);
-    const textSent = replyText;
+    // setMessages((prev) => [...prev, optimistic]);
     setReplyText("");
     setSending(true);
-
+    setReplyingTo(null);
     try {
-      await api.post("/thread/message", {
-        conversationId: task.conversationId,
-        text: textSent,
-      });
-      toast.success("Sent!");
+      if (replyingTo && replyingTo.type == "query" && !isMe) {
+        await api.post("/queries/reply", payload);
+      } else {
+        await api.post("/thread/message", payload);
+      }
+      toast.success(replyingTo ? "Replied!" : "Sent!");
       addEvent("chat-message", task._id);
+      await loadTaskChat();
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       toast.error("Send failed");
@@ -143,6 +167,24 @@ const TaskChat = ({ task, open, onClose }) => {
       Resolved: "green",
     };
     return colors[status] || "gray";
+  };
+  const getStatusStyle = (status, isMe) => {
+    const styles = {
+      Pending: isMe
+        ? "bg-white/20 text-white"
+        : "bg-orange-100 text-orange-700",
+      Open: isMe ? "bg-white/20 text-white" : "bg-yellow-100 text-yellow-700",
+      Responded: isMe ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700",
+      Resolved: isMe ? "bg-white/20 text-white" : "bg-green-100 text-green-700",
+    };
+
+    return styles[status] || "bg-gray-100 text-gray-600";
+  };
+  const handleReconnect = () => {
+    if (!socket) return;
+
+    socket.disconnect();
+    socket.connect();
   };
   if (!task) return;
   return (
@@ -269,12 +311,36 @@ const TaskChat = ({ task, open, onClose }) => {
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></div>
               </div>
               <div>
-                <div className="font-semibold text-gray-900">
+                <div className="font-semibold text-gray-900 flex items-center gap-2">
                   Task Conversation
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      isConnected ? "bg-green-500" : "bg-red-500 animate-pulse"
+                    }`}
+                  />
                 </div>
-                <div className="text-xs text-gray-500">
-                  {isConnected ? "🟢 Online" : "🔄 Connecting"} ·{" "}
-                  {messages.length} messages
+
+                <div className="text-xs text-gray-500 flex items-center gap-2">
+                  {isConnected ? "Online" : "Disconnected"} · {messages.length}{" "}
+                  messages
+                  {/* 🔁 Reconnect button */}
+                  {!isConnected && (
+                    <button
+                      onClick={handleReconnect}
+                      className="ml-2 flex items-center gap-2 px-3 py-1.5 rounded-full 
+               bg-gradient-to-r from-red-500 to-rose-500 
+               text-white text-[11px] font-medium 
+               shadow-md hover:shadow-lg 
+               hover:scale-[1.02] transition-all duration-200"
+                    >
+                      {/* animated dot */}
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                      </span>
+                      Reconnect
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -301,14 +367,32 @@ const TaskChat = ({ task, open, onClose }) => {
                 <div
                   key={msg.id}
                   className={`flex ${msg.user._id === currentUser._id ? "justify-end" : "justify-start gap-3"}`}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setReplyingTo(msg);
+                  }}
                 >
                   <div
-                    className={`max-w-3xl p-4 rounded-2xl shadow-sm ${
+                    className={`max-w-3xl p-4 rounded-2xl shadow-sm relative cursor-pointer hover:shadow-md transition-shadow ${
                       msg.user._id === currentUser._id
                         ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-br-sm"
                         : "bg-white border rounded-bl-sm"
                     }`}
+                    onMouseDown={(e) => {
+                      if (e.detail === 2) {
+                        // Double-click or long-press
+                        setReplyingTo(msg);
+                      }
+                    }}
                   >
+                    {msg.parentMessage && (
+                      <div className="mb-2 p-2 rounded text-xs opacity-80 border-l-4 border-yellow-400">
+                        <div className="font-semibold">
+                          {msg.parentMessage.sender.name}
+                        </div>
+                        <div>{msg.parentMessage.text}</div>
+                      </div>
+                    )}
                     {msg.type === "query" ? (
                       <div className="flex items-start gap-3">
                         <div
@@ -325,12 +409,11 @@ const TaskChat = ({ task, open, onClose }) => {
                             {msg.assignedToMe ? "YOUR QUERY" : "Query"}
                           </div>
                           <p className="mb-2 leading-relaxed">{msg.text}</p>
-                          <Badge
-                            color={getStatusColor(msg.status)}
-                            size="small"
+                          <div
+                            className={`inline-block px-2 py-[2px] text-[10px] rounded-full mt-1 ${getStatusStyle(msg.status, msg.user._id === currentUser._id)}`}
                           >
                             {msg.status}
-                          </Badge>
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -353,10 +436,29 @@ const TaskChat = ({ task, open, onClose }) => {
           <div className="border-t p-4 bg-white shadow-lg">
             <div className="flex items-end gap-3">
               <div className="flex-1">
+                {replyingTo && (
+                  <div className="p-3 bg-gray-50 border rounded-lg mb-2 text-sm">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                      Replying to{" "}
+                      <span className="font-semibold">
+                        {replyingTo.user.name}
+                      </span>
+                      <button
+                        onClick={() => setReplyingTo(null)}
+                        className="ml-auto text-gray-400 hover:text-gray-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="font-medium">{replyingTo.text}</p>
+                  </div>
+                )}
                 <TextArea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Message task conversation..."
+                  placeholder={
+                    replyingTo ? "Reply..." : "Message task conversation..."
+                  }
                   autoSize={{ minRows: 2, maxRows: 4 }}
                   onPressEnter={(e) => {
                     if (!e.shiftKey) {

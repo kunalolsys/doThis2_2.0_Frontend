@@ -177,6 +177,9 @@ const TaskActions = ({
   onChecklist,
   onToggleComplete,
   handleCompleteClick,
+  setSelectedQueryTask,
+  setQueryDrawerOpen,
+  setRaiseQueryModalOpen,
 }) => {
   const isCompleted = task.status === "Completed";
   const upComing = task.status == "Upcoming";
@@ -228,7 +231,6 @@ const TaskActions = ({
           <p>View Form</p>
         </TooltipContent>
       </Tooltip>
-
       {/* Complete/Reopen Button */}
       {!isCompleted ? (
         <Tooltip>
@@ -268,8 +270,42 @@ const TaskActions = ({
       ) : (
         <></>
       )}
-
-      {/* Note: Edit and Delete actions intentionally removed from UI per request */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 cursor-pointer rounded-full hover:bg-blue-50 hover:text-blue-600 transition"
+            onClick={() => {
+              setSelectedQueryTask(task);
+              setQueryDrawerOpen(true);
+            }}
+          >
+            <MessageCircle className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Open Conversation</p>
+        </TooltipContent>
+      </Tooltip>{" "}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 cursor-pointer rounded-full hover:bg-orange-50 hover:text-orange-600 transition"
+            onClick={() => {
+              setSelectedQueryTask(task);
+              setRaiseQueryModalOpen(true);
+            }}
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Raise Query</p>
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 };
@@ -868,36 +904,17 @@ const TodayTasksTable = ({
                     </TableCell>
                     <TableCell>{getStatusBadge(task.status)}</TableCell>
                     <TableCell>
-                      <TaskActions
-                        task={task}
-                        onChecklist={onChecklist}
-                        onToggleComplete={onToggleComplete}
-                        handleCompleteClick={handleCompleteClick}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 ml-1"
-                        onClick={() => {
-                          setSelectedQueryTask(task);
-                          setQueryDrawerOpen(true);
-                        }}
-                        title="View Conversation"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => {
-                          setSelectedQueryTask(task);
-                          setRaiseQueryModalOpen(true);
-                        }}
-                        title="Raise Query"
-                      >
-                        <MessageSquarePlus className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center">
+                        <TaskActions
+                          task={task}
+                          onChecklist={onChecklist}
+                          onToggleComplete={onToggleComplete}
+                          handleCompleteClick={handleCompleteClick}
+                          setSelectedQueryTask={setSelectedQueryTask}
+                          setQueryDrawerOpen={setQueryDrawerOpen}
+                          setRaiseQueryModalOpen={setRaiseQueryModalOpen}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 </React.Fragment>
@@ -1515,45 +1532,6 @@ const MyTask = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6">
       <div className="mx-auto">
-        {/* SOCKET STATUS BAR */}
-        <div className="mb-6 p-3 bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-3 h-3 rounded-full ${isConnected ? "bg-emerald-500 animate-pulse" : "bg-gray-400"}`}
-              />
-              <div>
-                <div className="font-semibold text-emerald-900 text-sm">
-                  Live Mode{" "}
-                  {isConnected
-                    ? `🔌 Connected (${events.length} events)`
-                    : "(Disconnected)"}
-                </div>
-                {isConnected && sock?.id && (
-                  <div className="text-xs text-emerald-700 font-mono bg-emerald-100 px-2 py-0.5 rounded">
-                    {sock.id.slice(0, 8)}...
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={() => setConfigOpen(true)}
-                variant="outline"
-              >
-                ⚙️ Config
-              </Button>
-              <Button
-                size="sm"
-                variant={isConnected ? "destructive" : "secondary"}
-              >
-                {isConnected ? "Disconnect" : "Connect"}
-              </Button>
-            </div>
-          </div>
-        </div>
-
         <Card className="shadow-xl border-0 overflow-hidden">
           <div className="flex justify-between items-center px-6">
             <h1 className="text-2xl font-bold">My Task</h1>
@@ -1860,7 +1838,11 @@ const MyTask = () => {
         onClose={() => setQueryDrawerOpen(false)}
       /> */}
       {queryDrawerOpen && selectedQueryTask && (
-        <TaskChat task={selectedQueryTask} open={queryDrawerOpen} onClose={() => setQueryDrawerOpen(false)} />
+        <TaskChat
+          task={selectedQueryTask}
+          open={queryDrawerOpen}
+          onClose={() => setQueryDrawerOpen(false)}
+        />
       )}
     </div>
   );
