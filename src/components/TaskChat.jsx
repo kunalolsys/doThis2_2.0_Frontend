@@ -23,6 +23,7 @@ import {
   Paperclip,
   Smile,
   AlertTriangle,
+  Reply,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { useSocket } from "../context/SocketContext";
@@ -41,6 +42,7 @@ const TaskChat = ({ task, open, onClose }) => {
   const [replyText, setReplyText] = useState("");
   const [replyingTo, setReplyingTo] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [hoveredId, setHoveredId] = useState(null);
   const messagesEndRef = useRef(null);
 
   const currentUser = useSelector((state) => state.users.currentUser);
@@ -404,11 +406,13 @@ const TaskChat = ({ task, open, onClose }) => {
               messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.user._id === currentUser._id ? "justify-end" : "justify-start gap-3"}`}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setReplyingTo(msg);
-                  }}
+                  onMouseEnter={() => setHoveredId(msg.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  className={`flex relative ${
+                    msg.user._id === currentUser._id
+                      ? "justify-end"
+                      : "justify-start gap-3"
+                  }`}
                 >
                   <div
                     className={`max-w-3xl p-4 rounded-2xl shadow-sm relative cursor-pointer hover:shadow-md transition-shadow ${
@@ -423,6 +427,25 @@ const TaskChat = ({ task, open, onClose }) => {
                       }
                     }}
                   >
+                    {hoveredId === msg.id && (
+                      <button
+                        onClick={() => setReplyingTo(msg)}
+                        className={`absolute top-1 cursor-pointer ${
+                          msg.user._id === currentUser._id
+                            ? "-left-9"
+                            : "-right-9"
+                        }
+                        w-8 h-8 flex items-center justify-center
+                        rounded-full shadow-md transition-all duration-200
+                        ${
+                          msg.user._id === currentUser._id
+                            ? "bg-white text-gray-600 hover:bg-gray-100"
+                            : "bg-emerald-500 text-white hover:bg-emerald-600"
+                        }`}
+                      >
+                        <Reply size={16} />
+                      </button>
+                    )}
                     {msg.parentMessage && (
                       <div className="mb-2 p-2 rounded text-xs opacity-80 border-l-4 border-yellow-400">
                         <div className="font-semibold">
