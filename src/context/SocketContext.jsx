@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from "react";
 import { useSelector } from "react-redux";
-import { initSocket, disconnectSocket, getSocket } from "../lib/socket.js";
+import { initSocket } from "../lib/socket.js";
 
 const SocketContext = createContext();
 

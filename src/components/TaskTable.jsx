@@ -717,7 +717,7 @@ const TaskTable = ({
         onRefreshTasks();
       }
     } catch (err) {
-      toast.error(err.response.data.message||"Failed to update status");
+      toast.error(err.response.data.message || "Failed to update status");
     }
   };
 
@@ -1383,12 +1383,8 @@ const TaskTable = ({
                     <TableHead className="whitespace-nowrap">
                       Description
                     </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      Assigned By
-                    </TableHead>{" "}
-                    <TableHead className="whitespace-nowrap">
-                      Assigned To
-                    </TableHead>
+                    <TableHead className="">Assigned By</TableHead>{" "}
+                    <TableHead className="">Assigned To</TableHead>
                     <TableHead className="whitespace-nowrap">
                       Assign To Department
                     </TableHead>
@@ -1461,7 +1457,7 @@ const TaskTable = ({
                             </Button>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-row gap-1">
+                            <div className="flex flex-row gap-1 w-50">
                               <span className="text-sm font-medium text-gray-900">
                                 {task.assignedBy?.name || "-"}
                               </span>
@@ -1487,7 +1483,7 @@ const TaskTable = ({
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="flex flex-row gap-1">
+                            <div className="flex flex-row gap-1 w-50">
                               <span className="text-sm font-medium text-gray-900">
                                 {task.assignedTo?.name || "-"}
                               </span>
@@ -1586,7 +1582,7 @@ const TaskTable = ({
                           <TableCell className="text-center">
                             {getStatusBadge(task.status)}
                           </TableCell>
-                          <TableCell className="flex items-center justify-center gap-1">
+                          <TableCell className="flex items-center gap-1">
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1741,12 +1737,8 @@ const TaskTable = ({
                     <TableHead className="whitespace-nowrap">
                       End Date
                     </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      Assigned By
-                    </TableHead>
-                    <TableHead className="whitespace-nowrap">
-                      Assigned To
-                    </TableHead>
+                    <TableHead className="">Assigned By</TableHead>
+                    <TableHead className="">Assigned To</TableHead>
                     <TableHead className="whitespace-nowrap">
                       Assign To Department
                     </TableHead>
@@ -1850,7 +1842,7 @@ const TaskTable = ({
                             {task.endDate ? formatDate(task.endDate) : "-"}
                           </TableCell>
                           <TableCell className="w-100">
-                            <div className="flex flex-row gap-1 ">
+                            <div className="flex flex-row gap-1 w-50">
                               <span className="text-sm font-medium text-gray-900">
                                 {task.assignedBy?.name || "-"}
                               </span>
@@ -1877,7 +1869,7 @@ const TaskTable = ({
                           </TableCell>
 
                           <TableCell className="w-100">
-                            <div className="flex flex-row gap-1">
+                            <div className="flex flex-row gap-1 w-50">
                               <span className="text-sm font-medium text-gray-900">
                                 {task.assignedTo?.name || "-"}
                               </span>
@@ -1927,7 +1919,7 @@ const TaskTable = ({
                           <TableCell className="text-center">
                             {getStatusBadge(task.status)}
                           </TableCell>
-                          <TableCell className="flex items-center justify-center gap-1">
+                          <TableCell className="flex items-center gap-1">
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>

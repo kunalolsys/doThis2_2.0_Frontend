@@ -180,12 +180,15 @@ const TaskActions = ({
   setSelectedQueryTask,
   setQueryDrawerOpen,
   setRaiseQueryModalOpen,
+  unreadCount,
+  setUnreadMap,
 }) => {
   const isCompleted = task.status === "Completed";
   const upComing = task.status == "Upcoming";
   const onHold = task.status == "Onhold";
   const stopped = task.status == "Stopped";
   const isFms = task.taskType == "FmsInstanceTask";
+
   return (
     <div className="flex gap-1">
       {/* Checklist Button */}
@@ -272,17 +275,39 @@ const TaskActions = ({
       )}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 cursor-pointer rounded-full hover:bg-blue-50 hover:text-blue-600 transition"
-            onClick={() => {
-              setSelectedQueryTask(task);
-              setQueryDrawerOpen(true);
-            }}
-          >
-            <MessageCircle className="h-4 w-4" />
-          </Button>
+          <div className="relative">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 rounded-full 
+        text-blue-600 bg-blue-50 
+        hover:bg-blue-100 hover:text-blue-700 
+        transition-all duration-200"
+              onClick={() => {
+                setSelectedQueryTask(task);
+                setQueryDrawerOpen(true);
+
+                setUnreadMap((prev) => ({
+                  ...prev,
+                  [task.conversationId]: 0,
+                }));
+              }}
+            >
+              <MessageCircle className="h-4 w-4" />
+            </Button>
+
+            {unreadCount > 0 && (
+              <span
+                className="absolute -top-1 -right-1 
+          min-w-[16px] h-[16px] px-1 
+          flex items-center justify-center 
+          text-[10px] font-bold text-white 
+          bg-red-500 rounded-full shadow"
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </div>
         </TooltipTrigger>
         <TooltipContent>
           <p>Open Conversation</p>
@@ -293,7 +318,10 @@ const TaskActions = ({
           <Button
             size="icon"
             variant="ghost"
-            className="h-8 w-8 cursor-pointer rounded-full hover:bg-orange-50 hover:text-orange-600 transition"
+            className="h-8 w-8 rounded-full 
+        text-orange-600 bg-orange-50 
+        hover:bg-orange-100 hover:text-orange-700 
+        transition-all duration-200"
             onClick={() => {
               setSelectedQueryTask(task);
               setRaiseQueryModalOpen(true);
@@ -758,6 +786,8 @@ const TodayTasksTable = ({
   setSelectedQueryTask,
   setQueryDrawerOpen,
   setRaiseQueryModalOpen,
+  unreadMap,
+  setUnreadMap,
 }) => {
   const combinedTasks = [...(tasks || []), ...(upcomingRecurringTasks || [])];
   return (
@@ -913,6 +943,8 @@ const TodayTasksTable = ({
                           setSelectedQueryTask={setSelectedQueryTask}
                           setQueryDrawerOpen={setQueryDrawerOpen}
                           setRaiseQueryModalOpen={setRaiseQueryModalOpen}
+                          unreadCount={unreadMap[task.conversationId] || 0}
+                          setUnreadMap={setUnreadMap}
                         />
                       </div>
                     </TableCell>
@@ -951,8 +983,22 @@ const MyTask = () => {
   // UI State
   const [activeTab, setActiveTab] = useState("today");
   const [configOpen, setConfigOpen] = useState(false);
-  const { isConnected, socket: sock, events } = useSocket();
+  const { isConnected, socket, events } = useSocket();
+  const [unreadMap, setUnreadMap] = useState({});
+  useEffect(() => {
+    if (!socket) return;
 
+    socket.on("unread-count", ({ conversationId, count }) => {
+      setUnreadMap((prev) => ({
+        ...prev,
+        [conversationId]: count,
+      }));
+    });
+
+    return () => {
+      socket.off("unread-count");
+    };
+  }, [socket]);
   // NOTE: selectedStatFilter can be: 'total', 'overdue', 'completed', 'dueToday', or null (no stat filter)
   const [selectedStatFilter, setSelectedStatFilter] = useState(null);
 
@@ -1383,9 +1429,7 @@ const MyTask = () => {
       );
       dispatch(fetchTaskCounts(currentUser._id));
     } catch (err) {
-      toast.error(
-        err || err.response.data.message || "Failed to update status",
-      );
+      toast.error(err?.response?.data?.message || "Failed to update status");
     }
   };
 
@@ -1503,7 +1547,7 @@ const MyTask = () => {
   };
   const handleFormSubmit = async (formData) => {
     try {
-      setRefetch(true)
+      setRefetch(true);
       // 🔥 1. Save formData first
       await dispatch(
         updateMyTaskFormData({
@@ -1523,7 +1567,7 @@ const MyTask = () => {
 
       setShowFormModal(false);
     } catch (err) {
-      setRefetch(false)
+      setRefetch(false);
       console.error(err);
     }
   };
@@ -1679,6 +1723,8 @@ const MyTask = () => {
                         setSelectedQueryTask={setSelectedQueryTask}
                         setQueryDrawerOpen={setQueryDrawerOpen}
                         setRaiseQueryModalOpen={setRaiseQueryModalOpen}
+                        unreadMap={unreadMap}
+                        setUnreadMap={setUnreadMap}
                       />
                     </TooltipProvider>
 
