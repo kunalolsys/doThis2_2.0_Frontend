@@ -1,6 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../../lib/api"; // Adjust path as per your project structure
-import { socketEventReceived } from "../socket/socketSlice.js";
 import dayjs from "dayjs";
 
 // --- Thunk to fetch Table Data (Paginated) ---
@@ -420,31 +419,6 @@ const myTaskSlice = createSlice({
           (task) => task._id !== action.payload && task.id !== action.payload,
         );
       })
-      // === SOCKET EVENTS (Optimistic Updates) ===
-      .addMatcher(
-        (action) => action.type === socketEventReceived.type,
-        (state, action) => {
-          const { name, data } = action.payload;
-          console.log("Socket event:", name, data);
-
-          // NEW TASK ASSIGNED → Optimistic add
-          if (name === "new-task-assigned") {
-            state.tasks.unshift(data.task); // Add to top
-            state.totalTasks += 1;
-          }
-
-          // NEW QUERY → Update task or toast
-          if (name === "new-query") {
-            // Find task and add query
-            const taskIndex = state.tasks.findIndex(
-              (t) => t._id === data.query.taskId,
-            );
-            if (taskIndex !== -1) {
-              state.tasks[taskIndex].hasNewQuery = true;
-            }
-          }
-        },
-      );
   },
 });
 

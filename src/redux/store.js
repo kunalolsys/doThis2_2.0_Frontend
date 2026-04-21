@@ -10,7 +10,6 @@ import workingWeekReducer from './slices/workingWeek/workingWeekSlice';
 import scheduleHolidayTaskReducer from './slices/scheduleHolidayTask/scheduleHolidayTaskSlice';
 import fmsReducer from './slices/fms/fmsSlice';
 import notificationReducer from './slices/notification/notificationSlice';
-import socketReducer from './slices/socket/socketSlice';
 
 const store = configureStore({
     reducer: {
@@ -25,7 +24,6 @@ const store = configureStore({
         scheduleHolidayTask: scheduleHolidayTaskReducer,
         fms:fmsReducer,
         notifications: notificationReducer,
-        socket: socketReducer
     },
 });
 

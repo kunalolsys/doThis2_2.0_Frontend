@@ -49,11 +49,7 @@ const TaskChat = ({ task, open, onClose }) => {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
-  useEffect(() => {
-    if (messages.length > 0) {
-      scrollToBottom();
-    }
-  }, [messages]);
+
   useEffect(() => {
     if (open && task?.conversationId) {
       loadTaskChat();
@@ -148,7 +144,7 @@ const TaskChat = ({ task, open, onClose }) => {
       } else {
         await api.post("/thread/message", payload);
       }
-      toast.success(replyingTo ? "Replied!" : "Sent!");
+      // toast.success(replyingTo ? "Replied!" : "Sent!");
       addEvent("chat-message", task._id);
       // await loadTaskChat();
     } catch {
@@ -188,7 +184,11 @@ const TaskChat = ({ task, open, onClose }) => {
     socket.disconnect();
     socket.connect();
   };
-
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [messages]);
   //**for getting live chats */
   useEffect(() => {
     if (socket && task?.conversationId) {
@@ -199,45 +199,14 @@ const TaskChat = ({ task, open, onClose }) => {
   useEffect(() => {
     if (!socket || !open || !task?.conversationId) return;
 
-    const handleMessage = (msg) => {
-      // only for current chat
-      if (msg.conversationId !== task.conversationId) return;
-
-      const formatted = {
-        id: msg._id,
-        type: msg.type || (msg.queryId ? "query" : "message"),
-        text: msg.text,
-        user: msg.sender,
-        timestamp: msg.createdAt,
-        parentMessage:
-          msg.parentMessage ||
-          (msg.queryId
-            ? {
-                text: msg.queryId.message || msg.queryId.text,
-                sender: msg.queryId.raisedBy || msg.queryId.sender || {},
-              }
-            : null),
-        seen: (msg.seenBy || []).some((s) => s.user?._id === currentUser?._id),
-        status: msg.status || "Responded",
-      };
-
-      // avoid duplicate
-      setMessages((prev) => {
-        const exists = prev.some((m) => m.id === formatted.id);
-        if (exists) return prev;
-        return [...prev, formatted].sort(
-          (a, b) => new Date(a.timestamp) - new Date(b.timestamp),
-        );
-      });
-    };
-    socket.on("chat-message", handleMessage);
-    socket.on("new-query", handleMessage);
-    socket.on("query-reply", handleMessage);
+    socket.on("chat-message", loadTaskChat);
+    socket.on("new-query", loadTaskChat);
+    socket.on("query-reply", loadTaskChat);
 
     return () => {
-      socket.off("chat-message", handleMessage);
-      socket.off("new-query", handleMessage);
-      socket.off("query-reply", handleMessage);
+      socket.off("chat-message", loadTaskChat);
+      socket.off("new-query", loadTaskChat);
+      socket.off("query-reply", loadTaskChat);
     };
   }, [socket, task?.conversationId, currentUser?._id]);
 
@@ -478,11 +447,11 @@ const TaskChat = ({ task, open, onClose }) => {
                             {msg.assignedToMe ? "YOUR QUERY" : "Query"}
                           </div>
                           <p className="mb-2 leading-relaxed">{msg.text}</p>
-                          <div
+                          {/* <div
                             className={`inline-block px-2 py-[2px] text-[10px] rounded-full mt-1 ${getStatusStyle(msg.status, msg.user._id === currentUser._id)}`}
                           >
                             {msg.status}
-                          </div>
+                          </div> */}
                         </div>
                       </div>
                     ) : (
