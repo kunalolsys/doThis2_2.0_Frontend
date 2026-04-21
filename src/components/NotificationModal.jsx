@@ -18,8 +18,20 @@ const NotificationModal = ({ open, onClose }) => {
   const [selectedNotification, setSelectedNotification] = useState(null);
   const dispatch = useDispatch();
   const notificationState = useSelector((state) => state.notifications);
-  const { setUnreadCount } = useSocket();
+  const { setUnreadCount, socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
 
+    const handleNotification = () => {
+      dispatch(fetchNotifications());
+    };
+
+    socket.on("notification", handleNotification);
+
+    return () => {
+      socket.off("notification", handleNotification);
+    };
+  }, [socket, dispatch]);
   useEffect(() => {
     if (open) dispatch(fetchNotifications());
   }, [open, dispatch]);

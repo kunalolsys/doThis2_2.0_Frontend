@@ -25,30 +25,79 @@ import {
   AlertTriangle,
   Reply,
 } from "lucide-react";
+import EmojiPicker from "emoji-picker-react";
 import { useSelector } from "react-redux";
 import { useSocket } from "../context/SocketContext";
 import api from "../lib/api";
 import { toast } from "sonner";
 import dayjs from "dayjs";
 import ViewLink from "../pages/myDay/attachmentViewer";
+import { formatLabel } from "../lib/utilFunctions";
 
 const { Panel } = Collapse;
 const { TextArea } = Input;
 
 const TaskChat = ({ task, open, onClose }) => {
+  const currentUser = useSelector((state) => state.users.currentUser);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [replyingTo, setReplyingTo] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [showEmoji, setShowEmoji] = useState(false);
+
+  const onEmojiClick = (emojiData) => {
+    setReplyText((prev) => prev + emojiData.emoji);
+  };
   const [hoveredId, setHoveredId] = useState(null);
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
+  const seenDebounceRef = useRef(0);
+  const itsMe = task ? currentUser._id == task?.assignedTo?._id : false;
+  const markMessageSeen = useCallback(async (messageIds) => {
+    if (!Array.isArray(messageIds) || messageIds.length === 0) return;
+    try {
+      for (const messageId of messageIds) {
+        await api.post("/thread/seen", { messageId });
+      }
+    } catch (e) {
+      console.error("Mark seen failed:", e);
+    }
+    // Optimistic UI update
+    setMessages((prev) =>
+      prev.map((m) => (messageIds.includes(m.id) ? { ...m, seen: true } : m)),
+    );
+  }, []);
 
-  const currentUser = useSelector((state) => state.users.currentUser);
   const { socket, addEvent, isConnected } = useSocket();
 
+  const handleScroll = useCallback(() => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    isAtBottomRef.current =
+      el.scrollTop + el.clientHeight >= el.scrollHeight - 100;
+
+    // Auto mark seen debounced
+    const now = Date.now();
+    if (now - seenDebounceRef.current > 1500) {
+      seenDebounceRef.current = now;
+      const unseenIds = messages
+        .filter((m) => !m.seen && m.type === "message")
+        .slice(-20)
+        .map((m) => m.id);
+      if (unseenIds.length > 0) {
+        markMessageSeen(unseenIds);
+      }
+    }
+  }, [messages]);
+
   const scrollToBottom = useCallback(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
+    }
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
@@ -187,10 +236,20 @@ const TaskChat = ({ task, open, onClose }) => {
     socket.connect();
   };
   useEffect(() => {
-    if (messages.length > 0) {
+    // Always mark recent unseen on load/update (1.5s debounce in scroll handles rate)
+    const unseenIds = messages
+      .filter((m) => !m.seen && m.type === "message")
+      .slice(-20)
+      .map((m) => m.id);
+    if (unseenIds.length > 0) {
+      markMessageSeen(unseenIds);
+    }
+
+    if (isAtBottomRef.current && messages.length > 0) {
       scrollToBottom();
     }
   }, [messages]);
+
   //**for getting live chats */
   useEffect(() => {
     if (socket && task?.conversationId) {
@@ -211,7 +270,27 @@ const TaskChat = ({ task, open, onClose }) => {
       socket.off("query-reply", loadTaskChat);
     };
   }, [socket, task?.conversationId, currentUser?._id]);
+  const safeTask = {
+    ...task,
+    title: task?.title || task?.description || "Untitled Task",
+    TaskId: task?.TaskId || task?.taskId,
+    dueDate: task?.dueDate || task?.plannedDueDate,
+  };
+  //** close emoji section  */
+  const emojiRef = useRef(null);
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiRef.current && !emojiRef.current.contains(event.target)) {
+        setShowEmoji(false);
+      }
+    };
 
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   if (!task) return;
   return (
     <div
@@ -234,17 +313,17 @@ const TaskChat = ({ task, open, onClose }) => {
               </Avatar> */}
 
               <div>
-                <h2 className="font-bold text-xl">{task?.title}</h2>
+                <h2 className="font-bold text-xl">{safeTask?.title}</h2>
 
                 <div className="flex items-center gap-2 mt-1">
                   {/* Task ID */}
                   <span className="px-2 py-[2px] text-[11px] rounded-full bg-indigo-50 text-indigo-600 border border-indigo-100">
-                    Task #{task?.TaskId}
+                    Task #{safeTask?.TaskId}
                   </span>
 
                   {/* Status */}
                   <span className="px-2 py-[2px] text-[11px] rounded-full bg-gray-100 text-gray-600 border">
-                    {task?.status}
+                    {safeTask?.status}
                   </span>
                 </div>
               </div>
@@ -258,10 +337,23 @@ const TaskChat = ({ task, open, onClose }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Avatar size={28} style={{ background: "#64748b" }}>
-                    {task?.assignedTo?.name?.[0]}
+                    {safeTask?.assignedTo?.name?.[0]}
                   </Avatar>
                   <span className="font-semibold text-slate-200">
-                    {task?.assignedTo?.name}
+                    {safeTask?.assignedTo?.name}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-1">
+                  Assigned By
+                </div>
+                <div className="flex items-center gap-2">
+                  <Avatar size={28} style={{ background: "#64748b" }}>
+                    {safeTask?.assignedBy?.name?.[0]}
+                  </Avatar>
+                  <span className="font-semibold text-slate-200">
+                    {safeTask?.assignedBy?.name}
                   </span>
                 </div>
               </div>
@@ -271,12 +363,12 @@ const TaskChat = ({ task, open, onClose }) => {
                 </div>
                 <Tag
                   color={
-                    dayjs(task?.dueDate).isBefore(dayjs())
+                    dayjs(safeTask?.dueDate).isBefore(dayjs())
                       ? "red-inverse"
                       : "green-inverse"
                   }
                 >
-                  {dayjs(task?.dueDate).format("MMM DD")}
+                  {dayjs(safeTask?.dueDate).format("MMM DD")}
                 </Tag>
               </div>
             </div>
@@ -285,13 +377,13 @@ const TaskChat = ({ task, open, onClose }) => {
             <div className="mb-6">
               <div className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-3">
                 Checklist (
-                {task?.checklist?.filter((item) => item.isCompleted).length ||
-                  0}
-                /{task?.checklist?.length || 0})
+                {safeTask?.checklist?.filter((item) => item.isCompleted)
+                  .length || 0}
+                /{safeTask?.checklist?.length || 0})
               </div>
-              {task?.checklist?.length != 0 && (
+              {safeTask?.checklist?.length != 0 && (
                 <div className="max-h-50 overflow-y-auto space-y-2 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
-                  {task?.checklist?.map((item, index) => (
+                  {safeTask?.checklist?.map((item, index) => (
                     <div
                       key={index}
                       className="flex items-center gap-2 text-sm"
@@ -313,11 +405,49 @@ const TaskChat = ({ task, open, onClose }) => {
                 </div>
               )}
             </div>
+            <div className="mb-6">
+              {safeTask?.createdForm?.length > 0 && (
+                <div className="mb-6">
+                  <div className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-3">
+                    Form Details
+                  </div>
 
+                  <div className="space-y-2 p-3 bg-slate-700/40 rounded-lg border border-slate-600">
+                    {safeTask.createdForm.map((field) => {
+                      const value = safeTask?.formData?.[field.fieldName];
+
+                      return (
+                        <div
+                          key={field._id}
+                          className="flex flex-col text-sm border-b border-slate-600 pb-2 last:border-none"
+                        >
+                          {/* Field Label */}
+                          <span className="text-slate-400 text-xs">
+                            {formatLabel(field.fieldName)}
+                          </span>
+
+                          {/* Field Value */}
+                          <span className="text-slate-200 font-medium">
+                            {value || (
+                              <span className="text-slate-500 italic">
+                                Not filled
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
             {/* Quick Actions */}
-            {task?.attachmentFile?.length > 0 && (
+            {safeTask?.attachmentFile?.length > 0 && (
               <div className="space-y-2 mb-8">
-                <ViewLink file={task?.attachmentFile} text={"Attachments"} />
+                <ViewLink
+                  file={safeTask?.attachmentFile}
+                  text={"Attachments"}
+                />
               </div>
             )}
 
@@ -327,7 +457,7 @@ const TaskChat = ({ task, open, onClose }) => {
                 Description
               </div>
               <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap bg-slate-700/30 p-3 rounded-lg border border-slate-600">
-                {task?.description || "No description"}
+                {safeTask?.description || "No description"}
               </p>
             </div>
           </div>
@@ -346,18 +476,24 @@ const TaskChat = ({ task, open, onClose }) => {
                   {onlineUsers.map((u) => (
                     <Avatar key={u._id}>{u.name[0]}</Avatar>
                   ))}
-                  <Avatar>{task.assignedBy?.name?.[0]}</Avatar>
+                  <Avatar>
+                    {itsMe
+                      ? safeTask.assignedBy?.name[0]
+                      : safeTask.assignedTo?.name[0]}
+                  </Avatar>
                 </Avatar.Group>
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></div>
               </div>
               <div>
                 <div className="font-semibold text-gray-900 flex items-center gap-2">
-                  Task Conversation
-                  <span
+                  {(itsMe
+                    ? safeTask.assignedBy?.name
+                    : safeTask.assignedTo?.name) || "Task Conversation"}
+                  {/* <span
                     className={`w-2 h-2 rounded-full ${
                       isConnected ? "bg-green-500" : "bg-red-500 animate-pulse"
                     }`}
-                  />
+                  /> */}
                 </div>
 
                 <div className="text-xs text-gray-500 flex items-center gap-2">
@@ -395,7 +531,11 @@ const TaskChat = ({ task, open, onClose }) => {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div
+            ref={chatContainerRef}
+            className="flex-1 overflow-y-auto p-4 space-y-4 relative"
+            onScroll={handleScroll}
+          >
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <Spin size="large" />
@@ -539,11 +679,19 @@ const TaskChat = ({ task, open, onClose }) => {
                 disabled={!replyText.trim()}
                 className="w-14 h-14 flex items-center justify-center shadow-lg"
               />
-              <Button
-                icon={<Smile size={20} />}
-                size="large"
-                className="w-14 h-14"
-              />
+              <div ref={emojiRef} className="relative">
+                <Button
+                  icon={<Smile size={20} />}
+                  size="large"
+                  onClick={() => setShowEmoji((prev) => !prev)}
+                />
+
+                {showEmoji && (
+                  <div className="absolute bottom-16 right-0 z-50">
+                    <EmojiPicker onEmojiClick={onEmojiClick} />
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2 text-xs mt-2 opacity-75">
               <div

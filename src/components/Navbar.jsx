@@ -59,11 +59,10 @@ const Navbar = () => {
           {role && (
             <span
               className={`flex items-center gap-1 text-sm px-3 py-1 rounded-full font-semibold shadow-sm ${
-                roleColors[role] ||
-                "bg-gray-100 text-gray-700"
+                roleColors[role] || "bg-gray-100 text-gray-700"
               }`}
             >
-              👤 {role|| "No Role"}
+              👤 {role || "No Role"}
             </span>
           )}
         </div>
@@ -74,14 +73,12 @@ const Navbar = () => {
           <div className="flex items-center gap-2">
             {/* Notification Badge */}
             <NotificationBadge onClick={() => setShowNotifications(true)} />
-            
+
             <div className="hidden sm:block text-right">
-              <p className={`text-md font-medium px-4 py-1 rounded-lg shadow-sm border border-gray-200 ${
-                isConnected 
-                  ? 'bg-green-50 text-green-900 border-green-200' 
-                  : 'bg-gray-50 text-gray-900 border-gray-200'
-              }`}>
-                Welcome, {userName}! {isConnected && '(Live)'}
+              <p
+                className={`text-md font-medium px-4 py-1  `}
+              >
+                Welcome, {userName}!
               </p>
             </div>
 
@@ -152,11 +149,11 @@ const Navbar = () => {
       </div> */}
 
       {/* Overlay for dropdowns */}
-      <NotificationModal 
-        open={showNotifications} 
-        onClose={() => setShowNotifications(false)} 
+      <NotificationModal
+        open={showNotifications}
+        onClose={() => setShowNotifications(false)}
       />
-      
+
       {(isProfileOpen || showNotifications) && (
         <div
           className="fixed inset-0 z-40"

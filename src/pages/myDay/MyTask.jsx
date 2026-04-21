@@ -948,7 +948,6 @@ const MyTask = () => {
     totalTasks,
   } = useSelector((state) => state.myTasks);
   const { currentUser } = useSelector((state) => state.users);
-
   // UI State
   const [activeTab, setActiveTab] = useState("today");
   const [configOpen, setConfigOpen] = useState(false);
@@ -1504,6 +1503,7 @@ const MyTask = () => {
   };
   const handleFormSubmit = async (formData) => {
     try {
+      setRefetch(true)
       // 🔥 1. Save formData first
       await dispatch(
         updateMyTaskFormData({
@@ -1523,6 +1523,7 @@ const MyTask = () => {
 
       setShowFormModal(false);
     } catch (err) {
+      setRefetch(false)
       console.error(err);
     }
   };

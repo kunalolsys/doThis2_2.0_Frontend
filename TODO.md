@@ -1,8 +1,27 @@
-## WhatsApp-style Reply in TaskChat
+# TaskChat Improvements
 
-### Steps:
-- [ ] Step 1: Add replyingTo state, long-press/right-click menu, quoted composer UI, threaded send
-- [ ] Step 2: Test mobile/desktop reply flow
-- [ ] Complete
+## Previous: Auto-Scroll Fix [✅ COMPLETED]
 
-Progress: 0/2
+## New Task: Auto-Mark Thread Messages as Seen
+
+**✅ APPROVED: Use `/thread/{conversationId}/seen` API + optimistic update**
+
+## Implementation Steps
+
+### 1. [✅ COMPLETED] Per-message seen with IntersectionObserver + `/thread/seen {messageId}`
+   - Add markThreadSeen: POST `/thread/${task.conversationId}/seen`
+   - Optimistic: set all messages seen=true
+   - Debounce calls (use custom debounce ~1s)
+
+### 2. [] Integrate with scroll
+   - Call debouncedMarkSeen in handleScroll
+   - Initial call after loadTaskChat
+
+### 3. [] Test
+   - Open TaskChat, scroll → network POST /thread/.../seen
+   - All ✓✓ appear
+
+### 4. [] [COMPLETED]
+
+**Next: Step 1 edits**
+
