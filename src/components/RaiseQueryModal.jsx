@@ -134,7 +134,7 @@ const RaiseQueryModal = ({ task, open, onClose }) => {
               />
             </Form.Item>
 
-            <Form.Item label="Assigned To" className="mb-3">
+            <Form.Item label="Send Query To" className="mb-3">
               <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
                 <UserCheck className="w-5 h-5 text-blue-600" />
                 <div>
