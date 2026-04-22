@@ -57,6 +57,7 @@ import {
 import { Button } from "../../components/ui/button";
 import dayjs from "dayjs";
 import axios from "axios";
+import api from "../../lib/api";
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
@@ -172,10 +173,7 @@ const AdminDashboard = () => {
         period: "yearly",
       };
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/mis/report`,
-        payload,
-      );
+      const response = await api.post(`/mis/report`, payload);
       // const users = response.data?.data || [];
       setTopPerformers(response.data.topPerformers);
     } catch (error) {

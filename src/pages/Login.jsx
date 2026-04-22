@@ -26,11 +26,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // const res = await axios.post(
-      //   `${import.meta.env.VITE_API_BASE_URL}/auth/login`,
-      //   formData,
-      //   { withCredentials: true },
-      // );
+
       const res = await loginUser(formData);
       setIsLoading(false);
       if (res.data.success) {

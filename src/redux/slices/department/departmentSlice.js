@@ -30,10 +30,7 @@ export const fetchDepartments = createAsyncThunk(
         limit: departmentLimit || undefined,
         search: departmentSearchTerm || undefined,
       };
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/setup/departments/list`,
-        payload,
-      );
+      const response = await api.post(`/setup/departments/list`, payload);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
@@ -45,10 +42,7 @@ export const addDepartment = createAsyncThunk(
   "departments/addDepartment",
   async (department, { rejectWithValue }) => {
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/setup/departments`,
-        department,
-      );
+      const response = await api.post(`/setup/departments`, department);
       return response.data.department;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
@@ -59,10 +53,9 @@ export const addDepartment = createAsyncThunk(
 export const updateDepartment = createAsyncThunk(
   "departments/updateDepartment",
   async (department) => {
-    const response = await axios.put(
-      `${import.meta.env.VITE_API_BASE_URL}/setup/departments/${department._id}`,
-      { name: department.name },
-    );
+    const response = await api.put(`/setup/departments/${department._id}`, {
+      name: department.name,
+    });
     return response.data.data;
   },
 );
@@ -87,10 +80,7 @@ export const exportDepts = createAsyncThunk(
       const payload = {
         search: departmentSearchTerm || undefined,
       };
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/setup/departments/export`,
-        payload,
-      );
+      const response = await api.post(`/setup/departments/export`, payload);
 
       return response.data.data;
     } catch (error) {

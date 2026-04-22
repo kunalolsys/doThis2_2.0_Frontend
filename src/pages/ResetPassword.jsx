@@ -3,6 +3,7 @@ import { Mail, Eye, EyeOff, ArrowRight, ShieldCheck, TestTube2 } from 'lucide-re
 import { useNavigate, useSearchParams } from 'react-router-dom'; // Import useSearchParams
 import { toast } from 'sonner';
 import axios from 'axios'; // For API calls
+import api from '../lib/api';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ const ResetPassword = () => {
     setIsLoading(true);
     try {
       // Call backend API to send reset email
-      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/forgot-password`, { email });
+      const res = await api.post(`/auth/forgot-password`, { email });
       if (res.data.success) {
         toast.success(res.data.message || 'Password reset link has been sent.');
         setEmailSent(true); // Indicate that the email has been sent
@@ -86,7 +87,7 @@ const ResetPassword = () => {
 
     try {
       // Call backend API to reset password using the token
-      const res = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/auth/reset-password`, { token, newPassword });
+      const res = await api.post(`/auth/reset-password`, { token, newPassword });
       toast.success(res.data.message || 'Password reset successfully! Please log in with your new password.');
       navigate('/'); // Redirect to login page
     } catch (err) {

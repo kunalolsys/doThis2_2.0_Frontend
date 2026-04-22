@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { setCurrentUser } from "../redux/slices/user/userSlice";
+import { logoutUser } from "../lib/authAPI";
 
 const Sidebar = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -90,14 +91,13 @@ const Sidebar = ({ children }) => {
     setOpenDropdowns((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutUser();
     // Clear all relevant cookies
     Object.keys(Cookies.get()).forEach((cookieName) => {
       Cookies.remove(cookieName);
     });
     toast.success("Logged out successfully!");
-    // Navigate to login page
-    navigate("/");
   };
 
   const isActiveLink = (path) => {

@@ -1,36 +1,39 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-// const API_BASE_URL = 'http://localhost:4000/api/setup';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import axios from "axios";
+import api from "../../../lib/api";
 
 // Async thunks
 export const fetchWorkingWeek = createAsyncThunk(
-  'workingWeek/fetchWorkingWeek',
+  "workingWeek/fetchWorkingWeek",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/setup/working-week`);
+      const response = await api.get(`/setup/working-week`);
       return response.data.data.workingWeek;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch working week');
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch working week",
+      );
     }
-  }
+  },
 );
 
 export const updateWorkingWeek = createAsyncThunk(
-  'workingWeek/updateWorkingWeek',
+  "workingWeek/updateWorkingWeek",
   async (workingWeekData, { rejectWithValue }) => {
     try {
-      const response = await axios.patch(`${import.meta.env.VITE_API_BASE_URL}/setup/working-week`, workingWeekData);
+      const response = await api.patch(`/setup/working-week`, workingWeekData);
       return response.data.data.workingWeek;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update working week');
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update working week",
+      );
     }
-  }
+  },
 );
 
 // Slice
 const workingWeekSlice = createSlice({
-  name: 'workingWeek',
+  name: "workingWeek",
   initialState: {
     workingWeek: {
       workingDays: {
@@ -40,10 +43,10 @@ const workingWeekSlice = createSlice({
         thursday: true,
         friday: true,
         saturday: false,
-        sunday: false
-      }
+        sunday: false,
+      },
     },
-    status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+    status: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
     error: null,
   },
   reducers: {
@@ -55,27 +58,27 @@ const workingWeekSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchWorkingWeek.pending, (state) => {
-        state.status = 'loading';
+        state.status = "loading";
       })
       .addCase(fetchWorkingWeek.fulfilled, (state, action) => {
-        state.status = 'succeeded';
+        state.status = "succeeded";
         state.workingWeek = action.payload;
         state.error = null;
       })
       .addCase(fetchWorkingWeek.rejected, (state, action) => {
-        state.status = 'failed';
+        state.status = "failed";
         state.error = action.payload;
       })
       .addCase(updateWorkingWeek.pending, (state) => {
-        state.status = 'loading';
+        state.status = "loading";
       })
       .addCase(updateWorkingWeek.fulfilled, (state, action) => {
-        state.status = 'succeeded';
+        state.status = "succeeded";
         state.workingWeek = action.payload;
         state.error = null;
       })
       .addCase(updateWorkingWeek.rejected, (state, action) => {
-        state.status = 'failed';
+        state.status = "failed";
         state.error = action.payload;
       });
   },

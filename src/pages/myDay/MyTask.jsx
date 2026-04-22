@@ -1888,7 +1888,18 @@ const MyTask = () => {
         <TaskChat
           task={selectedQueryTask}
           open={queryDrawerOpen}
-          onClose={() => setQueryDrawerOpen(false)}
+          // onClose={() => setQueryDrawerOpen(false)}
+          onClose={() => {
+            // ✅ reset unread count when closing
+            if (selectedQueryTask?.conversationId) {
+              setUnreadMap((prev) => ({
+                ...prev,
+                [selectedQueryTask.conversationId]: 0,
+              }));
+            }
+
+            setQueryDrawerOpen(false);
+          }}
         />
       )}
     </div>

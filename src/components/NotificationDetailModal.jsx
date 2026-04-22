@@ -34,7 +34,7 @@ const NotificationDetailModal = ({ notification, open, onClose }) => {
       await dispatch(markNotificationRead(notification._id));
       await dispatch(fetchNotifications());
     }
-    await openTaskChat(notification.conversationId.taskId, "notification");
+    await openTaskChat(notification?.conversationId?.taskId, "notification");
     onClose();
   };
   if (!notification) return null;
