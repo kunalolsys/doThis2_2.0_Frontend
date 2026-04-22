@@ -25,3 +25,7 @@
 
 **Next: Step 1 edits**
 
+## User Guide Manual [✅ COMPLETED]
+- Created `docs/USER_GUIDE.md` with full sections for all features.
+
+
