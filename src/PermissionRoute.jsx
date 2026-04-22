@@ -1,35 +1,42 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-import Cookies from 'js-cookie';
+import { Navigate } from "react-router-dom";
+import Cookies from "js-cookie";
+import { getAccessToken } from "./lib/tokenManager";
 
 const PermissionRoute = ({ children, requiredPermission }) => {
-    const isLoggedIn = Cookies.get('isLoggedIn') === 'true';
+  const token = getAccessToken();
+  // 🔴 AUTH CHECK
+  if (!token) {
+    return <Navigate to="/" replace />;
+  }
 
-    if (!isLoggedIn) {
-        // If not logged in, redirect to the login page
-        return <Navigate to="/" replace />;
-    }
+  // 🟡 PERMISSION CHECK
+  const permissionsCookie = Cookies.get("permissions");
 
-    const role = Cookies.get('role');
-    // The 'Admin' role has all permissions.
-    if (role === 'Admin') {
-        return children;
-    }
-
-    const permissionsCookie = Cookies.get('permissions');
-    if (!permissionsCookie) {
-        // If permissions are not found, deny access as a safeguard
-        return <Navigate to="/page-restrict-found" replace />;
-    }
-
-    const permissions = JSON.parse(permissionsCookie);
-
-    if (permissions[requiredPermission]) {
-        return children;
-    }
-
-    // If permission is not found, redirect to the access denied page
+  if (!permissionsCookie) {
     return <Navigate to="/page-restrict-found" replace />;
+  }
+
+  let permissions = {};
+
+  try {
+    permissions = JSON.parse(permissionsCookie);
+  } catch (e) {
+    console.error("Invalid permissions cookie");
+    return <Navigate to="/login" replace />;
+  }
+
+  // 🟢 ADMIN BYPASS
+  const role = Cookies.get("role");
+  if (role === "Admin") {
+    return children;
+  }
+
+  // 🔴 PERMISSION DENIED
+  if (!permissions[requiredPermission]) {
+    return <Navigate to="/page-restrict-found" replace />;
+  }
+
+  return children;
 };
 
 export default PermissionRoute;

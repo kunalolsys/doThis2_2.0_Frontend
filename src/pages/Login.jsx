@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { Mail, Lock, LogIn, Sparkles, Zap, Key } from "lucide-react";
-import axios from "axios";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setCurrentUser } from "../redux/slices/user/userSlice";
+import { loginUser } from "../lib/authAPI";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -26,13 +26,13 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const res = await axios.post(
-        `${import.meta.env.VITE_API_BASE_URL}/auth/login`,
-        formData,
-        { withCredentials: true },
-      );
+      // const res = await axios.post(
+      //   `${import.meta.env.VITE_API_BASE_URL}/auth/login`,
+      //   formData,
+      //   { withCredentials: true },
+      // );
+      const res = await loginUser(formData);
       setIsLoading(false);
-
       if (res.data.success) {
         toast.success(res.data.message || "Login successful");
 

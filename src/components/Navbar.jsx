@@ -15,6 +15,7 @@ import { useSelector } from "react-redux";
 import { useSocket } from "../context/SocketContext";
 import NotificationBadge from "./NotificationBadge";
 import NotificationModal from "./NotificationModal";
+import { logoutUser } from "../lib/authAPI";
 
 const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -31,13 +32,13 @@ const Navbar = () => {
   const userEmail = Cookies.get("email") || "user@example.com";
   const userInitial = userName.charAt(0).toUpperCase();
   const role = Cookies.get("role") || "";
-  const handleLogout = () => {
+  const handleLogout = async () => {
     // Clear all relevant cookies
+    await logoutUser();
     Object.keys(Cookies.get()).forEach((cookieName) => {
       Cookies.remove(cookieName);
     });
     toast.success("Logged out successfully!");
-    navigate("/");
   };
   const roleColors = {
     Owner: "bg-red-100 text-red-700",
@@ -75,9 +76,7 @@ const Navbar = () => {
             <NotificationBadge onClick={() => setShowNotifications(true)} />
 
             <div className="hidden sm:block text-right">
-              <p
-                className={`text-md font-medium px-4 py-1  `}
-              >
+              <p className={`text-md font-medium px-4 py-1  `}>
                 Welcome, {userName}!
               </p>
             </div>
