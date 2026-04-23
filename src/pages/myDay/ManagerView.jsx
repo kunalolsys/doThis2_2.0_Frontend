@@ -22,6 +22,8 @@ import {
   ClipboardList,
   Clock1,
   Clock2Icon,
+  MessageCircle,
+  MessageSquarePlus,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -79,6 +81,8 @@ import { formatDate, formatLabel } from "../../lib/utilFunctions.js";
 import { fetchTasksWithStats } from "../../redux/slices/task/taskSlice.js";
 import { Label } from "../../components/ui/index.jsx";
 import dayjs from "dayjs";
+import TaskChat from "../../components/TaskChat.jsx";
+import { useSocket } from "../../context/SocketContext.jsx";
 
 // --- Helper Components ---
 
@@ -174,7 +178,15 @@ const getStatusBadge = (status) => {
 // };
 
 // Enhanced Today's Task Actions
-const TodayTaskActions = ({ task, onChecklist, onFillForm }) => {
+const TodayTaskActions = ({
+  task,
+  onChecklist,
+  onFillForm,
+  setSelectedQueryTask,
+  setQueryDrawerOpen,
+  unreadCount,
+  setUnreadMap,
+}) => {
   const checkList =
     task.checklist && Array.isArray(task.checklist) ? task.checklist : [];
   const form =
@@ -214,6 +226,46 @@ const TodayTaskActions = ({ task, onChecklist, onFillForm }) => {
             <p>Fill Form</p>
           </TooltipContent>
         </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="relative">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 rounded-full 
+        text-blue-600 bg-blue-50 
+        hover:bg-blue-100 hover:text-blue-700 
+        transition-all duration-200"
+                onClick={() => {
+                  setSelectedQueryTask(task);
+                  setQueryDrawerOpen(true);
+
+                  setUnreadMap((prev) => ({
+                    ...prev,
+                    [task.conversationId]: 0,
+                  }));
+                }}
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
+
+              {unreadCount > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 
+          min-w-[16px] h-[16px] px-1 
+          flex items-center justify-center 
+          text-[10px] font-bold text-white 
+          bg-red-500 rounded-full shadow"
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Open Conversation</p>
+          </TooltipContent>
+        </Tooltip>{" "}
       </div>
     </TooltipProvider>
   );
@@ -558,6 +610,8 @@ const ManagerView = () => {
     totalTasks,
   } = useSelector((state) => state.myTasks);
   const { currentUser } = useSelector((state) => state.users);
+  const { isConnected, socket, events } = useSocket();
+
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -585,7 +639,38 @@ const ManagerView = () => {
 
   const [isFillFormDialogOpen, setIsFillFormDialogOpen] = useState(false);
   const [selectedTaskForForm, setSelectedTaskForForm] = useState(null);
+  const [queryDrawerOpen, setQueryDrawerOpen] = useState(false);
+  const [selectedQueryTask, setSelectedQueryTask] = useState(null);
+  const [unreadMap, setUnreadMap] = useState({});
+  useEffect(() => {
+    if (!socket) return;
 
+    if (selectedQueryTask?.conversationId) {
+      socket.emit("join-conversation", selectedQueryTask.conversationId);
+    }
+
+    return () => {
+      if (selectedQueryTask?.conversationId) {
+        socket.emit("leave-conversation", selectedQueryTask.conversationId);
+      }
+    };
+  }, [socket, selectedQueryTask?.conversationId]);
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleUnread = ({ conversationId, count }) => {
+      setUnreadMap((prev) => ({
+        ...prev,
+        [conversationId]: count,
+      }));
+    };
+
+    socket.on("unread-count", handleUnread);
+
+    return () => {
+      socket.off("unread-count", handleUnread);
+    };
+  }, [socket]);
   const getViewHeading = () => {
     if (!currentUser || !currentUser.role) return "View";
     const roleName = currentUser.role.name;
@@ -1129,6 +1214,10 @@ const ManagerView = () => {
               task={task}
               onChecklist={handleChecklistClick}
               onFillForm={handleFillFormClick}
+              setSelectedQueryTask={setSelectedQueryTask}
+              setQueryDrawerOpen={setQueryDrawerOpen}
+              unreadCount={unreadMap[task.conversationId] || 0}
+              setUnreadMap={setUnreadMap}
             />
           )}
         </TableCell>
@@ -1567,6 +1656,24 @@ const ManagerView = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {queryDrawerOpen && selectedQueryTask && (
+        <TaskChat
+          task={selectedQueryTask}
+          open={queryDrawerOpen}
+          // onClose={() => setQueryDrawerOpen(false)}
+          onClose={() => {
+            // ✅ reset unread count when closing
+            if (selectedQueryTask?.conversationId) {
+              setUnreadMap((prev) => ({
+                ...prev,
+                [selectedQueryTask.conversationId]: 0,
+              }));
+            }
+
+            setQueryDrawerOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -54,7 +54,7 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
     "dropdown",
     "checkbox",
     "textarea",
-    "file",
+    // "file",
   ];
 
   // const addField = () => {

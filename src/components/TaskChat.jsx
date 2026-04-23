@@ -478,8 +478,14 @@ const TaskChat = ({ task, open, onClose }) => {
                   ))}
                   <Avatar>
                     {itsMe
-                      ? safeTask.assignedBy?.name[0]
-                      : safeTask.assignedTo?.name[0]}
+                      ? safeTask.assignedBy?.name
+                          ?.trim()
+                          ?.charAt(0)
+                          ?.toUpperCase() || "?"
+                      : safeTask.assignedTo?.name
+                          ?.trim()
+                          ?.charAt(0)
+                          ?.toUpperCase() || "?"}
                   </Avatar>
                 </Avatar.Group>
                 <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></div>
@@ -610,6 +616,11 @@ const TaskChat = ({ task, open, onClose }) => {
                             {msg.assignedToMe ? "YOUR QUERY" : "Query"}
                           </div>
                           <p className="mb-2 leading-relaxed">{msg.text}</p>
+                          {msg.user?._id !== currentUser?._id && (
+                            <span className="text-[11px] text-gray-500 font-medium tracking-wide">
+                              — {msg.user?.name || "Unknown"}
+                            </span>
+                          )}
                           {/* <div
                             className={`inline-block px-2 py-[2px] text-[10px] rounded-full mt-1 ${getStatusStyle(msg.status, msg.user._id === currentUser._id)}`}
                           >
@@ -619,10 +630,24 @@ const TaskChat = ({ task, open, onClose }) => {
                       </div>
                     ) : (
                       <>
-                        <p className="leading-relaxed mb-3">{msg.text}</p>
-                        <div className="flex items-center gap-2 text-xs opacity-90 justify-end">
-                          {formatTime(msg.timestamp)}
-                          {msg.seen && <CheckCircle2 size={14} />}
+                        <div className="flex flex-col gap-1">
+                          {/* Message */}
+                          <p className="leading-relaxed text-sm">{msg.text}</p>
+
+                          {/* Sender name (only for others) */}
+                          {msg.user?._id !== currentUser?._id && (
+                            <span className="text-[11px] text-gray-500 font-medium tracking-wide">
+                              — {msg.user?.name || "Unknown"}
+                            </span>
+                          )}
+
+                          {/* Footer (time + seen) */}
+                          <div className="flex items-center justify-end gap-1 text-[11px] text-black-400 mt-1">
+                            <span>{formatTime(msg.timestamp)}</span>
+                            {msg.seen && (
+                              <CheckCircle2 size={12} className="opacity-80" />
+                            )}
+                          </div>
                         </div>
                       </>
                     )}

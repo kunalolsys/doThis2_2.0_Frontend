@@ -54,7 +54,7 @@ api.interceptors.response.use(
       console.log("⛔ Refresh itself failed");
 
       clearAccessToken();
-      window.location.replace("/login");
+      window.location.replace("/");
 
       return Promise.reject(err);
     }

@@ -22,7 +22,7 @@ const PermissionRoute = ({ children, requiredPermission }) => {
     permissions = JSON.parse(permissionsCookie);
   } catch (e) {
     console.error("Invalid permissions cookie");
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // 🟢 ADMIN BYPASS
