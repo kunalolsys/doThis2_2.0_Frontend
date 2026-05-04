@@ -336,108 +336,109 @@ const RolesPermissions = () => {
                   </TableHead>
                 </TableRow>
               </TableHeader>
-
               <TableBody>
-                {roles.map((role) => (
-                  <TableRow
-                    key={role._id}
-                    className="hover:bg-slate-50/50 transition-colors border-slate-100"
-                  >
-                    {/* Role Name & Description */}
-                    <TableCell className="pl-6 py-4">
-                      <div className="flex items-start gap-3">
-                        <div className="mt-1 p-2 bg-slate-100 rounded-lg">
-                          <RoleIcon name={role.name} />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-slate-800 text-base">
-                              {role.name}
-                            </span>
-                            {role.isSystem && (
-                              <Badge
-                                variant="secondary"
-                                className="text-xs px-1.5 h-5 bg-slate-100 text-slate-500 border-slate-200"
-                              >
-                                System
-                              </Badge>
-                            )}
+                {roles
+                  .filter((item) => item.name != "Owner")
+                  .map((role) => (
+                    <TableRow
+                      key={role._id}
+                      className="hover:bg-slate-50/50 transition-colors border-slate-100"
+                    >
+                      {/* Role Name & Description */}
+                      <TableCell className="pl-6 py-4">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1 p-2 bg-slate-100 rounded-lg">
+                            <RoleIcon name={role.name} />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-slate-800 text-base">
+                                {role.name}
+                              </span>
+                              {role.isSystem && (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs px-1.5 h-5 bg-slate-100 text-slate-500 border-slate-200"
+                                >
+                                  System
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </TableCell>
+                      </TableCell>
 
-                    {/* Manage Users Switch */}
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={role.setup}
-                        onCheckedChange={(value) =>
-                          handlePermissionChange(role._id, "setup", value)
-                        }
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </TableCell>
+                      {/* Manage Users Switch */}
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={role.setup}
+                          onCheckedChange={(value) =>
+                            handlePermissionChange(role._id, "setup", value)
+                          }
+                          className="data-[state=checked]:bg-blue-600"
+                        />
+                      </TableCell>
 
-                    {/* FMS Design Switch */}
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={role.fmsEngine}
-                        onCheckedChange={(value) =>
-                          handlePermissionChange(role._id, "fmsEngine", value)
-                        }
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </TableCell>
+                      {/* FMS Design Switch */}
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={role.fmsEngine}
+                          onCheckedChange={(value) =>
+                            handlePermissionChange(role._id, "fmsEngine", value)
+                          }
+                          className="data-[state=checked]:bg-blue-600"
+                        />
+                      </TableCell>
 
-                    {/* Reporting Switch */}
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={role.reports}
-                        onCheckedChange={(value) =>
-                          handlePermissionChange(role._id, "reports", value)
-                        }
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </TableCell>
+                      {/* Reporting Switch */}
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={role.reports}
+                          onCheckedChange={(value) =>
+                            handlePermissionChange(role._id, "reports", value)
+                          }
+                          className="data-[state=checked]:bg-blue-600"
+                        />
+                      </TableCell>
 
-                    {/* Delegation Task Switch */}
-                    <TableCell className="text-center">
-                      <Switch
-                        checked={role.delegationTask}
-                        onCheckedChange={(value) =>
-                          handlePermissionChange(
-                            role._id,
-                            "delegationTask",
-                            value,
-                          )
-                        }
-                        className="data-[state=checked]:bg-blue-600"
-                      />
-                    </TableCell>
+                      {/* Delegation Task Switch */}
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={role.delegationTask}
+                          onCheckedChange={(value) =>
+                            handlePermissionChange(
+                              role._id,
+                              "delegationTask",
+                              value,
+                            )
+                          }
+                          className="data-[state=checked]:bg-blue-600"
+                        />
+                      </TableCell>
 
-                    {/* Actions */}
-                    <TableCell className="text-right pr-6">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={role.isSystem}
-                        onClick={() => handleDeleteRole(role._id)}
-                        className={`h-9 w-9 transition-colors ${
-                          role.isSystem
-                            ? "text-slate-300 cursor-not-allowed"
-                            : "text-slate-400 hover:text-red-600 hover:bg-red-50"
-                        }`}
-                        title={
-                          role.isSystem
-                            ? "System roles cannot be deleted"
-                            : "Delete Role"
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                      {/* Actions */}
+                      <TableCell className="text-right pr-6">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          disabled={role.isSystem}
+                          onClick={() => handleDeleteRole(role._id)}
+                          className={`h-9 w-9 transition-colors ${
+                            role.isSystem
+                              ? "text-slate-300 cursor-not-allowed"
+                              : "text-slate-400 hover:text-red-600 hover:bg-red-50"
+                          }`}
+                          title={
+                            role.isSystem
+                              ? "System roles cannot be deleted"
+                              : "Delete Role"
+                          }
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
               </TableBody>
             </Table>
           </div>

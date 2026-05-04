@@ -138,7 +138,7 @@ const ResetPassword = () => {
               {isLoading ? "Sending..." : (emailSent ? "Link Sent!" : "Send Reset Link")}
               {!isLoading && !emailSent && <ArrowRight className="w-4 h-4" />}
             </button>
-            {emailSent && (
+            {/* {emailSent && (
               <button
                 type="button"
                 onClick={() => navigate('/reset-password?token=local-test-token')}
@@ -147,7 +147,7 @@ const ResetPassword = () => {
                 <TestTube2 className="w-4 h-4" />
                 Reset Password (Test)
               </button>
-            )}
+            )} */}
           </form>
         ) : (
           <form onSubmit={handleResetPassword} className="space-y-4 animate-in fade-in slide-in-from-right-8 duration-500">

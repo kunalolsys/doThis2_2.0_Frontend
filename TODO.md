@@ -1,31 +1,17 @@
-# TaskChat Improvements
+# Task: Replace CreateTaskForm assignee field with single dept → multiple users dropdowns
 
-## Previous: Auto-Scroll Fix [✅ COMPLETED]
+## Plan Status: ✅ Approved (single dept, multiple users)
 
-## New Task: Auto-Mark Thread Messages as Seen
+## Steps:
+- [✅] 1. Read TaskPage.jsx (parent) for context
+- [✅] 2. Remove old assignee states/handlers  
+- [✅] 3. Add new states (selectedDeptId, availableUsers, selectedUserIds)
+- [✅] 4. Add useEffect for dept→users filtering
+- [✅] 5. Replace UI with two Select dropdowns
+- [✅] 6. Update validation & submit logic
+- [✅] 7. Update form reset
+- [✅] 8. Clean up remaining unused references & fix API call
+- [ ] 9. Test & complete
 
-**✅ APPROVED: Use `/thread/{conversationId}/seen` API + optimistic update**
-
-## Implementation Steps
-
-### 1. [✅ COMPLETED] Per-message seen with IntersectionObserver + `/thread/seen {messageId}`
-   - Add markThreadSeen: POST `/thread/${task.conversationId}/seen`
-   - Optimistic: set all messages seen=true
-   - Debounce calls (use custom debounce ~1s)
-
-### 2. [] Integrate with scroll
-   - Call debouncedMarkSeen in handleScroll
-   - Initial call after loadTaskChat
-
-### 3. [] Test
-   - Open TaskChat, scroll → network POST /thread/.../seen
-   - All ✓✓ appear
-
-### 4. [] [COMPLETED]
-
-**Next: Step 1 edits**
-
-## User Guide Manual [✅ COMPLETED]
-- Created `docs/USER_GUIDE.md` with full sections for all features.
-
+**Current: Ready for testing!**
 

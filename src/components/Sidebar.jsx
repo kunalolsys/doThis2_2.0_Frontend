@@ -70,7 +70,6 @@ const Sidebar = ({ children }) => {
 
   // Get permissions from cookies for efficient lookup
   const permissions = JSON.parse(Cookies.get("permissions") || "{}");
-
   const hasPermission = (permission) => {
     // If no user, deny permission
     if (!user.name) {
@@ -78,7 +77,7 @@ const Sidebar = ({ children }) => {
     }
 
     // The 'Admin' role has all permissions.
-    if (user.role.name === "Admin" || user.role.name === "Owner") {
+    if (user.role.name === "Owner") {
       return true;
     }
 
@@ -331,7 +330,7 @@ const Sidebar = ({ children }) => {
           )}
 
           {/* FMS Engine */}
-          {hasPermission("fmsengine_view") && (
+          {hasPermission("fms_engine_view") && (
             <div>
               <div className="relative">
                 <button
@@ -487,7 +486,7 @@ const Sidebar = ({ children }) => {
               </div>
             </div>
           )}
-          <div>
+          {/* <div>
             <div className="relative">
               <Link
                 to="/logs"
@@ -518,7 +517,7 @@ const Sidebar = ({ children }) => {
                 )}
               </Link>
             </div>
-          </div>
+          </div> */}
           {/* Setup Section */}
           {hasPermission("setup_view") && (
             <div>

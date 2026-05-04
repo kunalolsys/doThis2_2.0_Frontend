@@ -47,11 +47,13 @@ api.interceptors.response.use(
   async (err) => {
     const originalRequest = err.config;
 
-    console.log("🔥 INTERCEPTOR HIT", err?.response?.status);
-
+    // console.log("🔥 INTERCEPTOR HIT", err?.response?.status);
+    if (originalRequest.url.includes("/auth/login")) {
+      return Promise.reject(err); // ✅ let UI handle error
+    }
     // ❌ DO NOT INTERCEPT REFRESH API
     if (originalRequest.url.includes("/auth/refresh")) {
-      console.log("⛔ Refresh itself failed");
+      // console.log("⛔ Refresh itself failed");
 
       clearAccessToken();
       window.location.replace("/");
@@ -64,7 +66,7 @@ api.interceptors.response.use(
       (err.response?.status === 401 || err.response?.status === 403) &&
       !originalRequest._retry
     ) {
-      console.log("🔄 TRYING REFRESH");
+      // console.log("🔄 TRYING REFRESH");
 
       originalRequest._retry = true;
 
@@ -85,7 +87,7 @@ api.interceptors.response.use(
           },
         });
       } catch (refreshErr) {
-        console.log("❌ FINAL LOGOUT");
+        // console.log("❌ FINAL LOGOUT");
 
         clearAccessToken();
 

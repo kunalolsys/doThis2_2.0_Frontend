@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Bell,
   Search,
@@ -7,6 +7,8 @@ import {
   Settings,
   ChevronDown,
   Menu,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import Cookies from "js-cookie";
 import { Link, useNavigate } from "react-router-dom";
@@ -40,6 +42,24 @@ const Navbar = () => {
     });
     toast.success("Logged out successfully!");
   };
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+    } else {
+      await document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handleChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener("fullscreenchange", handleChange);
+    return () => document.removeEventListener("fullscreenchange", handleChange);
+  }, []);
   const roleColors = {
     Owner: "bg-red-100 text-red-700",
     Admin: "bg-blue-100 text-blue-700",
@@ -55,7 +75,6 @@ const Navbar = () => {
           <button className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <Menu className="w-5 h-5 text-gray-600" />
           </button>
-
           {/* Role Badge */}
           {role && (
             <span
@@ -73,14 +92,18 @@ const Navbar = () => {
           {/* Welcome Message and Profile */}
           <div className="flex items-center gap-2">
             {/* Notification Badge */}
+            <button
+              onClick={toggleFullscreen}
+              className="p-2 rounded-md hover:bg-gray-200 transition"
+            >
+              {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+            </button>{" "}
             <NotificationBadge onClick={() => setShowNotifications(true)} />
-
             <div className="hidden sm:block text-right">
               <p className={`text-md font-medium px-4 py-1  `}>
                 Welcome, {userName}!
               </p>
             </div>
-
             {/* Profile Dropdown */}
             <div className="relative">
               <button

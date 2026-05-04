@@ -39,7 +39,7 @@ import {
   RadioGroupItem,
 } from "./ui/index.jsx"; // Import specific UI components needed
 import dayjs from "dayjs";
-import { DatePicker } from "antd";
+import { DatePicker, Select as AntdSelect } from "antd";
 import AttachmentUpload from "./attachmentsUpload.jsx";
 
 const CreateTaskForm = ({
@@ -381,6 +381,39 @@ const CreateTaskForm = ({
     }
   };
 
+  const selectedDeptIds = Array.from(selectedDepartments);
+
+  // 🔥 Build user → departments map
+  const userMap = new Map();
+
+  users.forEach((u) => {
+    const userDeptIds = u.department?.map((d) => String(d._id)) || [];
+
+    const matchedDepts = userDeptIds.filter((id) =>
+      selectedDeptIds.includes(id),
+    );
+
+    if (matchedDepts.length > 0) {
+      if (!userMap.has(u._id)) {
+        userMap.set(u._id, {
+          ...u,
+          deptNames: [],
+        });
+      }
+
+      matchedDepts.forEach((deptId) => {
+        const deptName = departments.find(
+          (d) => String(d._id) === deptId,
+        )?.name;
+
+        if (deptName) {
+          userMap.get(u._id).deptNames.push(deptName);
+        }
+      });
+    }
+  });
+
+  const filteredUsers = Array.from(userMap.values());
   return (
     <Card className="m-4 shadow-xl bg-white/80 backdrop-blur-sm border-0 hover:shadow-2xl transition-all duration-500 group">
       <CardHeader className="border-b border-gray-200/50">
@@ -412,7 +445,7 @@ const CreateTaskForm = ({
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* Row 1: Title & Assignee */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="task-title">
                   Task Title <span className="text-red-500">*</span>
@@ -425,9 +458,56 @@ const CreateTaskForm = ({
                   className="hover:shadow-md transition-all duration-200"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="task-title">
+                  Department <span className="text-red-500">*</span>
+                </Label>
+                <AntdSelect
+                  mode="multiple"
+                  showSearch
+                  placeholder="Select Departments"
+                  value={Array.from(selectedDepartments)}
+                  onChange={(values) => {
+                    setSelectedDepartments(new Set(values));
+                    setSelectedUsers([]);
+                  }}
+                  style={{
+                    width: "100%",
+                    minHeight: 38, // ✅ minimum height
+                  }}
+                  options={departments.map((d) => ({
+                    value: d._id,
+                    label: d.name,
+                  }))}
+                  optionFilterProp="label"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="task-title">
+                  Users <span className="text-red-500">*</span>
+                </Label>
+                <AntdSelect
+                  mode="multiple"
+                  showSearch
+                  placeholder={`Select Users (${filteredUsers.length})`}
+                  value={selectedUsers}
+                  onChange={(values) => setSelectedUsers(values)}
+                  disabled={selectedDeptIds.length === 0}
+                  style={{
+                    width: "100%",
+                    minHeight: 38, // ✅ minimum height
+                  }}
+                  optionFilterProp="label"
+                  options={filteredUsers.map((u) => ({
+                    value: u._id,
 
+                    // 🔥 user name + departments
+                    label: `${u.name || u.email} (${[...new Set(u.deptNames)].join(", ")})`,
+                  }))}
+                />
+              </div>
               {/* --- ASSIGN TO (Multi-Select Dropdown) --- */}
-              <div className="space-y-2 relative" ref={assignDropdownRef}>
+              {/* <div className="space-y-2 relative" ref={assignDropdownRef}>
                 <Label>
                   Assign To <span className="text-red-500">*</span>
                 </Label>
@@ -454,7 +534,6 @@ const CreateTaskForm = ({
                   />
                 </div>
 
-                {/* Dropdown Content */}
                 {isAssignDropdownOpen && (
                   <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-xl animate-in fade-in-80 max-h-72 overflow-y-auto p-2">
                     {departments.length > 0 ? (
@@ -479,7 +558,6 @@ const CreateTaskForm = ({
 
                         return (
                           <div key={dept._id} className="mb-4">
-                            {/* Department Header (Original Style): Checkbox + Name(count) + Chevron */}
                             <div className="flex items-center gap-2 p-2 bg-slate-100/80 rounded-md mb-1 font-semibold text-slate-700 hover:bg-slate-200/80 transition-colors">
                               <Checkbox
                                 id={`dept-${dept._id}`}
@@ -505,7 +583,6 @@ const CreateTaskForm = ({
                               />
                             </div>
 
-                            {/* Users List - Show if dept expanded */}
                             {openDepartments.has(dept._id) && (
                               <div className="pl-6 space-y-1 border-l-2 border-slate-200 ml-2">
                                 {deptUsers.map((u) => (
@@ -545,7 +622,7 @@ const CreateTaskForm = ({
                     )}
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>
 
             {/* Row 2: Description */}

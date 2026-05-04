@@ -328,6 +328,9 @@ const FmsLaunch = () => {
                       }
                       format="DD MMM YYYY"
                       placeholder="Pick a date"
+                      disabledDate={(current) =>
+                        current && current < dayjs().startOf("day")
+                      }
                     />
                   </div>
 

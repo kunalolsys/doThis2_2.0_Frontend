@@ -6,11 +6,14 @@ import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setCurrentUser } from "../redux/slices/user/userSlice";
 import { loginUser } from "../lib/authAPI";
+import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -26,7 +29,6 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-
       const res = await loginUser(formData);
       setIsLoading(false);
       if (res.data.success) {
@@ -40,7 +42,7 @@ const Login = () => {
         Cookies.set("name", res.data.user.name);
         Cookies.set("email", res.data.user.email);
         Cookies.set("role", res.data.role || "Employee");
-        Cookies.set("token", res.data.token);
+        Cookies.set("token", res.data.accessToken);
 
         const userId = res.data.user._id;
         Cookies.set("userId", userId);
@@ -137,20 +139,36 @@ const Login = () => {
             >
               Password
             </label>
+
             <div className="relative">
+              {/* Left icon */}
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <Lock className="w-5 h-5 text-indigo-400" />
               </div>
+
+              {/* Input */}
               <input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"} // 🔥 toggle here
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
                 required
                 minLength={6}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-300/50 focus:border-indigo-500 transition duration-200 ease-in-out shadow-inner mb-3"
+                className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-300/50 focus:border-indigo-500 transition duration-200 ease-in-out shadow-inner"
               />
+
+              {/* Right eye icon */}
+              <div
+                className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5 text-gray-500" />
+                ) : (
+                  <Eye className="w-5 h-5 text-gray-500" />
+                )}
+              </div>
             </div>
           </div>
 
