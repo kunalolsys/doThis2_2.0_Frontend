@@ -106,13 +106,66 @@ const TaskChat = ({ task, open, onClose }) => {
       loadTaskChat();
     }
   }, [open, task]);
+  const [localTask, setLocalTask] = useState(null);
+  useEffect(() => {
+    if (open && task?._id) {
+      initTaskWithConversation();
+    }
+  }, [open, task?._id]);
+  const initTaskWithConversation = async () => {
+    try {
+      let freshTask;
+
+      // 🔥 Always fetch latest task first
+      try {
+        const res = await api.get(`/tasks/${task._id}`);
+        freshTask = res.data.data;
+      } catch (err) {
+        if (err.response?.status === 404) {
+          const fmsRes = await api.get(`/fms/fmsInstanceTask/${task._id}`);
+          freshTask = fmsRes.data.data;
+        }
+      }
+
+      // ✅ store in state (this is what your UI uses)
+      setLocalTask(freshTask);
+
+      // 🔥 NOW safe to load chat
+      loadTaskChat(freshTask);
+    } catch (err) {
+      console.error("Init task failed", err);
+    }
+  };
   const loadTaskChat = async () => {
     setLoading(true);
     try {
+      let freshTask = task;
+
+      if (!task?.conversationId) {
+        try {
+          const res = await api.get(`/tasks/${task._id}`);
+          freshTask = res.data.data;
+        } catch (err) {
+          if (err.response?.status === 404) {
+            const fmsRes = await api.get(`/fms/fmsInstanceTask/${task._id}`);
+            freshTask = fmsRes.data.data;
+          }
+        }
+      }
+
+      // 🔥 STEP 2: STILL no conversation → stop early
+      if (!freshTask?.conversationId) {
+        setMessages([]);
+        return;
+      }
+
       const [queriesRes, messagesRes] = await Promise.all([
-        api.get(`/queries/task/${task._id}`),
-        api.get(`/thread/${task.conversationId}/messages`),
+        api.get(`/queries/task/${freshTask._id || localTask._id}`),
+        api.get(
+          `/thread/${freshTask.conversationId || localTask.conversationId}/messages`,
+        ),
       ]);
+
       const queries = queriesRes?.data?.data || [];
       const msgs = messagesRes?.data?.data?.messages || [];
 
@@ -165,6 +218,7 @@ const TaskChat = ({ task, open, onClose }) => {
     const payload = {
       conversationId: task.conversationId,
       text: replyText.trim(),
+      taskId: task._id,
       // queryId: replyingTo.id,
     };
 
@@ -270,6 +324,19 @@ const TaskChat = ({ task, open, onClose }) => {
       socket.off("query-reply", loadTaskChat);
     };
   }, [socket, task?.conversationId, currentUser?._id]);
+  useEffect(() => {
+    if (!socket || !open) return;
+
+    socket.on("chat-message", (msg) => {
+      // 🔥 If first message, reload OR append
+      loadTaskChat();
+    });
+
+    return () => {
+      socket.off("chat-message");
+    };
+  }, [socket, open]);
+
   const safeTask = {
     ...task,
     title: task?.title || task?.description || "Untitled Task",

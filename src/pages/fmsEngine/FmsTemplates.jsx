@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   FilePenLine,
   Trash2,
@@ -10,6 +10,7 @@ import {
   User,
   Building2,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 
 // shadcn/ui components
 import {
@@ -29,11 +30,12 @@ import {
 } from "../../components/ui/table";
 import { Badge } from "../../components/ui/badge";
 import { Link } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
+import { Download, Upload } from "lucide-react";
 import { fetchTemplates } from "../../redux/slices/fms/fmsSlice";
 import DataPagination from "../../components/ui/commonPagination";
 import { toast } from "sonner";
-import { Checkbox, Modal, Popconfirm, Spin ,Input} from "antd";
+import { Checkbox, Modal, Popconfirm, Spin, Input } from "antd";
 const { TextArea } = Input;
 
 import api from "../../lib/api";
@@ -71,9 +73,236 @@ const FmsTemplates = () => {
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+
+  // Import states
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [parsedTemplates, setParsedTemplates] = useState([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const fileInputRef = useRef(null);
+  // Download sample handler
+  const handleDownloadSample = () => {
+    const sampleData = [
+      {
+        templateName: "Marketing Campaign 2025",
+        description: "Annual marketing template for Q1-Q4",
+        fmsDuration: "Timeless",
+        manager: "paste_user_id_here",
+        srManager: "paste_user_id_here",
+        endDate: "",
+      },
+      {
+        templateName: "Q1 Sales Drive",
+        description: "Sales push for January-March",
+        fmsDuration: "Fixed Period",
+        manager: "paste_user_id_here",
+        srManager: "",
+        endDate: "2025-03-31",
+      },
+    ];
+
+    // ✅ Define headers explicitly (important for CSV consistency)
+    const headers = [
+      "templateName",
+      "description",
+      "fmsDuration",
+      "manager",
+      "srManager",
+      "endDate",
+    ];
+
+    // ✅ Convert to CSV
+    const csvRows = [];
+
+    // Header row
+    csvRows.push(headers.join(","));
+
+    // Data rows
+    sampleData.forEach((row) => {
+      const values = headers.map((header) => {
+        let cell = row[header] ?? "";
+
+        // Escape commas, quotes, newlines
+        if (typeof cell === "string") {
+          cell = cell.replace(/"/g, '""'); // escape quotes
+          if (cell.includes(",") || cell.includes("\n")) {
+            cell = `"${cell}"`;
+          }
+        }
+
+        return cell;
+      });
+
+      csvRows.push(values.join(","));
+    });
+
+    const csvString = csvRows.join("\n");
+
+    // ✅ Download file
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "fms-templates-sample.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+
+    toast.success("CSV sample file downloaded!");
+  };
+  // Handle file upload
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setImportFile(file);
+
+    const fileName = file.name.toLowerCase();
+
+    // 🔥 JSON FILE
+    if (fileName.endsWith(".json")) {
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        try {
+          const templates = JSON.parse(e.target.result);
+
+          if (Array.isArray(templates)) {
+            setParsedTemplates(templates);
+            toast.success(`Parsed ${templates.length} templates (JSON)`);
+          } else {
+            toast.error("Invalid JSON format. Expected array.");
+          }
+        } catch {
+          toast.error("Invalid JSON file");
+        }
+      };
+
+      reader.readAsText(file);
+      return;
+    }
+
+    // 🔥 CSV OR XLSX
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      try {
+        const data = e.target.result;
+
+        let workbook;
+
+        // XLSX / XLS
+        if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+          workbook = XLSX.read(data, { type: "binary" });
+        }
+        // CSV
+        else if (fileName.endsWith(".csv")) {
+          workbook = XLSX.read(data, { type: "string" });
+        } else {
+          toast.error("Unsupported file type");
+          return;
+        }
+
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+
+        // Convert sheet → JSON
+        const jsonData = XLSX.utils.sheet_to_json(sheet, {
+          defval: "", // keep empty fields
+        });
+
+        if (!jsonData.length) {
+          toast.error("Empty file");
+          return;
+        }
+
+        // ✅ Normalize keys (optional but recommended)
+        const normalized = jsonData.map((row) => ({
+          templateName: row.templateName || "",
+          description: row.description || "",
+          fmsDuration: row.fmsDuration || "",
+          manager: row.manager || "",
+          srManager: row.srManager || "",
+          endDate: row.endDate || "",
+        }));
+
+        setParsedTemplates(normalized);
+        toast.success(
+          `Parsed ${normalized.length} templates (${fileName.split(".").pop().toUpperCase()})`,
+        );
+      } catch (err) {
+        console.error(err);
+        toast.error("Error parsing file");
+      }
+    };
+
+    // ⚠️ Important: different read modes
+    if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+      reader.readAsBinaryString(file);
+    } else {
+      reader.readAsText(file);
+    }
+  };
+
+  // Submit import
+  const handleImportSubmit = async () => {
+    if (!parsedTemplates.length) {
+      toast.error("No valid templates to import");
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      const res = await api.post("/fms/templates-import", {
+        templates: parsedTemplates,
+      });
+      const { created = [], errors = [], message } = res.data;
+      const updatedRows = parsedTemplates.map((row) => {
+        const match = errors.find((e) => e.templateName === row.templateName);
+
+        return {
+          ...row,
+          error: match ? match.error : null,
+        };
+      });
+
+      setParsedTemplates(updatedRows);
+
+      if (errors.length && created.length) {
+        toast.warning(`${created.length} imported, ${errors.length} failed`);
+      } else if (errors.length) {
+        toast.error(`Import failed: ${errors.length} errors`);
+      } else {
+        toast.success(`Imported ${created.length} templates`);
+        setImportModalOpen(false);
+        setImportFile(null);
+        setParsedTemplates([]);
+        getTemplates();
+      }
+      getTemplates();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Import failed");
+    } finally {
+      setImportLoading(false);
+      setImportFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+  const handleFileClick = (e) => {
+    // clear previous file before opening picker
+    setImportFile(null);
+    setParsedTemplates([]);
+
+    // also reset input value (important)
+    e.target.value = null;
+  };
   const getTemplates = async () => {
     const res = await dispatch(fetchTemplates({ page, limit })).unwrap();
-    console.log(res);
     setFmsTemplates(res.data);
     setPagination(res.pagination);
   };
@@ -81,7 +310,7 @@ const FmsTemplates = () => {
     getTemplates();
   }, [page, limit]);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+  // Note: selectedTemplateId unused but kept for future
   const [tasks, setTasks] = useState([]);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const fetchTasks = async (templateId) => {
@@ -97,7 +326,7 @@ const FmsTemplates = () => {
     }
   };
   const handleOpenTasks = async (templateId) => {
-    setSelectedTemplateId(templateId);
+    // setSelectedTemplateId(templateId);
     setIsTaskModalOpen(true);
     fetchTasks(templateId);
   };
@@ -186,7 +415,7 @@ const FmsTemplates = () => {
 
       <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
         <CardHeader className="border-b border-gray-200/50">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Zap className="w-5 h-5 text-blue-600" />
@@ -195,13 +424,30 @@ const FmsTemplates = () => {
                 FMS Templates
               </CardTitle>
             </div>
-            <Link
-              to="/fms-engine/create-template"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center text-sm font-semibold"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Template
-            </Link>
+            <div className="flex gap-2 w-full lg:w-auto justify-start lg:justify-end">
+              <Button
+                onClick={handleDownloadSample}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Download Sample
+              </Button>
+              <Button
+                onClick={() => setImportModalOpen(true)}
+                className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Import Templates
+              </Button>
+              <Link
+                to="/fms-engine/create-template"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center text-sm font-semibold"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create New
+              </Link>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-4">
@@ -235,7 +481,7 @@ const FmsTemplates = () => {
                 </TableHeader>
                 <TableBody>
                   {Array.isArray(fmsTemplates) && fmsTemplates.length > 0 ? (
-                    fmsTemplates.map((template, index) => (
+                    fmsTemplates.map((template) => (
                       <TableRow
                         key={template.id}
                         className="hover:bg-gray-50 transition-colors duration-200"
@@ -332,6 +578,116 @@ const FmsTemplates = () => {
               setPage(1); // reset page when limit changes
             }}
           />
+          {/* Import Modal */}
+          <Modal
+            title="Import FMS Templates"
+            open={importModalOpen}
+            onCancel={() => {
+              setImportModalOpen(false);
+              setImportFile(null);
+              setParsedTemplates([]);
+            }}
+            footer={[
+              <Button
+                key="cancel"
+                className="me-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border-none"
+                onClick={() => {
+                  setImportModalOpen(false);
+                  setImportFile(null);
+                  setParsedTemplates([]);
+                }}
+              >
+                Cancel
+              </Button>,
+
+              <Button
+                key="submit"
+                loading={importLoading}
+                disabled={!parsedTemplates.length}
+                onClick={handleImportSubmit}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white border-none"
+              >
+                Import Templates
+              </Button>,
+            ]}
+            width={800}
+          >
+            <div className="space-y-4">
+              <div>
+                {/* <label className="block text-sm font-medium mb-2">
+                  Upload JSON file
+                </label> */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv, .xlsx, .xls, .json"
+                  onClick={handleFileClick}
+                  onChange={handleFileUpload}
+                  className="w-full border border-gray-300 rounded-md p-2"
+                />
+                {importFile && (
+                  <p className="text-sm text-green-600 mt-1">
+                    Selected: {importFile.name}
+                  </p>
+                )}
+              </div>
+              {parsedTemplates.length > 0 && (
+                <div className="max-h-60 overflow-auto border rounded-md mt-3">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-100 sticky top-0">
+                      <tr>
+                        <th className="p-2 text-left">Template</th>
+                        <th className="p-2 text-left">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parsedTemplates.map((row, index) => (
+                        <tr
+                          key={index}
+                          className={row.error ? "bg-red-50" : "bg-green-50"}
+                        >
+                          <td className="p-2">{row.templateName}</td>
+                          <td className="p-2">
+                            {row.error ? (
+                              <span className="text-red-600">{row.error}</span>
+                            ) : (
+                              <span className="text-green-600">Ready</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {/* {parsedTemplates.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Preview ({parsedTemplates.length} templates)
+                  </label>
+                  <div className="max-h-48 overflow-auto border rounded-md p-3 bg-gray-50">
+                    {parsedTemplates.slice(0, 3).map((tpl, idx) => (
+                      <div
+                        key={idx}
+                        className="mb-2 p-2 bg-white rounded border"
+                      >
+                        <div className="font-medium">{tpl.templateName}</div>
+                        <div className="text-sm text-gray-600">
+                          {tpl.fmsDuration}
+                        </div>
+                      </div>
+                    ))}
+                    {parsedTemplates.length > 3 && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        ... and {parsedTemplates.length - 3} more
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )} */}
+            </div>
+          </Modal>
+
           <Modal
             title="Tasks List"
             open={isTaskModalOpen}

@@ -54,6 +54,17 @@ export const addUser = createAsyncThunk(
     }
   },
 );
+export const getUserForDrop = createAsyncThunk(
+  "users/getAllUserForDrop",
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await api.get("/setup/users/list-drop");
+      return response.data.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
 
 // Async thunk to fetch a user by ID
 export const fetchUserById = createAsyncThunk(
@@ -132,6 +143,7 @@ const userSlice = createSlice({
   name: "users",
   initialState: {
     users: [],
+    dropdownUsers: [], // 🔥 NEW
     pagination: {
       total: 0,
       page: 1,
@@ -159,6 +171,17 @@ const userSlice = createSlice({
         state.pagination = action.payload.pagination;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
+      })
+      .addCase(getUserForDrop.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(getUserForDrop.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.dropdownUsers = action.payload; // 🔥 store separately
+      })
+      .addCase(getUserForDrop.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload;
       })

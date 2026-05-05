@@ -290,7 +290,6 @@ const CreateTaskForm = ({
 
       // Set date fields by default
       if (startDate) {
-        console.log(startDate);
         formData.append("startDate", startDate);
       } else {
         const todayStr = new Date().toLocaleDateString("en-CA");

@@ -7,6 +7,7 @@ import {
   fetchUserById,
   updateUser,
   fetchUsers,
+  getUserForDrop,
 } from "../../redux/slices/user/userSlice";
 import { fetchDepartments } from "../../redux/slices/department/departmentSlice";
 import { fetchRoles } from "../../redux/slices/role/roleSlice";
@@ -45,6 +46,7 @@ const EditUser = () => {
 
   const {
     users,
+    dropdownUsers,
     currentUser,
     status: userStatus,
     error: userError,
@@ -161,6 +163,7 @@ const EditUser = () => {
     dispatch(fetchUserById(id));
     dispatch(fetchDepartments());
     dispatch(fetchUsers()); // Fetch all users for the reporting manager dropdown
+    dispatch(getUserForDrop()); // Fetch all users for the reporting manager dropdown
     dispatch(fetchRoles());
     dispatch(fetchWorkShifts());
   }, [dispatch, id]);
@@ -467,7 +470,7 @@ const EditUser = () => {
                         <SelectItem disabled>Loading...</SelectItem>
                       )}
 
-                      {users
+                      {dropdownUsers
                         .filter((user) => {
                           if (!selectedRole) return true;
 

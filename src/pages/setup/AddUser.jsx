@@ -3,7 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-import { addUser, fetchUsers } from "../../redux/slices/user/userSlice";
+import {
+  addUser,
+  fetchUsers,
+  getUserForDrop,
+} from "../../redux/slices/user/userSlice";
 import { fetchDepartments } from "../../redux/slices/department/departmentSlice";
 import { fetchRoles } from "../../redux/slices/role/roleSlice";
 import { fetchWorkShifts } from "../../redux/slices/workShift/workShiftSlice";
@@ -39,10 +43,10 @@ const AddUser = () => {
 
   const {
     users,
+    dropdownUsers,
     status: userStatus,
     error: userError,
   } = useSelector((state) => state.users);
-  console.log(users);
   const {
     departments,
     status: departmentStatus,
@@ -152,6 +156,7 @@ const AddUser = () => {
 
   useEffect(() => {
     dispatch(fetchUsers());
+    dispatch(getUserForDrop());
     dispatch(fetchDepartments());
     dispatch(fetchRoles());
     dispatch(fetchWorkShifts());
@@ -450,7 +455,7 @@ const AddUser = () => {
                         <SelectItem disabled>Loading...</SelectItem>
                       )}
 
-                      {users
+                      {dropdownUsers
                         .filter((user) => {
                           if (!selectedRole) return true;
 
@@ -559,7 +564,9 @@ const AddUser = () => {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end gap-2 border-t pt-6">
-          <Button type="button" variant="outline">Cancel</Button>
+          <Button type="button" variant="outline">
+            Cancel
+          </Button>
           <Button type="submit" disabled={userStatus === "loading"}>
             {userStatus === "loading" ? "Saving..." : "Save"}
           </Button>
