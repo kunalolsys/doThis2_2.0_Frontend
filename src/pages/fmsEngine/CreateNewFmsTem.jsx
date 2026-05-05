@@ -316,7 +316,7 @@ const CreateNewFmsTem = () => {
   useEffect(() => {
     if (!id) return;
     fetchTemplate();
-  }, [id, loadUpdate]);
+  }, [id]);
 
   const debounceSearch = useDebounce(searchTerm);
   useEffect(() => {
