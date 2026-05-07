@@ -91,7 +91,7 @@ function App() {
                 <Route path="/logs" element={<LogsDashboard />} />
                 <Route path="/profile" element={<Profile />} />
                 {/* My Day Routes */}
-                <Route path="/my-day/launchpad" element={<Launchpad />} />
+                {/* <Route path="/my-day/launchpad" element={<Launchpad />} /> */}
                 <Route path="/my-day/mytasks" element={<MyTask />} />
                 <Route path="/my-day/view" element={<ManagerView />} />
                 {/* <Route path="/my-day/sr-manager-view" element={<SrManagerView />} />

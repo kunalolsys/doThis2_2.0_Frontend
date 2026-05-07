@@ -1429,7 +1429,9 @@ const MyTask = () => {
       );
       dispatch(fetchTaskCounts(currentUser._id));
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Failed to update status");
+      toast.error(
+        err || err?.response?.data?.message || "Failed to update status",
+      );
     }
   };
 

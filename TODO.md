@@ -1,21 +1,10 @@
-# FMS Templates: Add Import Functionality (Download Sample + Upload)
+# TODO
 
-## Status: ✅ Confirmed (Buttons + Modal + API)
-
-## Steps:
-✅ **COMPLETE**: FMS Templates Import Functionality
-
-**Done**:
-- [✅] Buttons: Download Sample | Import Templates
-- [✅] Sample JSON download (2 examples w/ userId placeholders)
-- [✅] Full modal: File upload → JSON parse → Preview → Submit
-- [✅] API: POST /api/fms/templates/import
-- [✅] Refresh table + success/error toasts
-- [✅] Responsive + UX (preview first 3 templates)
-
-**Test**: 
-1. Click "Download Sample" → fms-templates-sample.json
-2. Edit JSON with real userIDs → Upload → Preview → Import
-
-Production ready! 🎉
+## FMS Reports UI - Percentage Charts & KPIs
+- [ ] Inspect current `src/pages/reports/FmsReports.jsx` rendering and data contract.
+- [ ] Implement KPI cards (percent distributions) derived from `tasks` and `topPerformers`.
+- [ ] Add percentage charts using `recharts` (Top performers score, Late score, Status distribution).
+- [ ] Keep existing tasks table + pagination.
+- [ ] Add robust empty/loading states.
+- [ ] Run `npm run lint` / `npm run build` (or available checks) to ensure no runtime issues.
 

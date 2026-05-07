@@ -70,7 +70,15 @@ const AdminDashboard = () => {
   const isAdmin =
     currentUser?.role?.name === "Admin" || currentUser?.role?.name === "Owner";
   // const displayTasks = isAdmin ? tasks : myTasks;
-
+  const [userCount, setUserCount] = useState(0);
+  const [fmsCounts, setFmsCounts] = useState({
+    upcoming: 0,
+    ongoing: 0,
+    completed: 0,
+    onhold: 0,
+    stopped: 0,
+    total: 0,
+  });
   const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
   const [fullDescription, setFullDescription] = useState("");
   const [allTaskForDashboard, setAllTaskForDashboard] = useState(null);
@@ -120,7 +128,6 @@ const AdminDashboard = () => {
         taskDate.getFullYear() === today.getFullYear()
       );
     }).length;
-    const activeUsers = users.filter((u) => u.isActive).length;
 
     return {
       totalTasks,
@@ -128,7 +135,6 @@ const AdminDashboard = () => {
       pendingTasks,
       todaysTasks,
       overdueTasks,
-      activeUsers,
     };
   }, [allTaskForDashboard, users]);
 
@@ -182,7 +188,26 @@ const AdminDashboard = () => {
   };
   useEffect(() => {
     handleGetReport();
+    fetchActiveUserCount();
+    fetchInstanceCount();
   }, []);
+  const fetchActiveUserCount = async () => {
+    const response = await api.get(`/setup/users/user-count`);
+    setUserCount(response.data.totalUser);
+  };
+  const fetchInstanceCount = async () => {
+    const response = await api.get(`/fms/instances-count`);
+    const data = response.data.data;
+    setFmsCounts({
+      upcoming: data.upcoming,
+      ongoing: data.ongoing,
+      completed: data.completed,
+      onhold: data.onhold,
+      stopped: data.stopped,
+      total: data.total,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       {/* Header */}
@@ -291,7 +316,9 @@ const AdminDashboard = () => {
             </div>
             <div>
               <p className="text-md font-medium text-gray-600">Ongoing FMS</p>
-              <p className="text-xl font-bold text-blue-600">N/A</p>
+              <p className="text-xl font-bold text-blue-600">
+                {fmsCounts.ongoing}
+              </p>
             </div>
           </div>
         </Card>
@@ -304,9 +331,7 @@ const AdminDashboard = () => {
               <p className="text-md font-medium text-gray-600">
                 Total Active Users
               </p>
-              <p className="text-xl font-bold text-green-600">
-                {dynamicStats.activeUsers}
-              </p>
+              <p className="text-xl font-bold text-green-600">{userCount}</p>
             </div>
           </div>
         </Card>
@@ -443,7 +468,8 @@ const AdminDashboard = () => {
               </div>
               <h1 className="text-md font-medium">Upcoming Deadlines</h1>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {" "}
               {sortedUpcoming.length === 0 ? (
                 <p className="text-sm text-gray-500">No upcoming deadlines</p>
               ) : (
