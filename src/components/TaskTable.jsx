@@ -219,6 +219,7 @@ const TaskTable = ({
   onViewDescription,
   searchTerm: propSearchTerm,
   setSearchTerm: propSetSearchTerm,
+  workingWeeks,
 }) => {
   const dispatch = useDispatch();
 
@@ -599,7 +600,7 @@ const TaskTable = ({
         if (editAssignedTo) payload.assignedTo = editAssignedTo;
         if (taskEndDateOffset) payload.taskEndDays = taskEndDateOffset;
         if (editStartDate)
-          payload.startDate = format(editStartDate, "yyyy-MM-dd");
+          payload.startDate = editStartDate;
 
         if (editingTask.taskType === "RecurringTask" || editingTask.frequency) {
           payload.isRecurrent = true;
@@ -2114,9 +2115,45 @@ const TaskTable = ({
                       <DatePicker
                         format="DD MMM YYYY"
                         value={editStartDate ? dayjs(editStartDate) : null}
-                        onChange={(date) =>
-                          setEditStartDate(date ? date.toDate() : null)
-                        }
+                        // onChange={(date) =>
+                        //   setEditStartDate(date ? date.toDate() : null)
+                        // }
+                        onChange={(date) => {
+                          if (!date) return;
+
+                          const selected = dayjs(date);
+                          const selectedDate = selected.format("YYYY-MM-DD");
+
+                          // 🟡 1. Check Holiday
+                          const holiday = holidays.find(
+                            (h) =>
+                              dayjs(h.date).format("YYYY-MM-DD") ===
+                              selectedDate,
+                          );
+
+                          if (holiday) {
+                            toast.error(
+                              `Selected date is a holiday: ${holiday.name}. Please select another date.`,
+                            );
+                            setEditStartDate(null);
+                            return;
+                          }
+
+                          // 🟡 2. Check Working Day
+                          const dayName = selected.format("dddd").toLowerCase();
+                          // e.g. "monday"
+
+                          if (!workingWeeks?.[dayName]) {
+                            toast.error(
+                              `Selected day (${dayName}) is not a working day. Please choose a valid day.`,
+                            );
+                            setEditStartDate(null);
+                            return;
+                          }
+
+                          // ✅ Valid date
+                          setEditStartDate(selectedDate);
+                        }}
                         style={{ width: "100%", height: "40px" }}
                       />
                       {/* <Input
@@ -2227,9 +2264,45 @@ const TaskTable = ({
                       <DatePicker
                         format="DD MMM YYYY"
                         value={editStartDate ? dayjs(editStartDate) : null}
-                        onChange={(date) =>
-                          setEditStartDate(date ? date.toDate() : null)
-                        }
+                        // onChange={(date) =>
+                        //   setEditStartDate(date ? date.toDate() : null)
+                        // }
+                        onChange={(date) => {
+                          if (!date) return;
+
+                          const selected = dayjs(date);
+                          const selectedDate = selected.format("YYYY-MM-DD");
+
+                          // 🟡 1. Check Holiday
+                          const holiday = holidays.find(
+                            (h) =>
+                              dayjs(h.date).format("YYYY-MM-DD") ===
+                              selectedDate,
+                          );
+
+                          if (holiday) {
+                            toast.error(
+                              `Selected date is a holiday: ${holiday.name}. Please select another date.`,
+                            );
+                            setEditStartDate(null);
+                            return;
+                          }
+
+                          // 🟡 2. Check Working Day
+                          const dayName = selected.format("dddd").toLowerCase();
+                          // e.g. "monday"
+
+                          if (!workingWeeks?.[dayName]) {
+                            toast.error(
+                              `Selected day (${dayName}) is not a working day. Please choose a valid day.`,
+                            );
+                            setEditStartDate(null);
+                            return;
+                          }
+
+                          // ✅ Valid date
+                          setEditStartDate(selectedDate);
+                        }}
                         style={{ width: "100%", height: "40px" }}
                       />
                       {/* <Input

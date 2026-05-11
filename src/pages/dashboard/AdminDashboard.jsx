@@ -24,6 +24,7 @@ import {
   Calendar,
   RefreshCcw,
 } from "lucide-react";
+import Cookies from "js-cookie";
 
 import StatCard from "../../components/dashboard/StatCard";
 import PerformanceCard from "../../components/dashboard/PerformanceCard";
@@ -207,26 +208,63 @@ const AdminDashboard = () => {
       total: data.total,
     });
   };
+  const [modules, setModules] = useState([]);
+  useEffect(() => {
+    const fetch_ = async () => {
+      try {
+        const res = await api.get("/setup/modules/list");
+        const data = res.data?.data ?? res.data;
+        setModules(Array.isArray(data) ? data : (data?.modules ?? []));
+      } catch (e) {
+        console.log(e?.response?.data?.message || "Failed to load modules");
+      }
+    };
+    fetch_();
+  }, []);
+  const role = Cookies.get("role") || "";
+  const isSuper = role === "Super";
+  const isModuleEnabled = (moduleKey) => {
+    // ✅ Super user can access all modules
+    if (isSuper) return true;
 
+    return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
+  };
+  const fmsOn = isModuleEnabled("FMS_ENGINE");
+  const zone2Items = [
+    fmsOn ? "fms-perf" : null,
+    "delegated-perf",
+    fmsOn ? "ongoing-fms" : null,
+    "active-users",
+  ].filter(Boolean);
+
+  // ── Zone 3: leaderboard items (Top FMS conditional) ─────────────────────
+  const zone3Items = [
+    "top-performers",
+    fmsOn ? "top-fms" : null,
+    "top-managers",
+  ].filter(Boolean);
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      {/* Header */}
+      {/* ── Page header ──────────────────────────────────────────────────── */}
       <div className="mb-4 flex justify-between items-center">
         <div className="flex items-center space-x-2 text-gray-500">
           <span className="text-md">Dashboard</span>
           <ChevronRight className="w-5 h-5" />
           <span className="text-gray-900 font-medium text-md">Dashboard</span>
         </div>
-        <div>
-          <TimeFilterButtons
-            filterType={filterType}
-            setFilterType={setFilterType}
-          />
-        </div>
+        <TimeFilterButtons
+          filterType={filterType}
+          setFilterType={setFilterType}
+        />
       </div>
 
-      {/* Alert Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      {/* ══════════════════════════════════════════════════════════════════
+          ZONE 1 — Alerts (2 cols) + Stats (4 cols)
+          Always visible. Never changes shape.
+      ══════════════════════════════════════════════════════════════════ */}
+
+      {/* Alert row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div className="rounded-lg p-4 bg-amber-50 border border-amber-200">
           <div className="flex gap-3 items-center">
             <div className="p-2 bg-amber-100 rounded-md">
@@ -240,9 +278,10 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className="mt-1 w-full bg-amber-200 rounded-full h-1">
-            <div className="bg-amber-500 h-1 rounded-full w-0"></div>
+            <div className="bg-amber-500 h-1 rounded-full w-0" />
           </div>
         </div>
+
         <div className="rounded-lg p-4 bg-red-50 border border-red-200">
           <div className="flex gap-3 items-center">
             <div className="p-2 bg-red-100 rounded-md">
@@ -258,12 +297,12 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className="mt-1 w-full bg-red-200 rounded-full h-1">
-            <div className="bg-red-500 h-1 rounded-full w-2/3"></div>
+            <div className="bg-red-500 h-1 rounded-full w-2/3" />
           </div>
         </div>
       </div>
 
-      {/* Main Stats Grid */}
+      {/* Stats row — always 4 cols on large screens */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <StatCard
           title="Total Tasks"
@@ -291,37 +330,62 @@ const AdminDashboard = () => {
         />
       </div>
 
-      {/* Performance Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      {/* ══════════════════════════════════════════════════════════════════
+          ZONE 2 — Metric cards
+          Derives column count from visible items so grid never has gaps.
+          FMS on  → 4 cols: [FMS Perf] [Delegated Perf] [Ongoing FMS] [Active Users]
+          FMS off → 2 cols: [Delegated Perf] [Active Users]
+      ══════════════════════════════════════════════════════════════════ */}
+      <div
+        className="grid gap-4 mb-4"
+        style={{
+          gridTemplateColumns: `repeat(${zone2Items.length}, minmax(0, 1fr))`,
+        }}
+      >
+        {/* FMS Engine Performance — only when FMS on */}
+        {fmsOn && (
+          <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
+            <CardHeader className="p-0 pb-2">
+              <CardTitle className="text-sm font-semibold text-gray-700">
+                FMS Engine Performance
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <p className="text-gray-500 text-sm">Data not available</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Delegated Tasks Performance — always visible */}
         <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
-          <CardHeader>
-            <CardTitle>FMS Engine Performance</CardTitle>
+          <CardHeader className="p-0 pb-2">
+            <CardTitle className="text-sm font-semibold text-gray-700">
+              Delegated Tasks Performance
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0">
             <p className="text-gray-500 text-sm">Data not available</p>
           </CardContent>
         </Card>
-        <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
-          <CardHeader>
-            <CardTitle>Delegated Tasks Performance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-500 text-sm">Data not available</p>
-          </CardContent>
-        </Card>
-        <Card className="flex items-center justify-center border shadow-sm bg-white p-4 hover:scale-[1.02] transition-all duration-500">
-          <div className="flex items-center gap-3 ">
-            <div className="p-2 rounded-md bg-blue-50">
-              <Settings className="w-6 h-6 text-blue-600" />
+
+        {/* Ongoing FMS count — only when FMS on */}
+        {fmsOn && (
+          <Card className="flex items-center justify-center border shadow-sm bg-white p-4 hover:scale-[1.02] transition-all duration-500">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-md bg-blue-50">
+                <Settings className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-md font-medium text-gray-600">Ongoing FMS</p>
+                <p className="text-xl font-bold text-blue-600">
+                  {fmsCounts.ongoing}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-md font-medium text-gray-600">Ongoing FMS</p>
-              <p className="text-xl font-bold text-blue-600">
-                {fmsCounts.ongoing}
-              </p>
-            </div>
-          </div>
-        </Card>
+          </Card>
+        )}
+
+        {/* Active Users — always visible */}
         <Card className="flex items-center justify-center border shadow-sm bg-white p-4 hover:scale-[1.02] transition-all duration-500">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-md bg-green-50">
@@ -337,50 +401,54 @@ const AdminDashboard = () => {
         </Card>
       </div>
 
-      {/* Leaderboards Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Top Performers */}
+      {/* ══════════════════════════════════════════════════════════════════
+          ZONE 3 — Leaderboards
+          Derives column count from visible items so grid never has gaps.
+          FMS on  → 3 cols: [Top Performers] [Top FMS] [Top Managers]
+          FMS off → 2 cols: [Top Performers] [Top Managers]
+      ══════════════════════════════════════════════════════════════════ */}
+      <div
+        className="grid gap-4 mb-4"
+        style={{
+          gridTemplateColumns: `repeat(${zone3Items.length}, minmax(0, 1fr))`,
+        }}
+      >
+        {/* Top Performers — always visible */}
         <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
-          <div className="flex items-center justify-between mb-0">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-amber-100 rounded-lg">
                 <Crown className="w-4 h-4 text-amber-600" />
               </div>
               <h3 className="text-base font-semibold text-gray-900">
-                Top Performers — This Year{" "}
+                Top Performers — This Year
               </h3>
             </div>
           </div>
           <div className="space-y-3">
-            {Array.isArray(topPerformers) &&
-              topPerformers.length > 0 &&
+            {Array.isArray(topPerformers) && topPerformers.length > 0 ? (
               topPerformers.map((item, id) => {
                 const rankStyles = [
                   {
                     bg: "bg-yellow-50",
                     border: "border-yellow-300",
                     badge: "bg-yellow-500",
-                    text: "text-yellow-700",
                   },
                   {
                     bg: "bg-gray-50",
                     border: "border-gray-300",
                     badge: "bg-gray-500",
-                    text: "text-gray-700",
                   },
                   {
                     bg: "bg-orange-50",
                     border: "border-orange-300",
                     badge: "bg-orange-500",
-                    text: "text-orange-700",
                   },
                 ];
-
                 const style = rankStyles[id] || {
                   bg: "bg-blue-50",
                   border: "border-blue-200",
                   badge: "bg-blue-500",
-                  text: "text-blue-700",
                 };
 
                 return (
@@ -399,7 +467,6 @@ const AdminDashboard = () => {
                       </span>
                     </div>
                     <div className="flex gap-4 justify-end items-center">
-                      {/* Done on Time */}
                       <div className="flex flex-col items-end">
                         <span className="font-semibold text-sm text-green-600">
                           {item.score}%
@@ -408,8 +475,6 @@ const AdminDashboard = () => {
                           Done on Time
                         </span>
                       </div>
-
-                      {/* Not Done on Time */}
                       <div className="flex flex-col items-end">
                         <span className="font-semibold text-sm text-red-600">
                           {item.lateScore}%
@@ -419,21 +484,27 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 );
-              })}
+              })
+            ) : (
+              <p className="text-gray-500 text-sm">No data available</p>
+            )}
           </div>
         </Card>
-        {/* Top FMS */}
-        <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
-          <TopFmsCard title="Top 5 FMS by On-Time %" items={topFmsItems} />
-        </Card>
 
-        {/* Top Managers */}
+        {/* Top FMS — only when FMS on */}
+        {fmsOn && (
+          <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
+            <TopFmsCard title="Top 5 FMS by On-Time %" items={topFmsItems} />
+          </Card>
+        )}
+
+        {/* Top Managers — always visible */}
         <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
-          <div className="flex items-center gap-2 mb-0">
+          <div className="flex items-center gap-2 mb-3">
             <div className="p-1.5 bg-purple-100 rounded-md">
               <Medal className="w-4 h-4 text-purple-600" />
             </div>
-            <h1 className="text-md text-gray-700 font-bold ">
+            <h1 className="text-md text-gray-700 font-bold">
               Top 3 Managers by On-Time %
             </h1>
           </div>
@@ -442,11 +513,19 @@ const AdminDashboard = () => {
           </div>
         </Card>
       </div>
-      {/* Performance Overview Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 my-6">
-        {/* Performance Chart */}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          ZONE 4 — Performance overview
+          Fixed layout: 1/3 chart + 2/3 deadlines. No FMS dependency.
+          Uses fr units so it never collapses.
+      ══════════════════════════════════════════════════════════════════ */}
+      <div
+        className="grid gap-4 mb-6"
+        style={{ gridTemplateColumns: "1fr 2fr" }}
+      >
+        {/* Performance donut chart */}
         <div className="group hover:scale-[1.02] transition-all duration-500">
-          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-xl p-4 transition-all duration-500">
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-xl p-4 transition-all duration-500 h-full">
             <div className="flex items-center gap-3 mb-2">
               <div className="p-2 bg-purple-100 rounded-lg group-hover:scale-110 transition-transform duration-300">
                 <Award className="w-5 h-5 text-purple-600" />
@@ -459,23 +538,28 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Upcoming Deadlines - Enhanced */}
-        <Card className="flex border-0 p-4 col-span-2 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 group">
+        {/* Upcoming deadlines — always 2-col inner grid */}
+        <Card className="border-0 p-4 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 group">
           <div className="w-full">
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3 mb-3">
               <div className="p-2 bg-red-100 rounded-lg group-hover:scale-110 transition-transform duration-300">
                 <Calendar className="w-5 h-5 text-red-600" />
               </div>
               <h1 className="text-md font-medium">Upcoming Deadlines</h1>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {" "}
-              {sortedUpcoming.length === 0 ? (
-                <p className="text-sm text-gray-500">No upcoming deadlines</p>
-              ) : (
-                sortedUpcoming.map((task, index) => {
+            {sortedUpcoming.length === 0 ? (
+              <p className="text-sm text-gray-500">No upcoming deadlines</p>
+            ) : (
+              <div
+                className={`grid gap-2 ${
+                  sortedUpcoming.length === 1
+                    ? "grid-cols-1"
+                    : "grid-cols-1 md:grid-cols-2"
+                }`}
+              >
+                {" "}
+                {sortedUpcoming.map((task) => {
                   const daysLeft = dayjs(task.dueDate).diff(dayjs(), "day");
-
                   return (
                     <div
                       key={task._id}
@@ -489,7 +573,6 @@ const AdminDashboard = () => {
                           {task.assignedTo?.name}
                         </p>
                       </div>
-
                       <div className="text-right">
                         <p className="text-xs text-gray-600">
                           {dayjs(task.dueDate).format("DD MMM")}
@@ -500,31 +583,14 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            )}
           </div>
         </Card>
       </div>
 
-      {/* <Card>
-                <CardHeader>
-                    <CardTitle>My Tasks</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <TaskTable
-                        allTasks={displayTasks}
-                        tasksLoading={tasksLoading}
-                        users={users}
-                        departments={departments}
-                        currentUser={currentUser}
-                        holidays={holidays}
-                        onRefreshTasks={handleRefreshTasks}
-                        onViewDescription={handleViewDescription}
-                    />
-                </CardContent>
-            </Card> */}
-
+      {/* ── Description dialog — unchanged ─────────────────────────────── */}
       <Dialog
         open={isDescriptionDialogOpen}
         onOpenChange={setIsDescriptionDialogOpen}

@@ -198,6 +198,7 @@ const TaskPage = () => {
         onViewDescription={handleViewDescription}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
+        workingWeeks={workingWeeks}
       />
 
       {/* --- DESCRIPTION VIEW DIALOG (kept here as it's a generic view for TaskTable) --- */}

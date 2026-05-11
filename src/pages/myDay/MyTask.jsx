@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useSocket } from "../../context/SocketContext";
 import {
   completeFMSTask,
+  exportMyTasks,
   fetchMyTasks,
   fetchTaskCounts,
   getFilterTasks,
@@ -13,6 +14,8 @@ import {
 } from "../../redux/slices/myTask/myTaskSlice";
 import api from "../../lib/api";
 import { toast } from "sonner";
+import Cookies from "js-cookie";
+
 import {
   Plus,
   CheckCircle,
@@ -698,6 +701,8 @@ const FilterBar = ({
   selectedStatFilter,
   dateRange,
   setDateRange,
+  isDoThisEnable,
+  isFMSEnable,
 }) => (
   <div className="flex flex-col md:flex-row gap-3 mb-1 p-4 bg-gray-50 rounded-lg border">
     <div className="relative flex-1">
@@ -719,20 +724,31 @@ const FilterBar = ({
     </div>
 
     <div className="flex flex-col sm:flex-row gap-2 flex-1">
-      <Select
-        value={selectedFilterTaskType}
-        onValueChange={setSelectedFilterTaskType}
-      >
-        <SelectTrigger className="w-full bg-white">
-          <SelectValue placeholder="All Types" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Types</SelectItem>
-          <SelectItem value="DelegationTask">Delegation</SelectItem>
-          <SelectItem value="RecurringTask">Recurring</SelectItem>
-          <SelectItem value="FmsInstanceTask">FMS</SelectItem>
-        </SelectContent>
-      </Select>
+      {(isDoThisEnable || isFMSEnable) && !(!isDoThisEnable && isFMSEnable) && (
+        <Select
+          value={selectedFilterTaskType}
+          onValueChange={setSelectedFilterTaskType}
+        >
+          <SelectTrigger className="w-full bg-white">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+
+            {isDoThisEnable && (
+              <>
+                <SelectItem value="DelegationTask">Delegation</SelectItem>
+                <SelectItem value="RecurringTask">Recurring</SelectItem>
+              </>
+            )}
+
+            {isFMSEnable && (
+              <SelectItem value="FmsInstanceTask">FMS</SelectItem>
+            )}
+          </SelectContent>
+        </Select>
+      )}
       {(selectedStatFilter == "total" || !selectedStatFilter) && (
         <Select
           value={selectedFilterStatus}
@@ -746,6 +762,7 @@ const FilterBar = ({
             <SelectItem value="Pending">Pending</SelectItem>
             <SelectItem value="Completed">Completed</SelectItem>
             <SelectItem value="Overdue">Overdue</SelectItem>
+            {isFMSEnable && <SelectItem value="Stopped">Stopped</SelectItem>}
             {/* <SelectItem value="Due Today">Due Today</SelectItem> */}
           </SelectContent>
         </Select>
@@ -908,7 +925,9 @@ const TodayTasksTable = ({
                           ? "FMS"
                           : task.taskType === "RecurringTask"
                             ? "Recurring"
-                            : "Delegation"}
+                            : task.taskType == "FutureRecurringTask"
+                              ? "Future Recurring"
+                              : "Delegation"}
                       </span>
                     </TableCell>
                     {/* <TableCell>{task.assignedBy?.name || "Self"}</TableCell> */}
@@ -1248,54 +1267,112 @@ const MyTask = () => {
     try {
       setIsExporting(true);
 
-      // Use client-side filtered tasks for export
-      const dataToExport = fetchedTasks.map((task, index) => ({
-        "Sr. No.": index + 1,
-        "Task ID": task.TaskId || "-",
-        "Task Title": task.title || "-",
-        Description: task.description || "-",
-        Type: task.taskType || "-",
-        Source: task.assignedBy?.name || "Self",
-        Attachment: task.attachmentFile ? "Yes" : "No",
-        "Start Date": task.startDate
-          ? new Date(task.startDate).toLocaleDateString()
-          : "-",
-        "Due Date": task.dueDate
-          ? new Date(task.dueDate).toLocaleDateString()
-          : "-",
-        Frequency: task.taskType === "RecurringTask" ? task.frequency : "-",
-        Delay: task.delay || "-",
-        Status: task.status || "-",
-        "Checklist Items": (task.checklist || []).length,
-        "Created At": task.createdAt
-          ? new Date(task.createdAt).toLocaleString()
-          : "-",
-        "Updated At": task.updatedAt
-          ? new Date(task.updatedAt).toLocaleString()
-          : "-",
-      }));
+      const response = await dispatch(
+        exportMyTasks({
+          userId: currentUser._id,
+          dateRange,
+          search: debouncedSearch || undefined,
 
-      if (dataToExport.length === 0) {
+          filters: {
+            // 📊 STAT
+            stat: selectedStatFilter || null,
+
+            // 📌 TAB
+            taskCategory: selectedStatFilter
+              ? null
+              : activeTab === "today"
+                ? "today_backlog"
+                : activeTab === "upcoming"
+                  ? "upcoming"
+                  : activeTab === "completed"
+                    ? "completed"
+                    : null,
+
+            // 🔁 TYPE
+            taskType:
+              selectedFilterTaskType === "all" ? null : selectedFilterTaskType,
+
+            // 📊 STATUS
+            status:
+              selectedFilterStatus === "all" ? null : selectedFilterStatus,
+          },
+        }),
+      ).unwrap();
+
+      const filteredData = response?.data || [];
+
+      if (!filteredData.length) {
         toast.warning("No data to export");
         return;
       }
 
-      // Create worksheet and workbook
-      const ws = XLSX.utils.json_to_sheet(dataToExport);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "MyTasks");
+      // ==================================================
+      // FORMAT EXPORT DATA
+      // ==================================================
 
-      // Generate filename with timestamp
+      const dataToExport = filteredData.map((task, index) => ({
+        "Sr. No.": index + 1,
+
+        "Task ID": task?.TaskId || "-",
+
+        "Task Title": task?.title || "-",
+
+        Description: task?.description || "-",
+
+        Type: task?.taskType || "-",
+
+        Frequency: task?.frequency || "-",
+
+        Status: task?.status || "-",
+
+        Source: task?.assignedBy?.name || "Self",
+
+        Assignee: task?.assignedTo?.name || "-",
+
+        Department: task?.departmentOfAssignToUser?.name || "-",
+
+        Attachment: task?.attachmentFile?.length > 0 ? "Yes" : "No",
+
+        "Checklist Count": task?.checklist?.length || 0,
+
+        "Start Date": task?.startDate
+          ? new Date(task.startDate).toLocaleDateString()
+          : "-",
+
+        "Due Date": task?.dueDate
+          ? new Date(task.dueDate).toLocaleDateString()
+          : "-",
+
+        Delay: task?.delay || "-",
+
+        "Created At": task?.createdAt
+          ? new Date(task.createdAt).toLocaleString()
+          : "-",
+
+        "Updated At": task?.updatedAt
+          ? new Date(task.updatedAt).toLocaleString()
+          : "-",
+      }));
+
+      // ==================================================
+      // CREATE EXCEL
+      // ==================================================
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+
+      const workbook = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, "My Tasks");
+
       const timestamp = new Date().toISOString().split("T")[0];
-      const filename = `MyTasks_${timestamp}.xlsx`;
 
-      // Export the file
-      XLSX.writeFile(wb, filename);
+      XLSX.writeFile(workbook, `MyTasks_${timestamp}.xlsx`);
 
       toast.success("Export completed successfully");
     } catch (error) {
       console.error("Export error:", error);
-      toast.error("Failed to export data");
+
+      toast.error(error?.message || "Failed to export tasks");
     } finally {
       setIsExporting(false);
     }
@@ -1573,6 +1650,30 @@ const MyTask = () => {
       console.error(err);
     }
   };
+  const [modules, setModules] = useState([]);
+  useEffect(() => {
+    const fetch_ = async () => {
+      try {
+        const res = await api.get("/setup/modules/list");
+        const data = res.data?.data ?? res.data;
+        setModules(Array.isArray(data) ? data : (data?.modules ?? []));
+      } catch (e) {
+        console.log(e?.response?.data?.message || "Failed to load modules");
+      }
+    };
+    fetch_();
+  }, []);
+  const role = Cookies.get("role") || "";
+  const isSuper = role === "Super";
+  const isModuleEnabled = (moduleKey) => {
+    // ✅ Super user can access all modules
+    if (isSuper) return true;
+
+    return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
+  };
+  const isDoThisEnable = isModuleEnabled("DO_THIS2");
+  const isFMSEnable = isModuleEnabled("FMS_ENGINE");
+
   if (status === "failed")
     return <div className="p-6 text-red-500">Error: {error}</div>;
 
@@ -1666,6 +1767,8 @@ const MyTask = () => {
                 selectedStatFilter={selectedStatFilter}
                 dateRange={dateRange}
                 setDateRange={setDateRange}
+                isDoThisEnable={isDoThisEnable}
+                isFMSEnable={isFMSEnable}
               />
 
               {/* DATA TABLE */}

@@ -38,6 +38,7 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { setCurrentUser } from "../redux/slices/user/userSlice";
 import { logoutUser } from "../lib/authAPI";
+import api from "../lib/api";
 
 const Sidebar = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -121,6 +122,8 @@ const Sidebar = ({ children }) => {
     const roleName = userObj.role.name;
 
     switch (roleName) {
+      case "Super": // Admin also shows Owner View
+        return "Super Admin";
       case "Manager":
         return "Manager View";
       case "Sr. Manager":
@@ -148,7 +151,29 @@ const Sidebar = ({ children }) => {
       icon: Eye,
     });
   }
+  const [modules, setModules] = useState([]);
+  useEffect(() => {
+    const fetch_ = async () => {
+      try {
+        const res = await api.get("/setup/modules/list");
+        const data = res.data?.data ?? res.data;
+        setModules(Array.isArray(data) ? data : (data?.modules ?? []));
+      } catch (e) {
+        console.log(e?.response?.data?.message || "Failed to load modules");
+      }
+    };
+    fetch_();
+  }, []);
+  const role = Cookies.get("role") || "";
+  const isSuper = role === "Super";
+  const isModuleEnabled = (moduleKey) => {
+    // ✅ Super user can access all modules
+    if (isSuper) return true;
 
+    return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
+  };
+  const isBothDisable =
+    !isModuleEnabled("DO_THIS2") && !isModuleEnabled("FMS_ENGINE");
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Enhanced Sidebar */}
@@ -200,11 +225,12 @@ const Sidebar = ({ children }) => {
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {/* Dashboard Section */}
           {/* {hasPermission('dashboard_view') && ( */}
-          <div>
-            <div className="relative">
-              <Link
-                to="/dashboard"
-                className={`
+          {!isBothDisable && (
+            <div>
+              <div className="relative">
+                <Link
+                  to="/dashboard"
+                  className={`
                                     relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
                                     rounded-xl px-3 py-2.5 transition-all duration-300 group
                                     backdrop-blur-sm border
@@ -214,24 +240,25 @@ const Sidebar = ({ children }) => {
                                         : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
                                     }
                                 `}
-              >
-                <div
-                  className={`relative ${isDashboardDropdownActive ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
                 >
-                  <LayoutDashboard className="w-4 h-4" />
-                  {isDashboardDropdownActive && (
-                    <div className="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
-                  )}
-                </div>
+                  <div
+                    className={`relative ${isDashboardDropdownActive ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    {isDashboardDropdownActive && (
+                      <div className="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
+                    )}
+                  </div>
 
-                {!isCollapsed && (
-                  <span className="ml-2 font-medium flex-1 text-left text-sm">
-                    Dashboard
-                  </span>
-                )}
-              </Link>
+                  {!isCollapsed && (
+                    <span className="ml-2 font-medium flex-1 text-left text-sm">
+                      Dashboard
+                    </span>
+                  )}
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
           {/* )} */}
 
           {/* My Day Link */}
@@ -298,10 +325,11 @@ const Sidebar = ({ children }) => {
           {/* )} */}
 
           {/* Delegation Task Section */}
-          {hasPermission("delegation_task_view") && (
-            <Link
-              to="/delegation-tasks"
-              className={`
+          {hasPermission("delegation_task_view") &&
+            isModuleEnabled("DO_THIS2") && (
+              <Link
+                to="/delegation-tasks"
+                className={`
                                 relative flex items-center ${isCollapsed ? "justify-center" : ""} 
                                 rounded-xl px-3 py-2.5 transition-all duration-300 group
                                 backdrop-blur-sm border
@@ -311,31 +339,32 @@ const Sidebar = ({ children }) => {
                                     : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
                                 }
                             `}
-            >
-              <div
-                className={`relative ${isActiveLink("/delegation-tasks") ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
               >
-                <ClipboardList className="w-4 h-4" />
-                {isActiveLink("/delegation-tasks") && (
-                  <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
-                )}
-              </div>
+                <div
+                  className={`relative ${isActiveLink("/delegation-tasks") ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  {isActiveLink("/delegation-tasks") && (
+                    <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
+                  )}
+                </div>
 
-              {!isCollapsed && (
-                <span className="ml-2 font-medium text-sm">
-                  Delegation Task
-                </span>
-              )}
-            </Link>
-          )}
+                {!isCollapsed && (
+                  <span className="ml-2 font-medium text-sm">
+                    Delegation Task
+                  </span>
+                )}
+              </Link>
+            )}
 
           {/* FMS Engine */}
-          {hasPermission("fms_engine_view") && (
-            <div>
-              <div className="relative">
-                <button
-                  onClick={() => toggleDropdown("fmsEngine")}
-                  className={`
+          {hasPermission("fms_engine_view") &&
+            isModuleEnabled("FMS_ENGINE") && (
+              <div>
+                <div className="relative">
+                  <button
+                    onClick={() => toggleDropdown("fmsEngine")}
+                    className={`
                                     relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
                                     rounded-xl px-3 py-2.5 transition-all duration-300 group
                                     backdrop-blur-sm border
@@ -345,48 +374,48 @@ const Sidebar = ({ children }) => {
                                         : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
                                     }
                                 `}
-                >
-                  <div
-                    className={`relative ${isFmsEngineDropdownActive ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
                   >
-                    <Settings2Icon className="w-4 h-4" />
-                  </div>
+                    <div
+                      className={`relative ${isFmsEngineDropdownActive ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
+                    >
+                      <Settings2Icon className="w-4 h-4" />
+                    </div>
 
-                  {!isCollapsed && (
-                    <span className="ml-2 font-medium flex-1 text-left text-sm">
-                      FMS Engine
-                    </span>
-                  )}
+                    {!isCollapsed && (
+                      <span className="ml-2 font-medium flex-1 text-left text-sm">
+                        FMS Engine
+                      </span>
+                    )}
 
-                  {!isCollapsed && (
-                    <ChevronDown
-                      className={`w-3 h-3 transition-transform duration-300 ${openDropdowns.fmsEngine ? "rotate-180" : ""} ${isFmsEngineDropdownActive ? "text-white/80" : "text-gray-400"}`}
-                    />
-                  )}
-                </button>
-                {openDropdowns.fmsEngine && !isCollapsed && (
-                  <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
-                    {[
-                      {
-                        path: "/fms-engine/templates",
-                        label: "FMS Templates",
-                        icon: Shield,
-                      },
-                      {
-                        path: "/fms-engine/launch",
-                        label: "Launch FMS",
-                        icon: User,
-                      },
-                      {
-                        path: "/fms-engine/upcoming",
-                        label: "Upcoming & Ongoing FMSs",
-                        icon: ListRestart,
-                      },
-                    ].map((item) => (
-                      <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`
+                    {!isCollapsed && (
+                      <ChevronDown
+                        className={`w-3 h-3 transition-transform duration-300 ${openDropdowns.fmsEngine ? "rotate-180" : ""} ${isFmsEngineDropdownActive ? "text-white/80" : "text-gray-400"}`}
+                      />
+                    )}
+                  </button>
+                  {openDropdowns.fmsEngine && !isCollapsed && (
+                    <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
+                      {[
+                        {
+                          path: "/fms-engine/templates",
+                          label: "FMS Templates",
+                          icon: Shield,
+                        },
+                        {
+                          path: "/fms-engine/launch",
+                          label: "Launch FMS",
+                          icon: User,
+                        },
+                        {
+                          path: "/fms-engine/upcoming",
+                          label: "Upcoming & Ongoing FMSs",
+                          icon: ListRestart,
+                        },
+                      ].map((item) => (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={`
                                                        flex items-center rounded-lg px-2 py-2 text-sm transition-all duration-200 group
                                                                                 ${
                                                                                   isActiveLink(
@@ -396,21 +425,21 @@ const Sidebar = ({ children }) => {
                                                                                     : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/80"
                                                                                 }
                                                                             `}
-                      >
-                        <item.icon
-                          className={`w-3 h-3 mr-2 ${isActiveLink(item.path) ? "text-blue-500" : "text-gray-400 group-hover:text-gray-600"}`}
-                        />
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
-                )}{" "}
+                        >
+                          <item.icon
+                            className={`w-3 h-3 mr-2 ${isActiveLink(item.path) ? "text-blue-500" : "text-gray-400 group-hover:text-gray-600"}`}
+                          />
+                          {item.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}{" "}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Reports */}
-          {hasPermission("reports_view") && (
+          {hasPermission("reports_view") && !isBothDisable && (
             <div>
               <div className="relative">
                 <button
@@ -448,16 +477,26 @@ const Sidebar = ({ children }) => {
                 {openDropdowns.reports && !isCollapsed && (
                   <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
                     {[
-                      {
-                        path: "/reports/mis",
-                        label: "MIS Reports",
-                        icon: NotepadText,
-                      },
-                      {
-                        path: "/reports/fms",
-                        label: "FMS Reports",
-                        icon: NotepadText,
-                      },
+                      ...(isModuleEnabled("DO_THIS2")
+                        ? [
+                            {
+                              path: "/reports/mis",
+                              label: "MIS Reports",
+                              icon: NotepadText,
+                            },
+                          ]
+                        : []),
+
+                      ...(isModuleEnabled("FMS_ENGINE") &&
+                      hasPermission("fms_engine_view")
+                        ? [
+                            {
+                              path: "/reports/fms",
+                              label: "FMS Reports",
+                              icon: NotepadText,
+                            },
+                          ]
+                        : []),
                     ]
                       // .filter(item => hasPermission(item.permission))
                       .map((item) => (
@@ -519,7 +558,7 @@ const Sidebar = ({ children }) => {
             </div>
           </div> */}
           {/* Setup Section */}
-          {hasPermission("setup_view") && (
+          {hasPermission("setup_view") && !isBothDisable && (
             <div>
               <div className="relative">
                 <button
@@ -599,6 +638,34 @@ const Sidebar = ({ children }) => {
                 )}
               </div>
             </div>
+          )}
+          {isSuper && (
+            <Link
+              to="/super/modules"
+              className={`
+                                relative flex items-center ${isCollapsed ? "justify-center" : ""} 
+                                rounded-xl px-3 py-2.5 transition-all duration-300 group
+                                backdrop-blur-sm border
+                                ${
+                                  isActiveLink("/super/modules")
+                                    ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
+                                    : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
+                                }
+                            `}
+            >
+              <div
+                className={`relative ${isActiveLink("/super/modules") ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
+              >
+                <Settings className="w-4 h-4" />
+                {isActiveLink("/super/modules") && (
+                  <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
+                )}
+              </div>
+
+              {!isCollapsed && (
+                <span className="ml-2 font-medium text-sm">Module Setting</span>
+              )}
+            </Link>
           )}
         </nav>
 

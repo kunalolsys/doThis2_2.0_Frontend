@@ -45,6 +45,7 @@ import FmsLaunchedView from "./pages/fmsEngine/fmsInstanceView";
 import { SocketProvider } from "./context/SocketContext";
 import { TaskChatProvider } from "./context/TaskChatContext";
 import FloatingManualButton from "./components/FloatingManualButton";
+import SuperModuleSettings from "./pages/SuperModuleSettings";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -228,6 +229,12 @@ function App() {
                       <EditUser />
                     </PermissionRoute>
                   }
+                />
+
+                {/* Super-only routes */}
+                <Route
+                  path="/super/modules"
+                  element={<SuperModuleSettings />}
                 />
               </Route>
               <Route path="*" element={<PageNotFound />} />
