@@ -10,7 +10,7 @@ import {
 import { markAllNotificationsRead } from "../lib/socket";
 import { useSocket } from "../context/SocketContext";
 
-const TABS = ["View all", "Mentions", "Unread"];
+const TABS = ["View all", "Unread"];
 
 const NotificationModal = ({ open, onClose }) => {
   const [activeTab, setActiveTab] = useState("View all");

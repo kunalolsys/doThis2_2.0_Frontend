@@ -310,7 +310,7 @@ const MisReports = () => {
         </div>
 
         {/* Reports Tabs */}
-        <div className="mb-6">
+        {/* <div className="mb-6">
           <div className="flex space-x-6 border-b border-gray-200">
             <button
               onClick={() => setActiveTab("delegated")}
@@ -347,7 +347,7 @@ const MisReports = () => {
               </div>
             </button>
           </div>
-        </div>
+        </div> */}
 
         {/* Top Performers and Chart Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">

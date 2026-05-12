@@ -641,8 +641,8 @@ const DepartmentCalender = () => {
       setEditingDepartment(null);
       setIsAddEditDialogOpen(false);
     } catch (err) {
-      console.log(err)
-      toast.error(err|| "Failed to save department.");
+      console.log(err);
+      toast.error(err || "Failed to save department.");
     }
   };
 
@@ -1044,29 +1044,42 @@ const DepartmentCalender = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {holidays.map((holiday) => (
-                  <TableRow key={holiday._id}>
-                    <TableCell>{formatDate2_0(holiday.date)}</TableCell>
-                    <TableCell>{holiday.name}</TableCell>
-                    <TableCell>{holiday.description || "-"}</TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditHolidayClick(holiday)}
+                {Array.isArray(holidays) && holidays.length > 0 ? (
+                  holidays.map((holiday) => (
+                    <TableRow key={holiday._id}>
+                      <TableCell>{formatDate2_0(holiday.date)}</TableCell>
+                      <TableCell>{holiday.name}</TableCell>
+                      <TableCell>{holiday.description || "-"}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditHolidayClick(holiday)}
+                        >
+                          <FilePenLine className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteHoliday(holiday._id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <>
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="h-24 text-center text-muted-foreground font-medium"
                       >
-                        <FilePenLine className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteHoliday(holiday._id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        No holidays found
+                      </TableCell>
+                    </TableRow>
+                  </>
+                )}
               </TableBody>
             </Table>
           )}

@@ -762,6 +762,7 @@ const FilterBar = ({
             <SelectItem value="Pending">Pending</SelectItem>
             <SelectItem value="Completed">Completed</SelectItem>
             <SelectItem value="Overdue">Overdue</SelectItem>
+            <SelectItem value="Delayed">Delayed</SelectItem>
             {isFMSEnable && <SelectItem value="Stopped">Stopped</SelectItem>}
             {/* <SelectItem value="Due Today">Due Today</SelectItem> */}
           </SelectContent>

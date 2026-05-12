@@ -1,21 +1,16 @@
 import * as React from "react";
-import { Dot, TrendingUp } from "lucide-react";
 import { Label, Pie, PieChart } from "recharts";
 
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import {
-  //   ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "../ui/chart";
+
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../ui/chart";
+
 import { useMemo } from "react";
 
 export const description = "A donut chart with text";
@@ -24,15 +19,23 @@ const chartConfig = {
   visitors: {
     label: "Visitors",
   },
-  chrome: {
+
+  overdue: {
     label: "Overdue Tasks",
     color: "red",
   },
-  safari: {
-    label: "Pendings Tasks",
+
+  pending: {
+    label: "Pending Tasks",
     color: "orange",
   },
-  firefox: {
+
+  delayed: {
+    label: "Delayed Tasks",
+    color: "#eab308",
+  },
+
+  completed: {
     label: "Completed Tasks",
     color: "green",
   },
@@ -46,17 +49,26 @@ export function ChartPieDonutText({ record }) {
       {
         browser: "Overdue tasks",
         visitors: record.counts?.Overdue || 0,
-        fill: "var(--color-chrome)",
+        fill: "var(--color-overdue)",
       },
+
       {
         browser: "Pending tasks",
         visitors: record.counts?.Pending || 0,
-        fill: "var(--color-safari)",
+        fill: "var(--color-pending)",
       },
+
+      // ✅ DELAYED
+      {
+        browser: "Delayed tasks",
+        visitors: record.counts?.Delayed || 0,
+        fill: "var(--color-delayed)",
+      },
+
       {
         browser: "Completed tasks",
         visitors: record.counts?.Completed || 0,
-        fill: "var(--color-firefox)",
+        fill: "var(--color-completed)",
       },
     ];
   }, [record]);
@@ -64,11 +76,13 @@ export function ChartPieDonutText({ record }) {
   const totalVisitors = useMemo(() => {
     return record?.total || 0;
   }, [record]);
+
   return (
     <Card className="flex flex-col">
       <CardHeader className="items-center pb-0">
         <CardTitle className="text-md font-semibold">My Task Status</CardTitle>
       </CardHeader>
+
       <CardContent className="pb-0">
         <ChartContainer
           config={chartConfig}
@@ -79,6 +93,7 @@ export function ChartPieDonutText({ record }) {
               cursor={false}
               content={<ChartTooltipContent hideLabel />}
             />
+
             <Pie
               data={chartData}
               dataKey="visitors"
@@ -103,6 +118,7 @@ export function ChartPieDonutText({ record }) {
                         >
                           {totalVisitors.toLocaleString()}
                         </tspan>
+
                         <tspan
                           x={viewBox.cx}
                           y={(viewBox.cy || 0) + 24}
@@ -119,30 +135,55 @@ export function ChartPieDonutText({ record }) {
           </PieChart>
         </ChartContainer>
       </CardContent>
+
       <CardFooter className="flex flex-col gap-2 text-sm">
+        {/* COMPLETED */}
         <div className="flex items-center justify-between w-full py-1 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="h-2 w-2 rounded-full bg-green-500"></div>
+
             <span className="font-semibold text-green-600">Completed</span>
           </div>
+
           <span className="font-bold text-green-700">
             {record?.counts?.Completed || 0}
           </span>
         </div>
+
+        {/* PENDING */}
         <div className="flex items-center justify-between w-full py-1 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="h-2 w-2 rounded-full bg-orange-500"></div>
+
             <span className="font-semibold text-orange-600">Pending</span>
           </div>
+
           <span className="font-bold text-orange-700">
             {record?.counts?.Pending || 0}
           </span>
         </div>
+
+        {/* DELAYED */}
+        <div className="flex items-center justify-between w-full py-1 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+
+            <span className="font-semibold text-yellow-600">Delayed</span>
+          </div>
+
+          <span className="font-bold text-yellow-700">
+            {record?.counts?.Delayed || 0}
+          </span>
+        </div>
+
+        {/* OVERDUE */}
         <div className="flex items-center justify-between w-full py-1">
           <div className="flex items-center gap-3">
             <div className="h-2 w-2 rounded-full bg-red-500"></div>
+
             <span className="font-semibold text-red-600">Overdue</span>
           </div>
+
           <span className="font-bold text-red-700">
             {record?.counts?.Overdue || 0}
           </span>
