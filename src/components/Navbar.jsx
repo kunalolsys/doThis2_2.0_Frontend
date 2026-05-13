@@ -25,7 +25,6 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const { user, loading, saving } = useSelector((state) => state.profile);
-  console.log(user);
   useEffect(() => {
     dispatch(getProfile());
   }, [dispatch]);
