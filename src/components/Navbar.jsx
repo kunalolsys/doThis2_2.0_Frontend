@@ -13,25 +13,25 @@ import {
 import Cookies from "js-cookie";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useSocket } from "../context/SocketContext";
 import NotificationBadge from "./NotificationBadge";
 import NotificationModal from "./NotificationModal";
 import { logoutUser } from "../lib/authAPI";
+import { getProfile } from "../redux/slices/profile/profileSlice";
 
 const Navbar = () => {
+  const dispatch = useDispatch();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const { isConnected } = useSocket();
-  const navigate = useNavigate();
-  const {
-    users,
-    currentUser,
-    status: userStatus,
-    error: userError,
-  } = useSelector((state) => state.users);
-  const userName = Cookies.get("name") || "User";
-  const userEmail = Cookies.get("email") || "user@example.com";
+  const { user, loading, saving } = useSelector((state) => state.profile);
+  console.log(user);
+  useEffect(() => {
+    dispatch(getProfile());
+  }, [dispatch]);
+  const userName = user?.name || Cookies.get("name") || "User";
+
+  const userEmail = user?.email || Cookies.get("email") || "user@example.com";
   const userInitial = userName.charAt(0).toUpperCase();
   const role = Cookies.get("role") || "";
   const handleLogout = async () => {
@@ -110,11 +110,26 @@ const Navbar = () => {
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
                 className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {userInitial}
-                  </span>
+                <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0">
+                  {user?.profilePhoto ? (
+                    <img
+                      src={
+                        user.profilePhoto.startsWith("http")
+                          ? user.profilePhoto
+                          : `${import.meta.env.VITE_API_BASE_URL}${user.profilePhoto}`
+                      }
+                      alt={user?.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs font-medium">
+                        {userInitial}
+                      </span>
+                    </div>
+                  )}
                 </div>
+
                 <ChevronDown
                   className={`w-4 h-4 text-gray-600 transition-transform ${isProfileOpen ? "rotate-180" : ""}`}
                 />

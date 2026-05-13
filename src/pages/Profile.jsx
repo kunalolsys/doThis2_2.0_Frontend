@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Save,
   Eye,
@@ -20,11 +20,14 @@ import {
   Pencil,
   Loader2,
   AlertCircle,
+  Upload,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
 import api from "../lib/api"; // ← adjust to your project path
+import { updateProfile } from "../redux/slices/profile/profileSlice";
+import { useDispatch } from "react-redux";
 
 /* ─── Design tokens ───────────────────────────────────────────────────────── */
 const T = {
@@ -246,12 +249,15 @@ const PrefRow = ({ icon: Icon, label, sub, on }) => (
 const Profile = () => {
   // Read logged-in user ID from cookie (same cookie your auth sets)
   const userId = Cookies.get("userId");
-
+  const dispatch = useDispatch();
   // Remote state
   const [user, setUser] = useState(null);
   const [fetchLoading, setFetchLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+  const fileRef = useRef();
 
+  const [profilePreview, setProfilePreview] = useState(null);
+  const [profileFile, setProfileFile] = useState(null);
   // Editable form — only the 3 fields the backend allows users to self-edit:
   // name, telegramUsername, password
   const [form, setForm] = useState({
@@ -287,6 +293,11 @@ const Profile = () => {
           //   telegramUsername: data.telegramUsername || "",
           password: "",
         });
+        setProfilePreview(
+          data.profilePhoto.startsWith("http")
+            ? data.profilePhoto
+            : `${import.meta.env.VITE_API_BASE_URL}${data.profilePhoto}`,
+        );
       } catch (err) {
         const msg = err?.response?.data?.message || "Failed to load profile";
         setFetchError(msg);
@@ -299,44 +310,42 @@ const Profile = () => {
     fetchUser();
   }, [userId]);
 
+  const handleProfileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Logo must be under 2 MB");
+      return;
+    }
+    setProfileFile(file);
+    setProfilePreview(URL.createObjectURL(file));
+  };
+
   // ── Field handler ────────────────────────────────────────────────────────
   const handleChange = (field) => (e) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
   // ── Save ─────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    if (!form.name.trim()) {
-      toast.error("Full name is required");
-      return;
-    }
-    try {
-      setSaving(true);
-      // Only send what this user is allowed to change
-      const payload = {
-        name: form.name.trim(),
-        // telegramUsername: form.telegramUsername.trim() || undefined,
-      };
-      if (form.password) {
-        payload.password = form.password;
-      }
-      // PUT /api/v1/users/:id → { status: "success", user: { ...updated } }
-      const res = await api.put(`/users/${userId}`, payload);
-      const updated = res.data?.user || res.data?.data;
-      if (updated) {
-        setUser(updated);
-        setForm((prev) => ({
-          ...prev,
-          name: updated.name || prev.name,
-          //   telegramUsername: updated.telegramUsername || prev.telegramUsername,
-          password: "", // always clear password after save
-        }));
-      }
+    const res = await dispatch(
+      updateProfile({
+        form,
+        profileFile,
+        currentUser: user,
+      }),
+    );
+
+    if (updateProfile.fulfilled.match(res)) {
       toast.success("Profile updated successfully");
-    } catch (err) {
-      const msg = err?.response?.data?.message || "Failed to save changes";
-      toast.error(msg);
-    } finally {
-      setSaving(false);
+
+      setForm((prev) => ({
+        ...prev,
+        password: "",
+      }));
+
+      setProfileFile(null);
+    } else {
+      toast.error(res.payload);
     }
   };
 
@@ -527,7 +536,7 @@ const Profile = () => {
             borderRadius: "18px",
             padding: "24px",
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             gap: "24px",
             marginBottom: "16px",
             boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
@@ -536,38 +545,142 @@ const Profile = () => {
         >
           {/* Avatar */}
           <div style={{ position: "relative", flexShrink: 0 }}>
-            <div
-              style={{
-                width: "80px",
-                height: "80px",
-                borderRadius: "20px",
-                background: `linear-gradient(135deg, ${T.accent} 0%, #4F46E5 100%)`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "26px",
-                fontWeight: 800,
-                color: "#fff",
-                boxShadow: `0 4px 16px ${T.accent}40`,
-                letterSpacing: "-1px",
-              }}
-            >
-              {getInitials(user?.name)}
-            </div>
-            {user?.isActive && (
+            <div>
               <div
                 style={{
-                  position: "absolute",
-                  bottom: "4px",
-                  right: "4px",
-                  width: "14px",
-                  height: "14px",
-                  borderRadius: "50%",
-                  background: T.green,
-                  border: `2px solid ${T.card}`,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: "10px",
+                  flexShrink: 0,
                 }}
-              />
-            )}
+              >
+                <div
+                  onClick={() => fileRef.current?.click()}
+                  style={{
+                    width: "100px",
+                    height: "100px",
+                    borderRadius: "20px",
+                    cursor: "pointer",
+                    background: profilePreview
+                      ? "transparent"
+                      : `linear-gradient(135deg,${T.accent},#4F46E5)`,
+                    border: `2px dashed ${profilePreview ? T.border2 : T.accentB}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden",
+                    position: "relative",
+                    transition: "all 0.2s",
+                  }}
+                  title="Click to upload logo"
+                >
+                  {profilePreview ? (
+                    <img
+                      src={profilePreview}
+                      alt="Logo"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                      }}
+                    />
+                  ) : (
+                    <div style={{ textAlign: "center" }}>
+                      <Image
+                        size={24}
+                        color="#fff"
+                        style={{ marginBottom: "4px" }}
+                      />
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          color: "rgba(255,255,255,0.8)",
+                          fontWeight: 600,
+                        }}
+                      >
+                        UPLOAD
+                      </div>
+                    </div>
+                  )}
+                  {/* Hover overlay */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      background: "rgba(0,0,0,0.35)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      opacity: 0,
+                      transition: "opacity 0.2s",
+                      borderRadius: "18px",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = 0)}
+                  >
+                    <Upload size={20} color="#fff" />
+                  </div>
+                </div>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleProfileChange}
+                />
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color: T.accent,
+                      background: T.accentL,
+                      border: `1px solid ${T.accentB}`,
+                      borderRadius: "7px",
+                      padding: "4px 10px",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Change
+                  </button>
+                  {/* {logoPreview && (
+                  <button
+                    onClick={() => {
+                      setLogoPreview(null);
+                      setLogoFile(null);
+                    }}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      color: T.red,
+                      background: T.redL,
+                      border: `1px solid ${T.red}30`,
+                      borderRadius: "7px",
+                      padding: "4px 10px",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    Remove
+                  </button>
+                )} */}
+                </div>
+                <div
+                  style={{
+                    fontSize: "11px",
+                    color: T.muted2,
+                    textAlign: "center",
+                  }}
+                >
+                  PNG, JPG, SVG
+                  <br />
+                  Max 2 MB
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Identity */}
@@ -575,6 +688,8 @@ const Profile = () => {
             <div
               style={{
                 fontSize: "20px",
+                display: "flex",
+                alignItems: "flex-start",
                 fontWeight: 800,
                 color: T.text,
                 letterSpacing: "-0.5px",

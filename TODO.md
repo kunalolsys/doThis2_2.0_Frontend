@@ -1,10 +1,7 @@
-# TODO
-
-## FMS Reports UI - Percentage Charts & KPIs
-- [ ] Inspect current `src/pages/reports/FmsReports.jsx` rendering and data contract.
-- [ ] Implement KPI cards (percent distributions) derived from `tasks` and `topPerformers`.
-- [ ] Add percentage charts using `recharts` (Top performers score, Late score, Status distribution).
-- [ ] Keep existing tasks table + pagination.
-- [ ] Add robust empty/loading states.
-- [ ] Run `npm run lint` / `npm run build` (or available checks) to ensure no runtime issues.
+- [ ] Update TaskTable to support user-controlled column visibility (show/hide) with an “increase/decrease” style UI.
+- [ ] Replace fixed One-time and Recurring table headers/cells with dynamic rendering based on selected visible columns.
+- [ ] Ensure loading/empty states use correct dynamic colSpan.
+- [ ] Keep action column + its buttons always visible (or included explicitly) and verify no layout break.
+- [ ] (Optional) Persist column selection in localStorage and restore on load.
+- [ ] Test UI in One-time and Recurring tabs.
 

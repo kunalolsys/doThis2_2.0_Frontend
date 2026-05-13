@@ -34,11 +34,13 @@ import {
   NotepadText,
   ListRestart,
   CalendarDays,
+  Building2Icon
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { setCurrentUser } from "../redux/slices/user/userSlice";
 import { logoutUser } from "../lib/authAPI";
 import api from "../lib/api";
+import { fetchCompany } from "../redux/slices/company/companySlice";
 
 const Sidebar = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -47,7 +49,7 @@ const Sidebar = ({ children }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { currentUser } = useSelector((state) => state.users);
-
+  const { company, loading, saving } = useSelector((state) => state.company);
   useEffect(() => {
     const userFromCookie = {
       _id: Cookies.get("userId"),
@@ -61,6 +63,7 @@ const Sidebar = ({ children }) => {
     if (userFromCookie._id) {
       dispatch(setCurrentUser(userFromCookie));
     }
+    dispatch(fetchCompany());
   }, [dispatch]);
   // Get user data from cookies
   const user = {
@@ -151,6 +154,22 @@ const Sidebar = ({ children }) => {
       icon: Eye,
     });
   }
+  useEffect(() => {
+    if (!company?.favicon) return;
+
+    const link =
+      document.querySelector("link[rel~='icon']") ||
+      document.createElement("link");
+
+    link.type = "image/png";
+    link.rel = "icon";
+
+    link.href = company.favicon.startsWith("http")
+      ? company.favicon
+      : `${import.meta.env.VITE_API_BASE_URL}${company.favicon}`;
+
+    document.head.appendChild(link);
+  }, [company?.favicon]);
   const [modules, setModules] = useState([]);
   useEffect(() => {
     const fetch_ = async () => {
@@ -193,16 +212,45 @@ const Sidebar = ({ children }) => {
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
               <div className="relative">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/25">
-                  <Zap className="w-4 h-4 text-white" fill="white" />
+                <div
+                  className={`rounded-lg overflow-hidden flex items-center justify-center ${
+                    company?.logo
+                      ? "w-14 h-14 bg-white"
+                      : "w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600"
+                  }`}
+                >
+                  {company?.logo ? (
+                    <img
+                      src={
+                        company.logo.startsWith("http")
+                          ? company.logo
+                          : `${import.meta.env.VITE_API_BASE_URL}${company.logo}`
+                      }
+                      alt={company.softwareName}
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <Zap className="w-4 h-4 text-white" fill="white" />
+                  )}
                 </div>
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg blur-sm opacity-30 -z-10"></div>
+
+                {!company?.logo && (
+                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg blur-sm opacity-30 -z-10"></div>
+                )}
               </div>
               <div>
                 <span className="font-bold text-gray-800 text-lg bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent">
-                  Dothis2_2.0
+                  {company?.softwareName || "Dothis2_2.0"}
                 </span>
-                <div className="h-1 w-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mt-0.5"></div>
+
+                {/* tagline */}
+                {company?.tagline && (
+                  <p className="text-xs text-gray-500 font-medium">
+                    {company.tagline}
+                  </p>
+                )}
+
+                <div className="h-1 w-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mt-1"></div>
               </div>
             </div>
           )}
@@ -612,6 +660,16 @@ const Sidebar = ({ children }) => {
                         icon: TimerIcon,
                       },
                       { path: "/setup/users", label: "Users", icon: Users2 },
+                      // ✅ show only if module enabled
+                      ...(isModuleEnabled("COMPANY_SETUP")
+                        ? [
+                            {
+                              path: "/company-setup",
+                              label: "Company Setup",
+                              icon: Building2Icon,
+                            },
+                          ]
+                        : []),
                       // { path: '/setup/data-masters', label: 'Data Masters', icon: Database }
                     ].map((item) => (
                       <Link

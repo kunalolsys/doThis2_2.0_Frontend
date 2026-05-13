@@ -46,6 +46,8 @@ import { SocketProvider } from "./context/SocketContext";
 import { TaskChatProvider } from "./context/TaskChatContext";
 import FloatingManualButton from "./components/FloatingManualButton";
 import SuperModuleSettings from "./pages/SuperModuleSettings";
+import CompanyProfile from "./pages/CompanyProfile";
+import NotificationIntegrations from "./pages/Notificationintegrations";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -91,6 +93,11 @@ function App() {
                 <Route path="/dashboard" element={<AdminDashboard />} />
                 <Route path="/logs" element={<LogsDashboard />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/company-setup" element={<CompanyProfile />} />
+                <Route
+                  path="/channel-setup"
+                  element={<NotificationIntegrations />}
+                />
                 {/* My Day Routes */}
                 {/* <Route path="/my-day/launchpad" element={<Launchpad />} /> */}
                 <Route path="/my-day/mytasks" element={<MyTask />} />
@@ -230,7 +237,6 @@ function App() {
                     </PermissionRoute>
                   }
                 />
-
                 {/* Super-only routes */}
                 <Route
                   path="/super/modules"

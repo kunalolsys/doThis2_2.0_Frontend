@@ -600,7 +600,10 @@ const MisReports = () => {
                     ))
                   ) : (
                     <TableRow className="hover:bg-gray-50">
-                      <TableCell className="font-medium p-3">
+                      <TableCell
+                        colSpan={100}
+                        className="text-center font-medium p-6 text-gray-500"
+                      >
                         No record found.
                       </TableCell>
                     </TableRow>

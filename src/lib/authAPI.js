@@ -16,6 +16,7 @@ export const logoutUser = async () => {
   try {
     await api.post("/auth/logout");
   } finally {
+    localStorage.clear()
     clearAccessToken();
     window.location.href = "/";
   }
