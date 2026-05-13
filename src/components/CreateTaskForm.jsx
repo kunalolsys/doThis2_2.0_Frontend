@@ -243,137 +243,288 @@ const CreateTaskForm = ({
     }
     setter(newDate);
   };
+  const [assignmentRows, setAssignmentRows] = useState([
+    {
+      departmentId: "",
+      users: [],
+    },
+  ]);
+  const addAssignmentRow = () => {
+    setAssignmentRows((prev) => [
+      ...prev,
+      {
+        departmentId: "",
+        users: [],
+      },
+    ]);
+  };
 
+  const removeAssignmentRow = (index) => {
+    // Always keep one row
+    if (assignmentRows.length === 1) return;
+
+    setAssignmentRows((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const updateDepartment = (index, departmentId) => {
+    setAssignmentRows((prev) =>
+      prev.map((row, i) =>
+        i === index
+          ? {
+              ...row,
+              departmentId,
+              users: [], // reset users when department changes
+            }
+          : row,
+      ),
+    );
+  };
+
+  const updateUsers = (index, users) => {
+    setAssignmentRows((prev) =>
+      prev.map((row, i) =>
+        i === index
+          ? {
+              ...row,
+              users,
+            }
+          : row,
+      ),
+    );
+  };
   // --- Handle Form Submission (Create) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation
+    // ─────────────────────────────────────────────
+    // VALIDATION
+    // ─────────────────────────────────────────────
     if (!title.trim()) {
       toast.error("Title is required");
       return;
     }
-    if (selectedUsers.length === 0) {
+
+    const hasUsers = assignmentRows.some((row) => row.users.length > 0);
+
+    if (!hasUsers) {
       toast.error("Please select at least one user");
       return;
     }
+
+    // validate each row
+    for (const row of assignmentRows) {
+      if (!row.departmentId) {
+        toast.error("Please select department");
+        return;
+      }
+
+      if (row.users.length === 0) {
+        toast.error("Please select users");
+        return;
+      }
+    }
+
     if (!isDependent && !isRecurrent && !taskEndDateOffset) {
       toast.error("Task end day is required");
       return;
     }
+
     if (!description.trim()) {
       toast.error("Description is required");
       return;
     }
+
     if (!isDependent && !startDate) {
       toast.error("A Start Date is required for non-dependent tasks.");
       return;
     }
+
     if (isDependent && !parentTask) {
       toast.error("Please select a parent task");
       return;
     }
+
     if (isDependent && xValue.trim() === "") {
       toast.error("X Value is required for dependent tasks.");
       return;
     }
 
     setLoading(true);
+
     try {
-      const formData = new FormData();
-      formData.append("assignedTo", JSON.stringify(selectedUsers));
-      formData.append("title", title.trim());
-      formData.append("description", description.trim());
-      // Keep for backward compatibility if needed, but selectedUsers covers it
-      // if (soleSelectedDept)
-      //   formData.append("departmentOfAssignToUser", soleSelectedDept);
+      // ─────────────────────────────────────────────
+      // LOOP THROUGH EACH DEPARTMENT ROW
+      // ─────────────────────────────────────────────
+      for (const row of assignmentRows) {
+        // skip invalid rows
+        if (!row.departmentId || row.users.length === 0) {
+          continue;
+        }
 
-      // Set date fields by default
-      if (startDate) {
-        formData.append("startDate", startDate);
-      } else {
-        const todayStr = new Date().toLocaleDateString("en-CA");
-        formData.append("startDate", todayStr);
-      }
-      if (!isRecurrent && taskEndDateOffset) {
-        formData.append("taskEndDays", taskEndDateOffset);
-      }
+        const formData = new FormData();
 
-      if (checklist.length > 0)
-        formData.append("checklist", JSON.stringify(checklist));
-      // if (attachmentFile) formData.append("attachmentFile", attachmentFile);
-      if (attachmentFile) {
-        attachmentFile.forEach((file) => {
-          formData.append("attachmentFile", file);
+        // ─────────────────────────────────────────────
+        // MAIN DATA
+        // ─────────────────────────────────────────────
+        formData.append("assignedTo", JSON.stringify(row.users));
+
+        formData.append("departmentOfAssignToUser", row.departmentId);
+
+        formData.append("title", title.trim());
+
+        formData.append("description", description.trim());
+
+        // ─────────────────────────────────────────────
+        // START DATE
+        // ─────────────────────────────────────────────
+        if (startDate) {
+          formData.append("startDate", startDate);
+        } else {
+          const todayStr = new Date().toLocaleDateString("en-CA");
+
+          formData.append("startDate", todayStr);
+        }
+
+        // ─────────────────────────────────────────────
+        // TASK END DAYS
+        // ─────────────────────────────────────────────
+        if (!isRecurrent && taskEndDateOffset) {
+          formData.append("taskEndDays", taskEndDateOffset);
+        }
+
+        // ─────────────────────────────────────────────
+        // CHECKLIST
+        // ─────────────────────────────────────────────
+        if (checklist.length > 0) {
+          formData.append("checklist", JSON.stringify(checklist));
+        }
+
+        // ─────────────────────────────────────────────
+        // ATTACHMENTS
+        // ─────────────────────────────────────────────
+        if (attachmentFile && attachmentFile.length > 0) {
+          attachmentFile.forEach((file) => {
+            formData.append("attachmentFile", file);
+          });
+        }
+
+        // ─────────────────────────────────────────────
+        // RECURRENT FLAGS
+        // ─────────────────────────────────────────────
+        formData.append("isRecurrent", String(isRecurrent));
+
+        if (isRecurrent) {
+          if (recurrenceFrequency) {
+            formData.append(
+              "frequency",
+              frequencyMap[recurrenceFrequency] || recurrenceFrequency,
+            );
+          }
+
+          if (
+            recurrenceFrequency === "weekly" &&
+            weeklyRecurrenceDays.length > 0
+          ) {
+            formData.append("weekDays", JSON.stringify(weeklyRecurrenceDays));
+          }
+
+          if (recurrenceEndDate) {
+            formData.append("recurrenceEndDate", recurrenceEndDate);
+          }
+        }
+
+        // ─────────────────────────────────────────────
+        // DEPENDENCY
+        // ─────────────────────────────────────────────
+        formData.append("isDependent", String(isDependent));
+
+        if (isDependent) {
+          if (parentTask) {
+            formData.append("parentTask", parentTask);
+          }
+
+          if (startTimeSetting) {
+            formData.append("startTimeSetting", startTimeSetting);
+          }
+
+          if (frequencyType) {
+            formData.append(
+              "isDependentFrequency",
+              frequencyType === "days" ? "T+X in days" : "T-X in hours",
+            );
+          }
+
+          if (xValue !== "") {
+            formData.append("xValue", xValue);
+          }
+
+          // IMPORTANT
+          if (startTimeSetting === "actual-to-planned") {
+            formData.delete("startDate");
+          }
+        }
+
+        // ─────────────────────────────────────────────
+        // API CALL
+        // ─────────────────────────────────────────────
+        await api.post("/tasks", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         });
       }
-      formData.append("isRecurrent", String(isRecurrent));
 
-      if (isRecurrent) {
-        if (recurrenceFrequency)
-          formData.append(
-            "frequency",
-            frequencyMap[recurrenceFrequency] || recurrenceFrequency,
-          );
-        if (
-          recurrenceFrequency === "weekly" &&
-          weeklyRecurrenceDays.length > 0
-        ) {
-          formData.append("weekDays", JSON.stringify(weeklyRecurrenceDays));
-        }
-        if (recurrenceEndDate)
-          formData.append("recurrenceEndDate", recurrenceEndDate);
-      }
+      // ─────────────────────────────────────────────
+      // RESET FORM
+      // ─────────────────────────────────────────────
+      setTitle("");
 
-      formData.append("isDependent", String(isDependent));
-      if (isDependent) {
-        if (parentTask) formData.append("parentTask", parentTask);
-        if (startTimeSetting)
-          formData.append("startTimeSetting", startTimeSetting);
-        if (frequencyType)
-          formData.append(
-            "isDependentFrequency",
-            frequencyType === "days" ? "T+X in days" : "T-X in hours",
-          );
-        if (xValue !== "") formData.append("xValue", xValue);
+      setAssignmentRows([
+        {
+          departmentId: "",
+          users: [],
+        },
+      ]);
 
-        // EXPLICIT SAFEGUARD: For actual-to-planned, forcefully remove any date fields.
-        if (startTimeSetting === "actual-to-planned") {
-          formData.delete("startDate");
-          // formData.delete("taskEndDays");
-        }
-      }
+      setDescription("");
 
-      const res = await api.post("/tasks", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      if (res.data?.success) {
-        setTitle("");
-        setSelectedUsers([]);
-        setOpenDepartments(new Set());
-        setSelectedDepartments(new Set());
-        setDescription("");
-        setDate(null);
-        setStartDate(null);
-        setChecklist([]);
-        setAttachmentFile([]);
-        setAttachmentFileList([]);
-        setIsRecurrent(false);
-        setIsDependent(false);
-        setParentTask("");
-        setStartTimeSetting("planned-to-planned");
-        setXValue("");
-        setRecurrenceEndDate(null);
-        setWeeklyRecurrenceDays([]);
-        setDependentDueDate(null);
-        setTaskEndDateOffset("");
-        onTaskCreated(); // Callback to parent to refresh tasks
-        toast.success(res.data.message || "Tasks assigned successfully!");
-      }
+      setDate(null);
+
+      setStartDate(null);
+
+      setChecklist([]);
+
+      setAttachmentFile([]);
+
+      setAttachmentFileList([]);
+
+      setIsRecurrent(false);
+
+      setIsDependent(false);
+
+      setParentTask("");
+
+      setStartTimeSetting("planned-to-planned");
+
+      setXValue("");
+
+      setRecurrenceEndDate(null);
+
+      setWeeklyRecurrenceDays([]);
+
+      setDependentDueDate(null);
+
+      setTaskEndDateOffset("");
+
+      onTaskCreated();
+
+      toast.success("Tasks assigned successfully!");
     } catch (err) {
       console.error("Submission Error:", err);
+
       const msg =
         err.response?.data?.message || err.message || "Failed to create task";
+
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -444,11 +595,13 @@ const CreateTaskForm = ({
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {/* Row 1: Title & Assignee */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-4">
+              {/* Task Title */}
               <div className="space-y-2">
                 <Label htmlFor="task-title">
                   Task Title <span className="text-red-500">*</span>
                 </Label>
+
                 <Input
                   id="task-title"
                   value={title}
@@ -457,171 +610,89 @@ const CreateTaskForm = ({
                   className="hover:shadow-md transition-all duration-200"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="task-title">
-                  Department <span className="text-red-500">*</span>
-                </Label>
-                <AntdSelect
-                  mode="multiple"
-                  showSearch
-                  placeholder="Select Departments"
-                  value={Array.from(selectedDepartments)}
-                  onChange={(values) => {
-                    setSelectedDepartments(new Set(values));
-                    setSelectedUsers([]);
-                  }}
-                  style={{
-                    width: "100%",
-                    minHeight: 38, // ✅ minimum height
-                  }}
-                  options={departments.map((d) => ({
-                    value: d._id,
-                    label: d.name,
-                  }))}
-                  optionFilterProp="label"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="task-title">
-                  Users <span className="text-red-500">*</span>
-                </Label>
-                <AntdSelect
-                  mode="multiple"
-                  showSearch
-                  placeholder={`Select Users (${filteredUsers.length})`}
-                  value={selectedUsers}
-                  onChange={(values) => setSelectedUsers(values)}
-                  disabled={selectedDeptIds.length === 0}
-                  style={{
-                    width: "100%",
-                    minHeight: 38, // ✅ minimum height
-                  }}
-                  optionFilterProp="label"
-                  options={filteredUsers.map((u) => ({
-                    value: u._id,
 
-                    // 🔥 user name + departments
-                    label: `${u.name || u.email} (${[...new Set(u.deptNames)].join(", ")})`,
-                  }))}
-                />
-              </div>
-              {/* --- ASSIGN TO (Multi-Select Dropdown) --- */}
-              {/* <div className="space-y-2 relative" ref={assignDropdownRef}>
-                <Label>
-                  Assign To <span className="text-red-500">*</span>
-                </Label>
-                <div
-                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer hover:shadow-md transition-all"
-                  onClick={() => setIsAssignDropdownOpen(!isAssignDropdownOpen)}
-                >
-                  <span
-                    className={
-                      selectedUsers.length === 0
-                        ? "text-muted-foreground"
-                        : "text-foreground font-medium"
-                    }
+              {/* Dynamic Department/User Rows */}
+              {assignmentRows.map((row, index) => {
+                const filteredUsers = users.filter(
+                  (u) =>
+                    Array.isArray(u.department) &&
+                    u.department.some((d) => d?._id === row.departmentId),
+                );
+
+                return (
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end border rounded-xl p-4 bg-slate-50"
                   >
-                    {selectedUsers.length > 0
-                      ? `${selectedUsers.length} User(s) Selected`
-                      : "Select Departments & Users"}
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "h-4 w-4 opacity-50 transition-transform",
-                      isAssignDropdownOpen ? "rotate-180" : "",
-                    )}
-                  />
-                </div>
+                    {/* Department */}
+                    <div className="md:col-span-4 space-y-2">
+                      <Label>
+                        Department <span className="text-red-500">*</span>
+                      </Label>
 
-                {isAssignDropdownOpen && (
-                  <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-xl animate-in fade-in-80 max-h-72 overflow-y-auto p-2">
-                    {departments.length > 0 ? (
-                      departments.map((dept) => {
-                        // Filter Users for this specific department
-                        const deptUsers = users.filter(
-                          (u) =>
-                            u.department &&
-                            Array.isArray(u.department) &&
-                            u.department.some((d) => d && d._id === dept._id),
-                        );
+                      <AntdSelect
+                        showSearch
+                        placeholder="Select Department"
+                        value={row.departmentId || undefined}
+                        onChange={(value) => updateDepartment(index, value)}
+                        style={{ width: "100%", minHeight: 38 }}
+                        optionFilterProp="label"
+                        options={departments.map((d) => ({
+                          value: d._id,
+                          label: d.name,
+                        }))}
+                      />
+                    </div>
 
-                        if (deptUsers.length === 0)
-                          return (
-                            <div
-                              key={dept._id}
-                              className="mb-2 p-2 text-xs text-gray-400 border-b"
-                            >
-                              {dept.name} (No users)
-                            </div>
-                          );
+                    {/* Users */}
+                    <div className="md:col-span-6 space-y-2">
+                      <Label>
+                        Users <span className="text-red-500">*</span>
+                      </Label>
 
-                        return (
-                          <div key={dept._id} className="mb-4">
-                            <div className="flex items-center gap-2 p-2 bg-slate-100/80 rounded-md mb-1 font-semibold text-slate-700 hover:bg-slate-200/80 transition-colors">
-                              <Checkbox
-                                id={`dept-${dept._id}`}
-                                checked={selectedDepartments.has(dept._id)}
-                                onChange={(e) => handleDeptSelectAll(dept._id)}
-                                className="border-slate-400 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 cursor-pointer"
-                              />
-                              <div
-                                className="flex-1 cursor-pointer select-none flex items-center justify-between text-sm hover:text-slate-800"
-                                onClick={() => handleDeptExpand(dept._id)}
-                              >
-                                {dept.name}
-                                <span className="text-xs font-normal text-slate-500 bg-white px-2 py-0.5 rounded-full">
-                                  {deptUsers.length}
-                                </span>
-                              </div>
-                              <ChevronDown
-                                className={cn(
-                                  "h-4 w-4 text-slate-500 transition-transform cursor-pointer hover:text-slate-600 flex-shrink-0",
-                                  openDepartments.has(dept._id) && "rotate-180",
-                                )}
-                                onClick={() => handleDeptExpand(dept._id)}
-                              />
-                            </div>
+                      <AntdSelect
+                        mode="multiple"
+                        showSearch
+                        placeholder={`Select Users (${filteredUsers.length})`}
+                        value={row.users}
+                        onChange={(values) => updateUsers(index, values)}
+                        disabled={!row.departmentId}
+                        style={{ width: "100%", minHeight: 38 }}
+                        optionFilterProp="label"
+                        options={filteredUsers.map((u) => ({
+                          value: u._id,
+                          label: `${u.name || u.email}`,
+                        }))}
+                      />
+                    </div>
 
-                            {openDepartments.has(dept._id) && (
-                              <div className="pl-6 space-y-1 border-l-2 border-slate-200 ml-2">
-                                {deptUsers.map((u) => (
-                                  <div
-                                    key={u._id}
-                                    className="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded transition-colors group"
-                                  >
-                                    <Checkbox
-                                      id={`user-${u._id}`}
-                                      checked={selectedUsers.includes(u._id)}
-                                      onChange={() => handleUserToggle(u._id)}
-                                      className="h-4 w-4 border-slate-300 data-[state=checked]:bg-blue-500"
-                                    />
-                                    <Label
-                                      htmlFor={`user-${u._id}`}
-                                      className="cursor-pointer select-none text-sm text-gray-600 group-hover:text-gray-900 flex-1 flex items-center gap-2"
-                                    >
-                                      <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold">
-                                        {u.name
-                                          ? u.name.charAt(0).toUpperCase()
-                                          : "?"}
-                                      </div>
-                                      {u.name || u.email}
-                                    </Label>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="p-4 text-sm text-gray-500 text-center flex flex-col items-center">
-                        <UsersIcon className="w-8 h-8 mb-2 opacity-20" />
-                        No departments found.
-                      </div>
-                    )}
+                    {/* Delete Button */}
+                    <div className="md:col-span-2">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="w-full"
+                        disabled={assignmentRows.length === 1}
+                        onClick={() => removeAssignmentRow(index)}
+                      >
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Delete
+                      </Button>
+                    </div>
                   </div>
-                )}
-              </div> */}
+                );
+              })}
+
+              {/* Add Row Button */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addAssignmentRow}
+                className="w-full border-dashed"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Another Department{" "}
+              </Button>
             </div>
 
             {/* Row 2: Description */}

@@ -34,7 +34,7 @@ import {
   NotepadText,
   ListRestart,
   CalendarDays,
-  Building2Icon
+  Building2Icon,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { setCurrentUser } from "../redux/slices/user/userSlice";
@@ -90,8 +90,16 @@ const Sidebar = ({ children }) => {
     return !!permissions[permission];
   };
 
-  const toggleDropdown = (key) => {
-    setOpenDropdowns((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggleDropdown = (menu) => {
+    setOpenDropdowns((prev) => ({
+      myDay: false,
+      fmsEngine: false,
+      reports: false,
+      setup: false,
+
+      // toggle selected one
+      [menu]: !prev[menu],
+    }));
   };
 
   const handleLogout = async () => {

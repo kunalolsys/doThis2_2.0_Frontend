@@ -74,28 +74,7 @@ function App() {
       window.removeEventListener("session-timeout", sessionTimeoutListener);
     };
   }, []);
-  const [modules, setModules] = useState([]);
-  useEffect(() => {
-    const fetch_ = async () => {
-      try {
-        const res = await api.get("/setup/modules/list");
-        const data = res.data?.data ?? res.data;
-        setModules(Array.isArray(data) ? data : (data?.modules ?? []));
-      } catch (e) {
-        console.log(e?.response?.data?.message || "Failed to load modules");
-      }
-    };
-    fetch_();
-  }, []);
-  const role = Cookies.get("role") || "";
-  const isSuper = role === "Super";
-  const isModuleEnabled = (moduleKey) => {
-    // ✅ Super user can access all modules
-    if (isSuper) return true;
 
-    return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
-  };
-  const isCompanySetupEnable = isModuleEnabled("COMPANY_SETUP");
   return (
     <>
       <Toaster richColors position="top-center" />
@@ -116,7 +95,7 @@ function App() {
                 <Route path="/dashboard" element={<AdminDashboard />} />
                 <Route path="/logs" element={<LogsDashboard />} />
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/company-setup" element={isCompanySetupEnable?<CompanyProfile />:<PageNotFound/>} />
+                <Route path="/company-setup" element={<CompanyProfile />} />
                 <Route
                   path="/channel-setup"
                   element={<NotificationIntegrations />}
