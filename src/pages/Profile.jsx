@@ -27,7 +27,7 @@ import { toast } from "sonner";
 import Cookies from "js-cookie";
 import api from "../lib/api"; // ← adjust to your project path
 import { updateProfile } from "../redux/slices/profile/profileSlice";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 /* ─── Design tokens ───────────────────────────────────────────────────────── */
 const T = {
@@ -250,6 +250,7 @@ const Profile = () => {
   // Read logged-in user ID from cookie (same cookie your auth sets)
   const userId = Cookies.get("userId");
   const dispatch = useDispatch();
+  const profileUser = useSelector((state) => state.profile.user);
   // Remote state
   const [user, setUser] = useState(null);
   const [fetchLoading, setFetchLoading] = useState(true);
@@ -309,7 +310,24 @@ const Profile = () => {
 
     fetchUser();
   }, [userId]);
+  useEffect(() => {
+    if (profileUser) {
+      setUser(profileUser);
 
+      setForm((prev) => ({
+        ...prev,
+        name: profileUser.name || "",
+      }));
+
+      if (profileUser.profilePhoto) {
+        setProfilePreview(
+          profileUser.profilePhoto.startsWith("http")
+            ? profileUser.profilePhoto
+            : `${import.meta.env.VITE_API_BASE_URL}${profileUser.profilePhoto}`,
+        );
+      }
+    }
+  }, [profileUser]);
   const handleProfileChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
