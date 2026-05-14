@@ -1940,7 +1940,10 @@ const TaskTable = ({
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          disabled={task.status == "Completed"}
+                                            disabled={
+    assignedByUser?._id === assignedToUser?._id ||
+    task.status === "Completed"
+  }
                                           className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
                                           onClick={() =>
                                             openReassignDialog(task)
@@ -2292,7 +2295,10 @@ const TaskTable = ({
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          disabled={task.status == "Completed"}
+                                           disabled={
+    assignedByUser?._id === assignedToUser?._id ||
+    task.status === "Completed"
+  }
                                           className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
                                           onClick={() =>
                                             openReassignDialog(task)

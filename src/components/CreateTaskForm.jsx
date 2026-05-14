@@ -41,6 +41,7 @@ import {
 import dayjs from "dayjs";
 import { DatePicker, Select as AntdSelect } from "antd";
 import AttachmentUpload from "./attachmentsUpload.jsx";
+import Cookies from "js-cookie";
 
 const CreateTaskForm = ({
   users,
@@ -51,6 +52,7 @@ const CreateTaskForm = ({
   workingWeeks,
 }) => {
   const dispatch = useDispatch();
+  const role = Cookies.get("role");
 
   // Form States
   const [date, setDate] = useState(); // Unused in final form logic, remove?
@@ -76,7 +78,6 @@ const CreateTaskForm = ({
   // --- Assignee States ---
   const [openDepartments, setOpenDepartments] = useState(new Set());
   const [selectedDepartments, setSelectedDepartments] = useState(new Set());
-  const [selectedUsers, setSelectedUsers] = useState([]);
   const [isAssignDropdownOpen, setIsAssignDropdownOpen] = useState(false);
 
   // Basic Fields
@@ -165,56 +166,6 @@ const CreateTaskForm = ({
     });
   };
 
-  // Handle Department Select All Toggle
-  const handleDeptSelectAll = (deptId) => {
-    setSelectedDepartments((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(deptId)) {
-        newSet.delete(deptId);
-        // Deselect all users in this dept
-        const deptUsers = users.filter(
-          (u) =>
-            u.department &&
-            Array.isArray(u.department) &&
-            u.department.some((d) => d && d._id === deptId),
-        );
-        const deptUserIds = deptUsers.map((u) => u._id);
-        setSelectedUsers((prevUsers) =>
-          prevUsers.filter((id) => !deptUserIds.includes(id)),
-        );
-      } else {
-        newSet.add(deptId);
-        // Select all users in this dept
-        const deptUsers = users.filter(
-          (u) =>
-            u.department &&
-            Array.isArray(u.department) &&
-            u.department.some((d) => d && d._id === deptId),
-        );
-        const deptUserIds = deptUsers.map((u) => u._id);
-        setSelectedUsers((prevUsers) => {
-          const newUsers = new Set(prevUsers);
-          deptUserIds.forEach((id) => newUsers.add(id));
-          return Array.from(newUsers);
-        });
-      }
-      return newSet;
-    });
-  };
-
-  // Handle Individual User Toggle
-  const handleUserToggle = (userId) => {
-    setSelectedUsers((prev) => {
-      const newUsers = new Set(prev);
-      if (newUsers.has(userId)) {
-        newUsers.delete(userId);
-      } else {
-        newUsers.add(userId);
-      }
-      return Array.from(newUsers);
-    });
-  };
-
   const dateChangeHandler = (e, setter) => {
     const dateString = e.target.value;
     if (!dateString) {
@@ -249,16 +200,35 @@ const CreateTaskForm = ({
       users: [],
     },
   ]);
+  const selectedUsers = assignmentRows.flatMap((r) => r.users || []);
   const addAssignmentRow = () => {
-    setAssignmentRows((prev) => [
-      ...prev,
-      {
-        departmentId: "",
-        users: [],
-      },
-    ]);
-  };
+    const selectedUsers = assignmentRows.flatMap((r) => r.users || []);
 
+    const availableUsers = users.filter((u) => !selectedUsers.includes(u._id));
+
+    if (availableUsers.length === 0) {
+      toast.error("No more users available to assign");
+      return;
+    }
+
+    setAssignmentRows((prev) => [...prev, { departmentId: "", users: [] }]);
+  };
+const isDepartmentFullySelected = (deptId) => {
+  const deptUsers = users.filter(
+    (u) =>
+      Array.isArray(u.department) &&
+      u.department.some((d) => d?._id === deptId),
+  );
+
+  const selectedUsers = assignmentRows
+    .filter((r) => r.departmentId === deptId)
+    .flatMap((r) => r.users || []);
+
+  return (
+    deptUsers.length > 0 &&
+    selectedUsers.length >= deptUsers.length
+  );
+};
   const removeAssignmentRow = (index) => {
     // Always keep one row
     if (assignmentRows.length === 1) return;
@@ -280,18 +250,19 @@ const CreateTaskForm = ({
     );
   };
 
-  const updateUsers = (index, users) => {
+  const updateUsers = (index, newUsers) => {
     setAssignmentRows((prev) =>
       prev.map((row, i) =>
         i === index
           ? {
               ...row,
-              users,
+              users: [...new Set(newUsers)],
             }
           : row,
       ),
     );
   };
+
   // --- Handle Form Submission (Create) ---
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -563,7 +534,6 @@ const CreateTaskForm = ({
     }
   });
 
-  const filteredUsers = Array.from(userMap.values());
   return (
     <Card className="m-4 shadow-xl bg-white/80 backdrop-blur-sm border-0 hover:shadow-2xl transition-all duration-500 group">
       <CardHeader className="border-b border-gray-200/50">
@@ -613,12 +583,16 @@ const CreateTaskForm = ({
 
               {/* Dynamic Department/User Rows */}
               {assignmentRows.map((row, index) => {
-                const filteredUsers = users.filter(
-                  (u) =>
+                const filteredUsers = users.filter((u) => {
+                  const inDepartment =
                     Array.isArray(u.department) &&
-                    u.department.some((d) => d?._id === row.departmentId),
-                );
+                    u.department.some((d) => d?._id === row.departmentId);
 
+                  const alreadySelectedElsewhere =
+                    selectedUsers.includes(u._id) && !row.users.includes(u._id);
+
+                  return inDepartment && !alreadySelectedElsewhere;
+                });
                 return (
                   <div
                     key={index}
@@ -637,10 +611,11 @@ const CreateTaskForm = ({
                         onChange={(value) => updateDepartment(index, value)}
                         style={{ width: "100%", minHeight: 38 }}
                         optionFilterProp="label"
-                        options={departments.map((d) => ({
-                          value: d._id,
-                          label: d.name,
-                        }))}
+                     options={departments.map((d) => ({
+  value: d._id,
+  label: d.name,
+  disabled: isDepartmentFullySelected(d._id), // ✅ ONLY ADD THIS
+}))}
                       />
                     </div>
 
@@ -684,15 +659,17 @@ const CreateTaskForm = ({
               })}
 
               {/* Add Row Button */}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addAssignmentRow}
-                className="w-full border-dashed"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Another Department{" "}
-              </Button>
+              {role !== "Member" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addAssignmentRow}
+                  className="w-full border-dashed"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Another Department{" "}
+                </Button>
+              )}
             </div>
 
             {/* Row 2: Description */}

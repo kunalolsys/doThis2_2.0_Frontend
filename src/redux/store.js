@@ -12,6 +12,7 @@ import fmsReducer from "./slices/fms/fmsSlice";
 import notificationReducer from "./slices/notification/notificationSlice";
 import companyReducer from "./slices/company/companySlice";
 import profileReducer from "./slices/profile/profileSlice";
+import moduleReducer from "./slices/moduleSetting/moduleSlice";
 
 const store = configureStore({
   reducer: {
@@ -28,6 +29,7 @@ const store = configureStore({
     notifications: notificationReducer,
     company: companyReducer,
     profile: profileReducer,
+    modules: moduleReducer,
   },
 });
 

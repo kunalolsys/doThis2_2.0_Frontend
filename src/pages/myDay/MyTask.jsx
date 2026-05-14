@@ -185,6 +185,8 @@ const TaskActions = ({
   setRaiseQueryModalOpen,
   unreadCount,
   setUnreadMap,
+  assignedByUser,
+  assignedToUser,
 }) => {
   const isCompleted = task.status === "Completed";
   const upComing = task.status == "Upcoming";
@@ -280,6 +282,7 @@ const TaskActions = ({
         <TooltipTrigger asChild>
           <div className="relative">
             <Button
+              disabled={assignedByUser?._id === assignedToUser?._id}
               size="icon"
               variant="ghost"
               className="h-8 w-8 rounded-full 
@@ -319,6 +322,7 @@ const TaskActions = ({
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
+            disabled={assignedByUser?._id === assignedToUser?._id}
             size="icon"
             variant="ghost"
             className="h-8 w-8 rounded-full 
@@ -824,7 +828,7 @@ const TodayTasksTable = ({
             <TableHead>Start Date</TableHead>
             <TableHead>Due Date</TableHead>
             <TableHead>Frequency</TableHead>
-            <TableHead>Delay</TableHead>
+            {/* <TableHead>Delay</TableHead> */}
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -928,7 +932,9 @@ const TodayTasksTable = ({
                             ? "Recurring"
                             : task.taskType == "FutureRecurringTask"
                               ? "Future Recurring"
-                              : "Delegation"}
+                              : task.frequency
+                                ? "Recurring"
+                                : "Delegation"}
                       </span>
                     </TableCell>
                     {/* <TableCell>{task.assignedBy?.name || "Self"}</TableCell> */}
@@ -946,12 +952,10 @@ const TodayTasksTable = ({
                     <TableCell>
                       {task.dueDate ? formatDate(task.dueDate) : "-"}
                     </TableCell>
-                    <TableCell>
-                      {task.taskType === "RecurringTask" ? task.frequency : "-"}
-                    </TableCell>
-                    <TableCell className={task.delay ? "text-red-600" : ""}>
+                    <TableCell>{task.frequency ?? "-"}</TableCell>
+                    {/* <TableCell className={task.delay ? "text-red-600" : ""}>
                       {task.delay || "-"}
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell>{getStatusBadge(task.status)}</TableCell>
                     <TableCell>
                       <div className="flex items-center">
@@ -965,6 +969,8 @@ const TodayTasksTable = ({
                           setRaiseQueryModalOpen={setRaiseQueryModalOpen}
                           unreadCount={unreadMap[task.conversationId] || 0}
                           setUnreadMap={setUnreadMap}
+                          assignedByUser={assignedByUser}
+                          assignedToUser={assignedToUser}
                         />
                       </div>
                     </TableCell>

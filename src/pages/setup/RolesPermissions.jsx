@@ -50,6 +50,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Checkbox } from "../../components/ui/checkbox";
 import { toast } from "sonner";
+import useModuleAccess from "../../hooks/useModuleAccess";
 
 const permissionMap = {
   setup: "Setup",
@@ -88,6 +89,13 @@ const RolesPermissions = () => {
     status,
     error,
   } = useSelector((state) => state.roles);
+  const {
+    isDoThisEnabled,
+    isFmsEnabled,
+    isCompanySetupEnabled,
+    isBothDisable,
+    isModuleEnabled,
+  } = useModuleAccess();
   const roles = useMemo(() => {
     const transformed = transformRoles(rawRoles);
     const desiredOrder = ["Admin", "Owner", "Sr. Manager", "Manager", "Member"];
@@ -316,21 +324,27 @@ const RolesPermissions = () => {
                       Setup
                     </div>
                   </TableHead>
-                  <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                    <div className="flex items-center justify-center gap-2">
-                      <LayoutGrid className="w-4 h-4" /> FMS Engine
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                    <div className="flex items-center justify-center gap-2">
-                      <FileText className="w-4 h-4" /> Reports
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                    <div className="flex items-center justify-center gap-2">
-                      <FileText className="w-4 h-4" /> Delegation Task
-                    </div>
-                  </TableHead>
+                  {isFmsEnabled && (
+                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                      <div className="flex items-center justify-center gap-2">
+                        <LayoutGrid className="w-4 h-4" /> FMS Engine
+                      </div>
+                    </TableHead>
+                  )}
+                  {!isBothDisable && (
+                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                      <div className="flex items-center justify-center gap-2">
+                        <FileText className="w-4 h-4" /> Reports
+                      </div>
+                    </TableHead>
+                  )}
+                  {isDoThisEnabled && (
+                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                      <div className="flex items-center justify-center gap-2">
+                        <FileText className="w-4 h-4" /> Delegation Task
+                      </div>
+                    </TableHead>
+                  )}
                   <TableHead className="text-right pr-6 font-semibold text-slate-600 text-xs uppercase tracking-wider">
                     Action
                   </TableHead>
@@ -380,41 +394,49 @@ const RolesPermissions = () => {
                       </TableCell>
 
                       {/* FMS Design Switch */}
-                      <TableCell className="text-center">
-                        <Switch
-                          checked={role.fmsEngine}
-                          onCheckedChange={(value) =>
-                            handlePermissionChange(role._id, "fmsEngine", value)
-                          }
-                          className="data-[state=checked]:bg-blue-600"
-                        />
-                      </TableCell>
-
+                      {isFmsEnabled && (
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={role.fmsEngine}
+                            onCheckedChange={(value) =>
+                              handlePermissionChange(
+                                role._id,
+                                "fmsEngine",
+                                value,
+                              )
+                            }
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                        </TableCell>
+                      )}
                       {/* Reporting Switch */}
-                      <TableCell className="text-center">
-                        <Switch
-                          checked={role.reports}
-                          onCheckedChange={(value) =>
-                            handlePermissionChange(role._id, "reports", value)
-                          }
-                          className="data-[state=checked]:bg-blue-600"
-                        />
-                      </TableCell>
-
+                      {!isBothDisable && (
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={role.reports}
+                            onCheckedChange={(value) =>
+                              handlePermissionChange(role._id, "reports", value)
+                            }
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                        </TableCell>
+                      )}
                       {/* Delegation Task Switch */}
-                      <TableCell className="text-center">
-                        <Switch
-                          checked={role.delegationTask}
-                          onCheckedChange={(value) =>
-                            handlePermissionChange(
-                              role._id,
-                              "delegationTask",
-                              value,
-                            )
-                          }
-                          className="data-[state=checked]:bg-blue-600"
-                        />
-                      </TableCell>
+                      {isDoThisEnabled && (
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={role.delegationTask}
+                            onCheckedChange={(value) =>
+                              handlePermissionChange(
+                                role._id,
+                                "delegationTask",
+                                value,
+                              )
+                            }
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                        </TableCell>
+                      )}
 
                       {/* Actions */}
                       <TableCell className="text-right pr-6">

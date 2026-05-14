@@ -19,6 +19,7 @@ import NotificationBadge from "./NotificationBadge";
 import NotificationModal from "./NotificationModal";
 import { logoutUser } from "../lib/authAPI";
 import { getProfile } from "../redux/slices/profile/profileSlice";
+import { fetchModules } from "../redux/slices/moduleSetting/moduleSlice";
 
 const Navbar = () => {
   const dispatch = useDispatch();
@@ -28,6 +29,10 @@ const Navbar = () => {
   useEffect(() => {
     dispatch(getProfile());
   }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchModules());
+  }, []);
   const userName = user?.name || Cookies.get("name") || "User";
 
   const userEmail = user?.email || Cookies.get("email") || "user@example.com";

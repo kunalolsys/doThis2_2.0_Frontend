@@ -87,7 +87,7 @@ const TaskPage = () => {
       try {
         const [userRes, deptRes, holidayRes, workingWeekRes] =
           await Promise.all([
-            api.get("/setup/users/allUsers"),
+            api.get("/setup/users/filter-allUsers"),
             api.get("/setup/departments/allDepartments"),
             api.get("/setup/holiday/allHolidays"),
             api.get("/setup/working-week"),

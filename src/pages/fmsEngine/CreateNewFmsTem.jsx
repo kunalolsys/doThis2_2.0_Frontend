@@ -197,10 +197,20 @@ const CreateNewFmsTem = () => {
     //   }),
     // }),
     onSubmit: async (values) => {
+      console.log(values);
       setLoading(true);
       try {
         // ✅ FIRST TIME → CREATE TEMPLATE ONLY
         if (!templateCreated) {
+          if (!values.templateName?.trim()) {
+            toast.error("Template name is required");
+            return;
+          }
+
+          if (!values.manager) {
+            toast.error("Manager is required");
+            return;
+          }
           const payload = {
             ...values,
           };
@@ -211,7 +221,58 @@ const CreateNewFmsTem = () => {
           toast.success("Template created successfully!");
           return;
         }
+        // =====================================================
+        // TASK VALIDATION
+        // =====================================================
 
+        const newTasks = tasks.filter((task) => !task.isFromAPI);
+
+        if (newTasks.length === 0) {
+          toast.error("Please add at least one task");
+          return;
+        }
+
+        const validationErrors = [];
+
+        newTasks.forEach((task, index) => {
+          const row = index + 1;
+
+          if (!task.description?.trim()) {
+            validationErrors.push(`Row ${row}: Description required`);
+          }
+
+          if (!task.dept) {
+            validationErrors.push(`Row ${row}: Department required`);
+          }
+
+          if (!task.doer) {
+            validationErrors.push(`Row ${row}: Assigned user required`);
+          }
+
+          if (!task.frequency) {
+            validationErrors.push(`Row ${row}: Frequency required`);
+          }
+
+          if (task.isDependent === "yes" && !task.dependentOn) {
+            validationErrors.push(`Row ${row}: Dependent task required`);
+          }
+        });
+
+        // =====================================================
+        // SHOW ERRORS
+        // =====================================================
+
+        if (validationErrors.length > 0) {
+          toast.error(
+            <div>
+              {[...new Set(validationErrors)].map((msg, i) => (
+                <div key={i}>{msg}</div>
+              ))}
+            </div>,
+          );
+
+          return;
+        }
         // ✅ AFTER TEMPLATE CREATED → SAVE TASKS
         const payload = tasks
           .filter((task) => !task.isFromAPI) // 🔥 ONLY NEW TASKS
@@ -347,21 +408,53 @@ const CreateNewFmsTem = () => {
   //**auto update template when change */
   const updateTemplate = async () => {
     setLoadUpdate(true);
-    try {
-      let payload = { ...formik.values };
 
+    try {
+      const values = { ...formik.values };
+      console.log(values);
       // ✅ remove endDate if Timeless
-      if (payload.fmsDuration === "Timeless") {
-        payload.endDate = null; // 🔥 important
+      if (values.fmsDuration === "Timeless") {
+        values.endDate = null;
       }
 
+      // ✅ send ONLY task ids
+      const cleanedTasks = (values.tasks || [])
+        .map((task) => {
+          if (!task) return null;
+
+          if (typeof task === "string") return task;
+
+          return task._id || task.id || null;
+        })
+        .filter(Boolean);
+
+      // ✅ minimal payload
+      const payload = {
+        fms_id: values.fms_id,
+        templateName: values.templateName,
+        description: values.description,
+        fmsDuration: values.fmsDuration,
+        endDate: values.endDate,
+        manager:
+          typeof values.manager === "object"
+            ? values.manager._id
+            : values.manager,
+
+        srManager:
+          typeof values.srManager === "object"
+            ? values.srManager._id
+            : values.srManager,
+
+        tasks: cleanedTasks,
+      };
+
+      console.log(payload);
+
       await api.put(`/fms/templates/${templateId}`, payload);
-      // await api.put(`/fms/templates/${templateId}`, formik.values);
+
       toast.success("Template updated successfully");
-      // console.log("Template auto-updated");
     } catch (err) {
-      toast.error(err.response.data.message || "Update failed");
-      setLoadUpdate(false);
+      toast.error(err?.response?.data?.message || "Update failed");
     } finally {
       setLoadUpdate(false);
     }
@@ -591,7 +684,7 @@ const CreateNewFmsTem = () => {
 
               {/* Sr Manager */}
               <div className="space-y-2">
-                <Label>Sr Manager *</Label>
+                <Label>Sr Manager</Label>
                 <Select
                   disabled={isAlreadyLaunched}
                   value={formik.values.srManager}
@@ -659,7 +752,7 @@ const CreateNewFmsTem = () => {
             </div>
             {/* Description */}
             <div className="space-y-2">
-              <Label>Description *</Label>
+              <Label>Description</Label>
               <Textarea
                 disabled={isAlreadyLaunched}
                 name="description"
@@ -849,10 +942,24 @@ const CreateNewFmsTem = () => {
                                 <Select
                                   disabled={!isEditable}
                                   value={index === 0 ? "no" : task.isDependent}
-                                  onValueChange={(v) =>
-                                    index !== 0 &&
-                                    handleTaskChange(index, "isDependent", v)
-                                  }
+                                  // onValueChange={(v) =>
+                                  //   index !== 0 &&
+                                  //   handleTaskChange(index, "isDependent", v)
+                                  // }
+                                  onValueChange={(v) => {
+                                    if (index === 0) return;
+
+                                    handleTaskChange(index, "isDependent", v);
+
+                                    // ✅ clear dependent task
+                                    if (v === "no") {
+                                      handleTaskChange(
+                                        index,
+                                        "dependentOn",
+                                        "none",
+                                      );
+                                    }
+                                  }}
                                 >
                                   <SelectTrigger
                                     className="w-[60px]"
@@ -885,6 +992,8 @@ const CreateNewFmsTem = () => {
                                   </SelectTrigger>
 
                                   <SelectContent>
+                                    <SelectItem value="none">None</SelectItem>
+
                                     {tasks
                                       .filter((_, i) => i !== index) // ❌ remove current row
                                       .map((t) => (
@@ -981,13 +1090,14 @@ const CreateNewFmsTem = () => {
                                     task.frequency === "Anytime" ||
                                     task.frequency === "Daily" ||
                                     task.frequency === "Weekly" ||
-                                    task.frequency === "Monthly" ||
-                                    task.frequency === "Start+X in days" ||
-                                    task.frequency === "Start+X in hours" ||
-                                    task.frequency === "Event+X in days" ||
-                                    task.frequency === "Event+X in hours" ||
-                                    task.frequency === "Event-X in days" ||
-                                    task.frequency === "Event-X in hours"
+                                    task.frequency === "Monthly"
+                                    // ||
+                                    // task.frequency === "Start+X in days" ||
+                                    // task.frequency === "Start+X in hours" ||
+                                    // task.frequency === "Event+X in days" ||
+                                    // task.frequency === "Event+X in hours" ||
+                                    // task.frequency === "Event-X in days" ||
+                                    // task.frequency === "Event-X in hours"
                                   }
                                   className="w-16"
                                   value={task.value}
