@@ -669,7 +669,8 @@ const Sidebar = ({ children }) => {
                       },
                       { path: "/setup/users", label: "Users", icon: Users2 },
                       // ✅ show only if module enabled
-                      ...(isModuleEnabled("COMPANY_SETUP")
+                      ...(isModuleEnabled("COMPANY_SETUP") &&
+                      hasPermission("company_setup_view")
                         ? [
                             {
                               path: "/company-setup",
