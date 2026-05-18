@@ -185,6 +185,16 @@ const Users = () => {
 
           // 🔥 refresh users if needed
           // dispatch(fetchUsers())
+          dispatch(
+            fetchUsers({
+              page,
+              limit,
+              selectedRole,
+              selectedDepartment,
+              selectedShift,
+              debouncedSearch,
+            }),
+          );
         } catch (err) {
           toast.error(err.message || "Failed to delete user.");
         }

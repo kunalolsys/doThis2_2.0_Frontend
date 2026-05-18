@@ -848,7 +848,7 @@ const TaskTable = ({
         { name: "Check List", type: "Optional", required: false },
         { name: "Start Date", type: "DD-MM-YYYY", required: true },
         { name: "Task End Days", type: "Number", required: true },
-        { name: "Attachment File", type: "File", required: false },
+        // { name: "Attachment File", type: "File", required: false },
       ],
       demoData: [
         "Sample Delegation Task",
@@ -859,7 +859,7 @@ const TaskTable = ({
         '"item1,item2"',
         "01-08-2024",
         1,
-        "file.pdf",
+        // "file.pdf",
       ],
     },
     recurring: {
@@ -886,7 +886,7 @@ const TaskTable = ({
           options: ["Sunday", "Monday", "etc"],
         },
         { name: "End Date", type: "DD-MM-YYYY", required: true },
-        { name: "Attachment File", type: "File", required: false },
+        // { name: "Attachment File", type: "File", required: false },
       ],
       demoData: [
         "Recurring Task",
@@ -899,7 +899,7 @@ const TaskTable = ({
         "Weekly",
         '"Monday,Wednesday,Friday"',
         "31-12-2024",
-        "file.docx",
+        // "file.docx",
       ],
     },
     dependent: {
@@ -926,7 +926,7 @@ const TaskTable = ({
           value: "T+X days",
         },
         { name: "X Value", type: "Number", required: true },
-        { name: "Attachment File", type: "File", required: false },
+        // { name: "Attachment File", type: "File", required: false },
       ],
       demoData: [
         "25120001",
@@ -940,7 +940,7 @@ const TaskTable = ({
         "Planned to Planned",
         "T+X days",
         "2",
-        "",
+        // "",
       ],
     },
   };
@@ -1661,16 +1661,8 @@ const TaskTable = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasksLoading ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={11}
-                        className="text-center py-2 text-gray-500"
-                      >
-                        Loading tasks...
-                      </TableCell>
-                    </TableRow>
-                  ) : currentOneTimeTasks.length > 0 ? (
+                  {!tasksLoading &&
+                    currentOneTimeTasks.length > 0 &&
                     currentOneTimeTasks.map((task, i) => {
                       const assignedByUser = allUsers.find(
                         (u) => String(u._id) === String(task.assignedBy?._id),
@@ -1696,7 +1688,7 @@ const TaskTable = ({
                           )}
                           {columns.find((c) => c.key === "title")?.visible && (
                             <TableCell
-                              className="font-medium whitespace-nowrap truncate max-w-[150px]"
+                              className="font-medium whitespace-nowrap truncate w-full"
                               title={task.title}
                             >
                               {task.title}
@@ -1940,10 +1932,11 @@ const TaskTable = ({
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                            disabled={
-    assignedByUser?._id === assignedToUser?._id ||
-    task.status === "Completed"
-  }
+                                          disabled={
+                                            assignedByUser?._id ===
+                                              assignedToUser?._id ||
+                                            task.status === "Completed"
+                                          }
                                           className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
                                           onClick={() =>
                                             openReassignDialog(task)
@@ -1981,19 +1974,20 @@ const TaskTable = ({
                           )}
                         </TableRow>
                       );
-                    })
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={11}
-                        className="text-center py-8 text-gray-500"
-                      >
-                        No tasks found.
-                      </TableCell>
-                    </TableRow>
-                  )}
+                    })}
                 </TableBody>
               </Table>
+              {tasksLoading ? (
+                <div className="flex h-24 items-center justify-center w-full text-gray-500">
+                  Loading tasks...
+                </div>
+              ) : (
+                currentOneTimeTasks.length === 0 && (
+                  <div className="h-24 flex items-center justify-center w-full text-gray-500">
+                    No tasks found.
+                  </div>
+                )
+              )}
             </div>
             <Pagination
               totalItems={oneTimeTasksList.length}
@@ -2013,134 +2007,132 @@ const TaskTable = ({
                     {recurringColumns
                       .filter((col) => col.visible)
                       .map((col) => (
-                        <TableHead className="w-100" key={col.key}>{col.label}</TableHead>
+                        <TableHead className="w-100" key={col.key}>
+                          {col.label}
+                        </TableHead>
                       ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tasksLoading ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={12}
-                        className="text-center py-2 text-gray-500"
-                      >
-                        Loading tasks...
-                      </TableCell>
-                    </TableRow>
-                  ) : currentRecurringTasks.length > 0 ? (
-                    currentRecurringTasks.map((task, i) => {
-                      const assignedByUser = allUsers.find(
-                        (u) => String(u._id) === String(task.assignedBy?._id),
-                      );
+                  {
+                    !tasksLoading &&
+                      currentRecurringTasks.length > 0 &&
+                      currentRecurringTasks.map((task, i) => {
+                        const assignedByUser = allUsers.find(
+                          (u) => String(u._id) === String(task.assignedBy?._id),
+                        );
 
-                      const assignedToUser = allUsers.find(
-                        (u) => String(u._id) === String(task.assignedTo?._id),
-                      );
-                      return (
-                        <TableRow
-                          key={task._id || i}
-                          className="hover:bg-slate-50"
-                        >
-                          {recurringColumns.find((c) => c.key === "sr")
-                            ?.visible && (
-                            <TableCell>
-                              {indexOfFirstRecurringTask + i + 1}
-                            </TableCell>
-                          )}
-                          {recurringColumns.find((c) => c.key === "taskId")
-                            ?.visible && (
-                            <TableCell className="font-medium whitespace-nowrap">
-                              {task.TaskId || "-"}
-                            </TableCell>
-                          )}
-                          {recurringColumns.find((c) => c.key === "title")
-                            ?.visible && (
-                            <TableCell
-                              className="font-medium whitespace-nowrap truncate max-w-[150px]"
-                              title={task.title}
-                            >
-                              {task.title}
-                            </TableCell>
-                          )}
-                          {recurringColumns.find((c) => c.key === "description")
-                            ?.visible && (
-                            <TableCell>
-                              <Button
-                                variant="link"
-                                size="sm"
-                                onClick={() =>
-                                  onViewDescription(task.description)
-                                }
+                        const assignedToUser = allUsers.find(
+                          (u) => String(u._id) === String(task.assignedTo?._id),
+                        );
+                        return (
+                          <TableRow
+                            key={task._id || i}
+                            className="hover:bg-slate-50"
+                          >
+                            {recurringColumns.find((c) => c.key === "sr")
+                              ?.visible && (
+                              <TableCell>
+                                {indexOfFirstRecurringTask + i + 1}
+                              </TableCell>
+                            )}
+                            {recurringColumns.find((c) => c.key === "taskId")
+                              ?.visible && (
+                              <TableCell className="font-medium whitespace-nowrap">
+                                {task.TaskId || "-"}
+                              </TableCell>
+                            )}
+                            {recurringColumns.find((c) => c.key === "title")
+                              ?.visible && (
+                              <TableCell
+                                className="font-medium whitespace-nowrap truncate w-full"
+                                title={task.title}
                               >
-                                View
-                              </Button>
-                            </TableCell>
-                          )}
-                          {recurringColumns.find((c) => c.key === "frequency")
-                            ?.visible && (
-                            <TableCell>
-                              <Badge
-                                variant="outline"
-                                className="bg-blue-50 text-blue-700"
-                              >
-                                {task.frequency || "Custom"}
-                              </Badge>
-                            </TableCell>
-                          )}
-                          {recurringColumns.find((c) => c.key === "weekDays")
-                            ?.visible && (
-                            <TableCell >
-                              {(() => {
-                                const frequency = task.frequency?.toLowerCase();
-                                if (frequency !== "weekly" || !task.weekDays)
+                                {task.title}
+                              </TableCell>
+                            )}
+                            {recurringColumns.find(
+                              (c) => c.key === "description",
+                            )?.visible && (
+                              <TableCell>
+                                <Button
+                                  variant="link"
+                                  size="sm"
+                                  onClick={() =>
+                                    onViewDescription(task.description)
+                                  }
+                                >
+                                  View
+                                </Button>
+                              </TableCell>
+                            )}
+                            {recurringColumns.find((c) => c.key === "frequency")
+                              ?.visible && (
+                              <TableCell>
+                                <Badge
+                                  variant="outline"
+                                  className="bg-blue-50 text-blue-700"
+                                >
+                                  {task.frequency || "Custom"}
+                                </Badge>
+                              </TableCell>
+                            )}
+                            {recurringColumns.find((c) => c.key === "weekDays")
+                              ?.visible && (
+                              <TableCell>
+                                {(() => {
+                                  const frequency =
+                                    task.frequency?.toLowerCase();
+                                  if (frequency !== "weekly" || !task.weekDays)
+                                    return "-";
+                                  let days = task.weekDays;
+                                  if (typeof days === "string") {
+                                    try {
+                                      days = JSON.parse(days);
+                                    } catch (e) {
+                                      return days;
+                                    }
+                                  }
+                                  if (Array.isArray(days) && days.length > 0) {
+                                    if (
+                                      typeof days[0] === "object" &&
+                                      days[0] !== null
+                                    ) {
+                                      return days
+                                        .map((d) => d.label || d.value || d.day)
+                                        .join(", ");
+                                    }
+                                    return days.join(", ");
+                                  }
                                   return "-";
-                                let days = task.weekDays;
-                                if (typeof days === "string") {
-                                  try {
-                                    days = JSON.parse(days);
-                                  } catch (e) {
-                                    return days;
-                                  }
-                                }
-                                if (Array.isArray(days) && days.length > 0) {
-                                  if (
-                                    typeof days[0] === "object" &&
-                                    days[0] !== null
-                                  ) {
-                                    return days
-                                      .map((d) => d.label || d.value || d.day)
-                                      .join(", ");
-                                  }
-                                  return days.join(", ");
-                                }
-                                return "-";
-                              })()}
-                            </TableCell>
-                          )}
-                          {recurringColumns.find((c) => c.key === "startDate")
-                            ?.visible && (
-                            <TableCell className="whitespace-nowrap">
-                              {task.startDate
-                                ? formatDate(task.startDate)
-                                : "-"}
-                            </TableCell>
-                          )}
-                          {recurringColumns.find((c) => c.key === "endDate")
-                            ?.visible && (
-                            <TableCell className="whitespace-nowrap">
-                              {task.endDate ? formatDate(task.endDate) : "-"}
-                            </TableCell>
-                          )}
-                          {recurringColumns.find((c) => c.key === "assignedBy")
-                            ?.visible && (
-                            <TableCell className="w-100">
-                              <div className="flex flex-row gap-1 w-50">
-                                <span className="text-sm font-medium text-gray-900">
-                                  {task.assignedBy?.name || "-"}
-                                </span>
-                                {assignedByUser?.name && (
-                                  <span
-                                    className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
+                                })()}
+                              </TableCell>
+                            )}
+                            {recurringColumns.find((c) => c.key === "startDate")
+                              ?.visible && (
+                              <TableCell className="whitespace-nowrap">
+                                {task.startDate
+                                  ? formatDate(task.startDate)
+                                  : "-"}
+                              </TableCell>
+                            )}
+                            {recurringColumns.find((c) => c.key === "endDate")
+                              ?.visible && (
+                              <TableCell className="whitespace-nowrap">
+                                {task.endDate ? formatDate(task.endDate) : "-"}
+                              </TableCell>
+                            )}
+                            {recurringColumns.find(
+                              (c) => c.key === "assignedBy",
+                            )?.visible && (
+                              <TableCell className="w-100">
+                                <div className="flex flex-row gap-1 w-50">
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {task.assignedBy?.name || "-"}
+                                  </span>
+                                  {assignedByUser?.name && (
+                                    <span
+                                      className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
       ${
         assignedByUser.role?.name === "Admin"
           ? "bg-red-100 text-red-700"
@@ -2153,25 +2145,26 @@ const TaskTable = ({
                 : "bg-gray-100 text-gray-700"
       }
     `}
-                                  >
-                                    {assignedByUser.role?.name}
+                                    >
+                                      {assignedByUser.role?.name}
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                            )}
+
+                            {recurringColumns.find(
+                              (c) => c.key === "assignedTo",
+                            )?.visible && (
+                              <TableCell className="w-100">
+                                <div className="flex flex-row gap-1 w-50">
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {task.assignedTo?.name || "-"}
                                   </span>
-                                )}
-                              </div>
-                            </TableCell>
-                          )}
 
-                          {recurringColumns.find((c) => c.key === "assignedTo")
-                            ?.visible && (
-                            <TableCell className="w-100">
-                              <div className="flex flex-row gap-1 w-50">
-                                <span className="text-sm font-medium text-gray-900">
-                                  {task.assignedTo?.name || "-"}
-                                </span>
-
-                                {assignedToUser?.name && (
-                                  <span
-                                    className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
+                                  {assignedToUser?.name && (
+                                    <span
+                                      className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
       ${
         assignedToUser.role?.name === "Admin"
           ? "bg-red-100 text-red-700"
@@ -2184,23 +2177,24 @@ const TaskTable = ({
                 : "bg-gray-100 text-gray-700"
       }
     `}
-                                  >
-                                    {assignedToUser.role?.name}
-                                  </span>
-                                )}
-                              </div>
-                            </TableCell>
-                          )}
-                          {/* <TableCell className="whitespace-nowrap">
+                                    >
+                                      {assignedToUser.role?.name}
+                                    </span>
+                                  )}
+                                </div>
+                              </TableCell>
+                            )}
+                            {/* <TableCell className="whitespace-nowrap">
                             {task.assignedTo?.name || "Unassigned"}
                           </TableCell> */}
-                          {recurringColumns.find((c) => c.key === "department")
-                            ?.visible && (
-                            <TableCell className="whitespace-nowrap">
-                              {task.departmentOfAssignToUser?.name || "-"}
-                            </TableCell>
-                          )}
-                          {/* <TableCell className="text-center">
+                            {recurringColumns.find(
+                              (c) => c.key === "department",
+                            )?.visible && (
+                              <TableCell className="whitespace-nowrap">
+                                {task.departmentOfAssignToUser?.name || "-"}
+                              </TableCell>
+                            )}
+                            {/* <TableCell className="text-center">
                           {task.attachmentFile ? (
                             <Button
                               variant="link"
@@ -2215,141 +2209,159 @@ const TaskTable = ({
                             "No"
                           )}
                         </TableCell> */}
-                          {recurringColumns.find((c) => c.key === "status")
-                            ?.visible && (
-                            <TableCell className="text-center">
-                              {getStatusBadge(task.status)}
-                            </TableCell>
-                          )}
-                          {recurringColumns.find((c) => c.key === "action")
-                            ?.visible && (
-                            <TableCell className="flex items-center gap-1">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                                      onClick={() => handleEditClick(task)}
-                                    >
-                                      <FilePenLine className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Edit Task</p>
-                                  </TooltipContent>
-                                </Tooltip>
+                            {recurringColumns.find((c) => c.key === "status")
+                              ?.visible && (
+                              <TableCell className="text-center">
+                                {getStatusBadge(task.status)}
+                              </TableCell>
+                            )}
+                            {recurringColumns.find((c) => c.key === "action")
+                              ?.visible && (
+                              <TableCell className="flex items-center gap-1">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                                        onClick={() => handleEditClick(task)}
+                                      >
+                                        <FilePenLine className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Edit Task</p>
+                                    </TooltipContent>
+                                  </Tooltip>
 
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-gray-600 hover:bg-gray-50"
-                                      onClick={() => handleChecklistClick(task)}
-                                      disabled={
-                                        task.status == "Completed" ||
-                                        !task.checklist ||
-                                        task.checklist.length === 0
-                                      }
-                                    >
-                                      <ClipboardList className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>View Checklist</p>
-                                  </TooltipContent>
-                                </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-gray-600 hover:bg-gray-50"
+                                        onClick={() =>
+                                          handleChecklistClick(task)
+                                        }
+                                        disabled={
+                                          task.status == "Completed" ||
+                                          !task.checklist ||
+                                          task.checklist.length === 0
+                                        }
+                                      >
+                                        <ClipboardList className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>View Checklist</p>
+                                    </TooltipContent>
+                                  </Tooltip>
 
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-green-600 hover:bg-green-50"
-                                      onClick={() => handleToggleComplete(task)}
-                                      disabled={
-                                        task.status == "Completed" ||
-                                        task.status == "Upcoming" ||
-                                        (task.checklist &&
-                                          task.checklist.length > 0)
-                                      }
-                                    >
-                                      <CheckCircle className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Mark as Complete</p>
-                                  </TooltipContent>
-                                </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-green-600 hover:bg-green-50"
+                                        onClick={() =>
+                                          handleToggleComplete(task)
+                                        }
+                                        disabled={
+                                          task.status == "Completed" ||
+                                          task.status == "Upcoming" ||
+                                          (task.checklist &&
+                                            task.checklist.length > 0)
+                                        }
+                                      >
+                                        <CheckCircle className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Mark as Complete</p>
+                                    </TooltipContent>
+                                  </Tooltip>
 
-                                {currentUser &&
-                                  (currentUser.role?.name === "Admin" ||
-                                    currentUser.role === "Admin" ||
-                                    currentUser._id ===
-                                      (task.createdBy?._id ||
-                                        task.createdBy)) && (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                           disabled={
-    assignedByUser?._id === assignedToUser?._id ||
-    task.status === "Completed"
-  }
-                                          className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
-                                          onClick={() =>
-                                            openReassignDialog(task)
-                                          }
-                                        >
-                                          <Users className="h-4 w-4" />
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>Re-assign User</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  )}
+                                  {currentUser &&
+                                    (currentUser.role?.name === "Admin" ||
+                                      currentUser.role === "Admin" ||
+                                      currentUser._id ===
+                                        (task.createdBy?._id ||
+                                          task.createdBy)) && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            disabled={
+                                              assignedByUser?._id ===
+                                                assignedToUser?._id ||
+                                              task.status === "Completed"
+                                            }
+                                            className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
+                                            onClick={() =>
+                                              openReassignDialog(task)
+                                            }
+                                          >
+                                            <Users className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Re-assign User</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
 
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      disabled={
-                                        currentUser?.role?.name !== "Owner" &&
-                                        currentUser?.role?.name !== "Admin"
-                                      }
-                                      className="h-8 w-8 text-red-600 hover:bg-red-50"
-                                      onClick={() => handleDeleteClick(task)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Delete Task</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      );
-                    })
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={12}
-                        className="text-center py-8 text-gray-500"
-                      >
-                        No recurring tasks found.
-                      </TableCell>
-                    </TableRow>
-                  )}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        disabled={
+                                          currentUser?.role?.name !== "Owner" &&
+                                          currentUser?.role?.name !== "Admin"
+                                        }
+                                        className="h-8 w-8 text-red-600 hover:bg-red-50"
+                                        onClick={() => handleDeleteClick(task)}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Delete Task</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        );
+                      })
+
+                    // : (
+                    //   <TableRow>
+                    //     <TableCell
+                    //       colSpan={12}
+                    //       className="text-center py-8 text-gray-500"
+                    //     >
+                    //       No recurring tasks found.
+                    //     </TableCell>
+                    //   </TableRow>
+                    // )
+                  }
                 </TableBody>
               </Table>
+              {tasksLoading ? (
+                <div className="flex h-24 items-center justify-center w-full text-gray-500">
+                  Loading tasks...
+                </div>
+              ) : (
+                currentRecurringTasks.length === 0 && (
+                  <div className="h-24 flex items-center justify-center w-full text-gray-500">
+                    No recurring tasks found.
+                  </div>
+                )
+              )}
             </div>
             <Pagination
               totalItems={recurringTasksList.length}

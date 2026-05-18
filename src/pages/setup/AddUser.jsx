@@ -35,7 +35,7 @@ import { ScrollArea } from "../../components/ui/scroll-area";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { Switch } from "../../components/ui/switch";
-import { Badge } from "antd";
+import { Badge, Select as AntdSelect } from "antd";
 // --- Main Component ---
 const AddUser = () => {
   const dispatch = useDispatch();
@@ -439,8 +439,73 @@ const AddUser = () => {
                   <Label htmlFor="reportingManager">
                     Reporting Manager<span className="text-red-500">*</span>
                   </Label>
+                  <AntdSelect
+                    showSearch
+                    placeholder="Select Manager"
+                    value={formik.values.reportingManager}
+                    onChange={(value) =>
+                      formik.setFieldValue("reportingManager", value)
+                    }
+                    style={{ width: "100%", minHeight: 38 }}
+                    // 🔥 IMPORTANT: disable default label search (we control it)
+                    optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      (option?.label ?? "")
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                    }
+                    options={dropdownUsers
+                      .filter((user) => {
+                        if (!selectedRole) return true;
 
-                  <Select
+                        if (selectedRole.name === "Admin") {
+                          return user.role?.name === "Owner";
+                        }
+
+                        if (selectedRole.name === "Sr. Manager") {
+                          return ["Owner", "Admin"].includes(user.role?.name);
+                        }
+
+                        if (selectedRole.name === "Manager") {
+                          return ["Owner", "Admin", "Sr. Manager"].includes(
+                            user.role?.name,
+                          );
+                        }
+
+                        return true;
+                      })
+                      .map((user) => ({
+                        value: user._id,
+
+                        // ✅ search text only (no JSX)
+                        label: `${user.name}`,
+                        user,
+                      }))}
+                    // 🎯 UI DESIGN (badge role)
+                    optionRender={(option) => {
+                      const user = option?.data?.user;
+
+                      if (!user) return null; // ✅ prevents crash
+
+                      return (
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-sm font-medium">
+                            {user.name}
+                          </span>
+
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded ${
+                              roleColors[user.role?.name] ||
+                              "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {user.role?.name || "-"}
+                          </span>
+                        </div>
+                      );
+                    }}
+                  />
+                  {/* <Select
                     onValueChange={(value) =>
                       formik.setFieldValue("reportingManager", value)
                     }
@@ -492,7 +557,7 @@ const AddUser = () => {
                           </SelectItem>
                         ))}
                     </SelectContent>
-                  </Select>
+                  </Select> */}
 
                   {formik.touched.reportingManager &&
                     formik.errors.reportingManager && (

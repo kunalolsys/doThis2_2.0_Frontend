@@ -240,7 +240,23 @@ const TaskActions = ({
         </TooltipContent>
       </Tooltip>
       {/* Complete/Reopen Button */}
-      {!isCompleted ? (
+       <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              disabled={upComing || onHold || stopped ||isCompleted}
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-green-600 hover:bg-green-50"
+              onClick={() => onToggleComplete(task)}
+            >
+              <CheckCircle className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Mark as Done</p>
+          </TooltipContent>
+        </Tooltip>
+      {/* {!isCompleted ? (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -267,7 +283,6 @@ const TaskActions = ({
               onClick={() => onToggleComplete(task)}
               disabled={onHold || stopped}
             >
-              {/* You can change icon if you want */}
               <RotateCcw className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
@@ -277,7 +292,7 @@ const TaskActions = ({
         </Tooltip>
       ) : (
         <></>
-      )}
+      )} */}
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="relative">
@@ -1462,20 +1477,24 @@ const MyTask = () => {
     const newStatus = task.status === "Completed" ? false : true;
     const isFMSTask = task.taskType == "FmsInstanceTask";
     try {
-      if (!isFMSTask) {
-        await api.patch(`/tasks/${task._id || task.id}/completion`, {
-          completeStatus: newStatus,
-        });
-      } else {
-        await dispatch(
-          completeFMSTask({
-            id: task.fmsInstanceId,
-            taskId: task.TaskId,
-            status: newStatus,
-          }),
-        ).unwrap();
+      try {
+        if (!isFMSTask) {
+          await api.patch(`/tasks/${task._id || task.id}/completion`, {
+            completeStatus: newStatus,
+          });
+        } else {
+          await dispatch(
+            completeFMSTask({
+              id: task.fmsInstanceId,
+              taskId: task.TaskId,
+              status: newStatus,
+            }),
+          ).unwrap();
+        }
+        toast.success(newStatus ? "Task Completed" : "Task Reopened");
+      } catch (error) {
+        toast.error(error.response.data.message || "Failed");
       }
-      toast.success(newStatus ? "Task Completed" : "Task Reopened");
       // dispatch(fetchMyTasks(getFetchParams()));
       dispatch(
         getFilterTasks({

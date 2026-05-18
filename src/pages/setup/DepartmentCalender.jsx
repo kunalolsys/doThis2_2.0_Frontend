@@ -378,6 +378,13 @@ const DepartmentCalender = () => {
                 await dispatch(addDepartment(deptData)).unwrap();
               }
             }
+            await dispatch(
+              fetchDepartments({
+                departmentPage,
+                departmentLimit,
+                departmentSearchTerm: debouncedDepartmentSearchTerm,
+              }),
+            );
             resolve({ validCount: validDepts.length, errorRows });
           } catch (err) {
             reject(err);
@@ -632,9 +639,23 @@ const DepartmentCalender = () => {
             name: departmentName,
           }),
         ).unwrap();
+        await dispatch(
+          fetchDepartments({
+            departmentPage,
+            departmentLimit,
+            departmentSearchTerm: debouncedDepartmentSearchTerm,
+          }),
+        );
         toast.success("Department updated successfully!");
       } else {
         await dispatch(addDepartment({ name: departmentName })).unwrap();
+        await dispatch(
+          fetchDepartments({
+            departmentPage,
+            departmentLimit,
+            departmentSearchTerm: debouncedDepartmentSearchTerm,
+          }),
+        );
         toast.success("Department added successfully!");
       }
       setDepartmentName("");
@@ -740,6 +761,13 @@ const DepartmentCalender = () => {
 
     try {
       await dispatch(deleteDepartment(id)).unwrap();
+      await dispatch(
+        fetchDepartments({
+          departmentPage,
+          departmentLimit,
+          departmentSearchTerm: debouncedDepartmentSearchTerm,
+        }),
+      );
       toast.success("Department deleted successfully!");
     } catch (err) {
       toast.error(err || "Failed to delete department.");

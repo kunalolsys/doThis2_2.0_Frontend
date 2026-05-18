@@ -337,7 +337,7 @@ const AdminDashboard = () => {
           FMS off → 2 cols: [Delegated Perf] [Active Users]
       ══════════════════════════════════════════════════════════════════ */}
       <div
-        className="grid gap-4 mb-4"
+        className="grid gap-4"
         style={{
           gridTemplateColumns: `repeat(${zone2Items.length}, minmax(0, 1fr))`,
         }}
@@ -357,7 +357,7 @@ const AdminDashboard = () => {
         )}
 
         {/* Delegated Tasks Performance — always visible */}
-        <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
+        {/* <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
           <CardHeader className="p-0 pb-2">
             <CardTitle className="text-sm font-semibold text-gray-700">
               Delegated Tasks Performance
@@ -366,7 +366,7 @@ const AdminDashboard = () => {
           <CardContent className="p-0">
             <p className="text-gray-500 text-sm">Data not available</p>
           </CardContent>
-        </Card>
+        </Card> */}
 
         {/* Ongoing FMS count — only when FMS on */}
         {fmsOn && (
@@ -386,7 +386,7 @@ const AdminDashboard = () => {
         )}
 
         {/* Active Users — always visible */}
-        <Card className="flex items-center justify-center border shadow-sm bg-white p-4 hover:scale-[1.02] transition-all duration-500">
+        {/* <Card className="flex items-center justify-center border shadow-sm bg-white p-4 hover:scale-[1.02] transition-all duration-500">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-md bg-green-50">
               <Users2 className="w-8 h-8 text-green-600" />
@@ -398,7 +398,7 @@ const AdminDashboard = () => {
               <p className="text-xl font-bold text-green-600">{userCount}</p>
             </div>
           </div>
-        </Card>
+        </Card> */}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -414,7 +414,7 @@ const AdminDashboard = () => {
         }}
       >
         {/* Top Performers — always visible */}
-        <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
+        {/* <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-amber-100 rounded-lg">
@@ -489,17 +489,17 @@ const AdminDashboard = () => {
               <p className="text-gray-500 text-sm">No data available</p>
             )}
           </div>
-        </Card>
+        </Card> */}
 
         {/* Top FMS — only when FMS on */}
-        {fmsOn && (
+        {/* {fmsOn && (
           <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
             <TopFmsCard title="Top 5 FMS by On-Time %" items={topFmsItems} />
           </Card>
-        )}
+        )} */}
 
         {/* Top Managers — always visible */}
-        <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
+        {/* <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
           <div className="flex items-center gap-2 mb-3">
             <div className="p-1.5 bg-purple-100 rounded-md">
               <Medal className="w-4 h-4 text-purple-600" />
@@ -511,7 +511,7 @@ const AdminDashboard = () => {
           <div className="flex flex-col gap-2">
             <p className="text-gray-500 text-sm">Data not available</p>
           </div>
-        </Card>
+        </Card> */}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════

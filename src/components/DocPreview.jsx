@@ -32,6 +32,22 @@ const DocxViewer = ({ fileUrl }) => {
         }
 
         await renderAsync(blob, containerRef.current);
+        if (containerRef.current) {
+          const pages = containerRef.current.querySelectorAll(
+            "section, .docx-page",
+          );
+
+          pages.forEach((page) => {
+            const text = page.textContent?.trim();
+
+            const hasImages = page.querySelector("img");
+            const hasTables = page.querySelector("table");
+
+            if (!text && !hasImages && !hasTables) {
+              page.remove();
+            }
+          });
+        }
       } catch (err) {
         console.error("DOCX render error:", err);
         if (isMounted) {

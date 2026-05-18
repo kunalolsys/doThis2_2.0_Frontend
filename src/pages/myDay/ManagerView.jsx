@@ -552,7 +552,7 @@ const Pagination = ({
   return (
     <div className="flex flex-col md:flex-row justify-between items-center mt-4 gap-4 px-2">
       <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-600">Rows per page:</span>
+        <span className="text-sm text-gray-600 w-50">Rows per page:</span>
         <Select
           value={String(itemsPerPage)}
           onValueChange={(val) => {
@@ -771,91 +771,13 @@ const ManagerView = () => {
     }
     setLocalCurrentPage(1);
     setSearchTerm("");
-
     // Sync visual tab
     if (statType === "completed") setActiveTab("completed");
-    else if (statType === "overdue" || statType === "dueToday")
+    else if (statType === "overdue" || statType === "dueToday"||statType=="total")
       setActiveTab("today");
   };
   const debouncedSearch = useDebounce(searchTerm);
-  // --- CORE LOGIC: Get Fetch Params ---
-  const getFetchParams = () => {
-    const params = {
-      page: localCurrentPage,
-      limit: localItemsPerPage,
-      search: searchTerm,
-      view: "manager",
-      creatorOrAssignorId: currentUser._id,
-      type: undefined,
-    };
-
-    // 1. Handle User Filters (Doer/Manager)
-    // Map to API params: userId (assigned to), assignedBy (assigned by manager)
-    if (selectedDoer !== "all") params.userId = selectedDoer;
-    if (selectedManager !== "all") params.assignedBy = selectedManager;
-    if (selectedSrManager !== "all") params.assignedBy = selectedSrManager;
-
-    // 2. Handle Stats Card Filters (High Priority)
-    if (selectedStatFilter) {
-      switch (selectedStatFilter) {
-        case "overdue":
-          // Fetch tasks with status 'Overdue'
-          params.status = "Overdue";
-          break;
-        case "dueToday":
-          // Fetch tasks with status 'Due Today'
-          params.status = "Due Today";
-          break;
-        case "completed":
-          // Fetch all completed tasks
-          params.taskCategory = "completed";
-          params.status = "Completed";
-          params.page = 1;
-          params.limit = 1000;
-          break;
-        case "total":
-          // Fetch ALL assigned tasks for manager view (client-side paginate/filter)
-          params.status = undefined;
-          break;
-        default:
-          params.taskCategory = "today_backlog";
-          break;
-      }
-    }
-    // 3. Handle Standard Tab & Dropdown Filters (Low Priority)
-    else {
-      // Use the dropdown status if selected
-      params.status =
-        selectedFilterStatus === "all" ? undefined : selectedFilterStatus;
-
-      // Logic based on active Tab
-      switch (activeTab) {
-        case "today":
-          params.taskCategory = "today_backlog";
-          if (selectedFilterStatus === "all") params.status = "Pending";
-          break;
-
-        case "upcoming":
-          params.taskCategory = "upcoming";
-          break;
-
-        case "completed":
-          params.taskCategory = "completed";
-          params.status = "Completed";
-          break;
-
-        case "escalated":
-          params.taskCategory = "escalated";
-          params.isEscalated = true;
-          break;
-
-        default:
-          params.taskCategory = "today_backlog";
-          params.status = "Pending";
-      }
-    }
-    return params;
-  };
+ 
   const getDepartmentIds = (department) => {
     try {
       const parsed =
@@ -872,7 +794,6 @@ const ManagerView = () => {
   // --- Fetch Trigger ---
   useEffect(() => {
     if (currentUser?._id) {
-      // dispatch(fetchMyTasks(getFetchParams()));
       dispatch(
         getRoleBasedTasks({
           userId: currentUser._id,
@@ -1227,23 +1148,19 @@ const ManagerView = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 py-4">
-      <div className=" mx-auto">
-        <Card className="shadow-xl border-0 overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-2">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-              <div>
-                <CardTitle className="text-2xl font-bold">
-                  {viewHeading}
-                </CardTitle>
+        <div className="shadow-xl border-0 overflow-hidden rounded-xl ">
+          {" "}
+          <div className=" p-4 py-4">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-4 border-y border-white/30 rounded-xl">
+              {" "}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                <div>
+                  <div className="text-2xl font-bold">{viewHeading}</div>
+                </div>
               </div>
-              <TaskProgress
-                completed={taskCounts.completed}
-                total={taskCounts.total}
-              />
             </div>
-          </CardHeader>
-
-          <CardContent className="p-4">
+          </div>
+          <div className="p-4">
             <StatsCards
               allTaskCounts={allTaskCounts}
               selectedStat={selectedStatFilter}
@@ -1402,9 +1319,8 @@ const ManagerView = () => {
                 </>
               )}
             </Tabs>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
 
       {/* --- DIALOGS --- */}
       {/* <Dialog
