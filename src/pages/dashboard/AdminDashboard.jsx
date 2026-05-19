@@ -303,7 +303,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats row — always 4 cols on large screens */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           title="Total Tasks"
           value={dynamicStats.totalTasks}
@@ -328,6 +328,14 @@ const AdminDashboard = () => {
           icon={CalendarCheck2}
           color="purple"
         />
+        {fmsOn && (
+          <StatCard
+            title="Ongoing FMS"
+            value={fmsCounts.ongoing}
+            icon={Settings}
+            color="yellow"
+          />
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -343,7 +351,7 @@ const AdminDashboard = () => {
         }}
       >
         {/* FMS Engine Performance — only when FMS on */}
-        {fmsOn && (
+        {/* {fmsOn && (
           <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
             <CardHeader className="p-0 pb-2">
               <CardTitle className="text-sm font-semibold text-gray-700">
@@ -354,7 +362,7 @@ const AdminDashboard = () => {
               <p className="text-gray-500 text-sm">Data not available</p>
             </CardContent>
           </Card>
-        )}
+        )} */}
 
         {/* Delegated Tasks Performance — always visible */}
         {/* <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
@@ -367,23 +375,6 @@ const AdminDashboard = () => {
             <p className="text-gray-500 text-sm">Data not available</p>
           </CardContent>
         </Card> */}
-
-        {/* Ongoing FMS count — only when FMS on */}
-        {fmsOn && (
-          <Card className="flex items-center justify-center border shadow-sm bg-white p-4 hover:scale-[1.02] transition-all duration-500">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-md bg-blue-50">
-                <Settings className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-md font-medium text-gray-600">Ongoing FMS</p>
-                <p className="text-xl font-bold text-blue-600">
-                  {fmsCounts.ongoing}
-                </p>
-              </div>
-            </div>
-          </Card>
-        )}
 
         {/* Active Users — always visible */}
         {/* <Card className="flex items-center justify-center border shadow-sm bg-white p-4 hover:scale-[1.02] transition-all duration-500">

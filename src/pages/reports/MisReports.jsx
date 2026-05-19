@@ -75,9 +75,7 @@ const MisReports = () => {
 
         const managers = users.filter((u) => u.role?.name === "Manager");
 
-        const srManagers = users.filter(
-          (u) => u.role?.name === "Sr. Manager",
-        );
+        const srManagers = users.filter((u) => u.role?.name === "Sr. Manager");
 
         setDoers(doers);
         setManagers(managers);
@@ -100,10 +98,8 @@ const MisReports = () => {
         endDate: dateRange?.[1]?.format("YYYY-MM-DD"),
         srManagerId:
           selectedSrManager !== "all" ? selectedSrManager : undefined,
-        managerId:
-          selectedManager !== "all" ? selectedManager : undefined,
-        memberIds:
-          selectedDoer !== "all" ? [selectedDoer] : [],
+        managerId: selectedManager !== "all" ? selectedManager : undefined,
+        memberIds: selectedDoer !== "all" ? [selectedDoer] : [],
       };
 
       const response = await api.post("/mis/report", payload);
@@ -263,10 +259,7 @@ const MisReports = () => {
           <div className="min-w-[180px]">
             <label className="text-xs text-gray-500">Manager</label>
 
-            <Select
-              value={selectedManager}
-              onValueChange={setSelectedManager}
-            >
+            <Select value={selectedManager} onValueChange={setSelectedManager}>
               <SelectTrigger className="h-9">
                 <SelectValue placeholder="All" />
               </SelectTrigger>
@@ -479,11 +472,7 @@ const MisReports = () => {
             <BarChart data={taskDetails}>
               <CartesianGrid strokeDasharray="3 3" />
 
-              <XAxis
-                dataKey="userName"
-                tick={{ fontSize: 12 }}
-                interval={0}
-              />
+              <XAxis dataKey="userName" tick={{ fontSize: 12 }} interval={0} />
 
               <YAxis />
 
@@ -511,89 +500,206 @@ const MisReports = () => {
       {/* USER TABLE */}
 
       <Card className="shadow-sm border overflow-hidden">
-        <div className="p-5 border-b">
-          <h2 className="text-lg font-semibold">User Performance Report</h2>
+        <div className="p-5 border-b flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">User Performance Report</h2>
+
+            <p className="text-sm text-gray-500 mt-1">
+              Detailed user-wise productivity analytics
+            </p>
+          </div>
         </div>
 
-        <Table>
-          <TableHeader className="bg-gray-50">
-            <TableRow>
-              <TableHead>Sr.</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Departments</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Completed</TableHead>
-              <TableHead>Pending</TableHead>
-              <TableHead>Upcoming</TableHead>
-              <TableHead>Overdue</TableHead>
-              <TableHead>Delayed</TableHead>
-              <TableHead>Completion %</TableHead>
-              <TableHead>On Time %</TableHead>
-            </TableRow>
-          </TableHeader>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gray-50">
+              <TableRow>
+                <TableHead className="min-w-[60px]">Sr. No.</TableHead>
 
-          <TableBody>
-            {taskDetails?.length > 0 ? (
-              taskDetails.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell>{index + 1}</TableCell>
+                <TableHead className="min-w-[220px]">Doer</TableHead>
 
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{item.userName}</p>
+                <TableHead className="min-w-[120px]">Role</TableHead>
 
-                      <p className="text-xs text-gray-500">{item.email}</p>
-                    </div>
-                  </TableCell>
+                <TableHead className="min-w-[180px]">Departments</TableHead>
 
-                  <TableCell>{item.role}</TableCell>
+                <TableHead className="text-center">Total</TableHead>
 
-                  <TableCell>
-                    {item.departments?.join(", ")}
-                  </TableCell>
+                <TableHead className="text-center">Completed</TableHead>
 
-                  <TableCell>{item.totalTasks}</TableCell>
+                <TableHead className="text-center">On Time</TableHead>
 
-                  <TableCell>{item.completed}</TableCell>
+                <TableHead className="text-center">Delayed</TableHead>
 
-                  <TableCell>{item.pending}</TableCell>
+                <TableHead className="text-center">Pending</TableHead>
 
-                  <TableCell>{item.upcoming}</TableCell>
+                <TableHead className="text-center">Upcoming</TableHead>
 
-                  <TableCell>
-                    <span className="text-red-600 font-medium">
-                      {item.overdue}
-                    </span>
-                  </TableCell>
+                <TableHead className="text-center">Overdue</TableHead>
 
-                  <TableCell>{item.delayed}</TableCell>
+                <TableHead className="text-center">
+                  Overall Completion %
+                </TableHead>
 
-                  <TableCell>
-                    <span className="text-green-600 font-semibold">
-                      {item.completionRate}%
-                    </span>
-                  </TableCell>
+                <TableHead className="text-center">On Time %</TableHead>
 
-                  <TableCell>
-                    <span className="text-blue-600 font-semibold">
-                      {item.onTimeRate}%
-                    </span>
+                <TableHead className="text-center">Not On Time %</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {taskDetails?.length > 0 ? (
+                taskDetails.map((item, index) => {
+                  const completionRate = item.completionRate || 0;
+
+                  const onTimeRate =
+                    item.onTimeCompletionRate || item.onTimeRate || 0;
+
+                  const delayedRate = item.delayedCompletionRate || 0;
+
+                  return (
+                    <TableRow
+                      key={index}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      {/* SR */}
+                      <TableCell className="font-medium">{index + 1}</TableCell>
+
+                      {/* USER */}
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-gray-900">
+                            {item.userName || "-"}
+                          </span>
+
+                          <span className="text-xs text-gray-500">
+                            {item.email || "-"}
+                          </span>
+                        </div>
+                      </TableCell>
+
+                      {/* ROLE */}
+                      <TableCell>
+                        <span className="px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-medium">
+                          {item.role || "-"}
+                        </span>
+                      </TableCell>
+
+                      {/* DEPARTMENT */}
+                      <TableCell>
+                        <div className="text-sm text-gray-700">
+                          {Array.isArray(item.departments)
+                            ? item.departments.join(", ")
+                            : item.departments || "-"}
+                        </div>
+                      </TableCell>
+
+                      {/* TOTAL */}
+                      <TableCell className="text-center font-semibold">
+                        {item.totalTasks || 0}
+                      </TableCell>
+
+                      {/* COMPLETED */}
+                      <TableCell className="text-center">
+                        <span className="font-semibold">
+                          {item.completed || 0}
+                        </span>
+                      </TableCell>
+
+                      {/* ON TIME */}
+                      <TableCell className="text-center">
+                        <span className="font-semibold">
+                          {item.doneOnTime || 0}
+                        </span>
+                      </TableCell>
+
+                      {/* DELAYED */}
+                      <TableCell className="text-center">
+                        <span className="font-semibold">
+                          {item.delayed || 0}
+                        </span>
+                      </TableCell>
+
+                      {/* PENDING */}
+                      <TableCell className="text-center">
+                        <span className="font-semibold">
+                          {item.pending || 0}
+                        </span>
+                      </TableCell>
+
+                      {/* UPCOMING */}
+                      <TableCell className="text-center">
+                        <span className="font-semibold">
+                          {item.upcoming || 0}
+                        </span>
+                      </TableCell>
+
+                      {/* OVERDUE */}
+                      <TableCell className="text-center">
+                        <span className="font-semibold">
+                          {item.overdue || 0}
+                        </span>
+                      </TableCell>
+
+                      {/* COMPLETION RATE */}
+                      <TableCell className="text-center">
+                        <span
+                          className={`px-2 py-1 rounded-md text-xs font-bold ${
+                            completionRate >= 80
+                              ? "bg-green-100 text-green-700"
+                              : completionRate >= 50
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {completionRate}%
+                        </span>
+                      </TableCell>
+
+                      {/* ON TIME RATE */}
+                      <TableCell className="text-center">
+                        <span
+                          className={`px-2 py-1 rounded-md text-xs font-bold ${
+                            onTimeRate >= 80
+                              ? "bg-emerald-100 text-emerald-700"
+                              : onTimeRate >= 50
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {onTimeRate}%
+                        </span>
+                      </TableCell>
+
+                      {/* DELAYED RATE */}
+                      <TableCell className="text-center">
+                        <span
+                          className={`px-2 py-1 rounded-md text-xs font-bold ${
+                            delayedRate <= 20
+                              ? "bg-green-100 text-green-700"
+                              : delayedRate <= 50
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {delayedRate}%
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={14}
+                    className="text-center py-14 text-gray-500"
+                  >
+                    No report data found
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={20}
-                  className="text-center py-10 text-gray-500"
-                >
-                  No record found
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
     </div>
   );

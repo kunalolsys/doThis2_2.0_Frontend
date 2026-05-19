@@ -24,6 +24,7 @@ import {
   Clock2Icon,
   MessageCircle,
   MessageSquarePlus,
+  RotateCcw,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -83,6 +84,7 @@ import { Label } from "../../components/ui/index.jsx";
 import dayjs from "dayjs";
 import TaskChat from "../../components/TaskChat.jsx";
 import { useSocket } from "../../context/SocketContext.jsx";
+import { Popover } from "antd";
 
 // --- Helper Components ---
 
@@ -179,6 +181,7 @@ const getStatusBadge = (status) => {
 
 // Enhanced Today's Task Actions
 const TodayTaskActions = ({
+  activeTab,
   task,
   onChecklist,
   onFillForm,
@@ -186,86 +189,123 @@ const TodayTaskActions = ({
   setQueryDrawerOpen,
   unreadCount,
   setUnreadMap,
+  // ✅ REOPEN PROPS
+  setReopenTask,
+  setReopenModalOpen,
 }) => {
   const checkList =
     task.checklist && Array.isArray(task.checklist) ? task.checklist : [];
   const form =
     task.createdForm && Array.isArray(task.createdForm) ? task.createdForm : [];
+  const isCompleteActiveTab = activeTab == "completed";
+  const alreadyReopened = task?.isReopen;
   return (
     <TooltipProvider>
       <div className="flex gap-1">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-gray-600 hover:bg-gray-50"
-              onClick={() => onChecklist(task)}
-              disabled={checkList && checkList.length === 0}
-            >
-              <ClipboardList className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>View Checklist</p>
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={form && form.length === 0}
-              className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-              onClick={() => onFillForm(task)}
-            >
-              <FileText className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Fill Form</p>
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="relative">
+        {!isCompleteActiveTab && (
+          <Tooltip>
+            <TooltipTrigger asChild>
               <Button
-                size="icon"
                 variant="ghost"
-                className="h-8 w-8 rounded-full 
+                size="icon"
+                className="h-8 w-8 text-gray-600 hover:bg-gray-50 cursor-pointer"
+                onClick={() => onChecklist(task)}
+                disabled={checkList && checkList.length === 0}
+              >
+                <ClipboardList className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>View Checklist</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {!isCompleteActiveTab && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={form && form.length === 0}
+                className="h-8 w-8 text-blue-600 hover:bg-blue-50 cursor-pointer"
+                onClick={() => onFillForm(task)}
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Fill Form</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {!isCompleteActiveTab && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="relative">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 rounded-full  cursor-pointer
         text-blue-600 bg-blue-50 
         hover:bg-blue-100 hover:text-blue-700 
         transition-all duration-200"
-                onClick={() => {
-                  setSelectedQueryTask(task);
-                  setQueryDrawerOpen(true);
+                  onClick={() => {
+                    setSelectedQueryTask(task);
+                    setQueryDrawerOpen(true);
 
-                  setUnreadMap((prev) => ({
-                    ...prev,
-                    [task.conversationId]: 0,
-                  }));
-                }}
-              >
-                <MessageCircle className="h-4 w-4" />
-              </Button>
+                    setUnreadMap((prev) => ({
+                      ...prev,
+                      [task.conversationId]: 0,
+                    }));
+                  }}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                </Button>
 
-              {unreadCount > 0 && (
-                <span
-                  className="absolute -top-1 -right-1 
+                {unreadCount > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 
           min-w-[16px] h-[16px] px-1 
           flex items-center justify-center 
           text-[10px] font-bold text-white 
           bg-red-500 rounded-full shadow"
-                >
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Open Conversation</p>
-          </TooltipContent>
-        </Tooltip>{" "}
+                  >
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Open Conversation</p>
+            </TooltipContent>
+          </Tooltip>
+        )}{" "}
+        {isCompleteActiveTab && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={alreadyReopened}
+                onClick={() => {
+                  setReopenTask(task);
+                  setReopenModalOpen(true);
+                }}
+                className={`h-8 w-8 cursor-pointer ${
+                  alreadyReopened
+                    ? "text-gray-400 cursor-not-allowed"
+                    : "text-yellow-600 hover:bg-yellow-50"
+                }`}
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+
+            <TooltipContent>
+              <p>{alreadyReopened ? "Task already reopened" : "Reopen Task"}</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </TooltipProvider>
   );
@@ -512,6 +552,7 @@ const FilterBar = ({
             <SelectItem value="Completed">Completed</SelectItem>
             <SelectItem value="Overdue">Overdue</SelectItem>
             <SelectItem value="Due Today">Due Today</SelectItem>
+            <SelectItem value="Reopened">Re-opened</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -642,6 +683,40 @@ const ManagerView = () => {
   const [queryDrawerOpen, setQueryDrawerOpen] = useState(false);
   const [selectedQueryTask, setSelectedQueryTask] = useState(null);
   const [unreadMap, setUnreadMap] = useState({});
+  //**reopened task */
+  const [reopenModalOpen, setReopenModalOpen] = useState(false);
+  const [reopenTask, setReopenTask] = useState(null);
+  const [reopenReason, setReopenReason] = useState("");
+  const [reopenLoading, setReopenLoading] = useState(false);
+
+  const handleReopenTask = async () => {
+    if (!reopenReason.trim()) {
+      toast.error("Please enter reopen reason");
+      return;
+    }
+    try {
+      setReopenLoading(true);
+
+      await api.patch(`/tasks/${reopenTask._id}/reopen`, {
+        reason: reopenReason,
+      });
+
+      toast.success("Task reopened successfully");
+
+      setReopenModalOpen(false);
+      setReopenTask(null);
+      setReopenReason("");
+
+      // ✅ REFRESH API HERE
+      // fetchTasks();
+    } catch (error) {
+      console.log(error);
+
+      toast.error(error?.response?.data?.message || "Failed to reopen task");
+    } finally {
+      setReopenLoading(false);
+    }
+  };
   useEffect(() => {
     if (!socket) return;
 
@@ -719,7 +794,7 @@ const ManagerView = () => {
   };
   useEffect(() => {
     fetchTasksForDashboard();
-  }, [currentUser]);
+  }, [currentUser, reopenLoading]);
 
   // --- Fetch Users for Filters ---
   const [allUsers, setAllUsers] = useState([]);
@@ -773,11 +848,15 @@ const ManagerView = () => {
     setSearchTerm("");
     // Sync visual tab
     if (statType === "completed") setActiveTab("completed");
-    else if (statType === "overdue" || statType === "dueToday"||statType=="total")
+    else if (
+      statType === "overdue" ||
+      statType === "dueToday" ||
+      statType == "total"
+    )
       setActiveTab("today");
   };
   const debouncedSearch = useDebounce(searchTerm);
- 
+
   const getDepartmentIds = (department) => {
     try {
       const parsed =
@@ -840,6 +919,7 @@ const ManagerView = () => {
     localCurrentPage,
     localItemsPerPage,
     debouncedSearch,
+    reopenLoading,
   ]);
 
   // --- Client-side Search Function (backup) ---
@@ -988,12 +1068,123 @@ const ManagerView = () => {
         ? allUsers.find((u) => u._id === task.assignedTo?._id)
         : null;
     return (
-      <TableRow key={task._id} className={task.isOverdue ? "bg-red-50" : ""}>
+      <TableRow
+        key={task._id}
+        className={`
+                          ${task.isOverdue ? "bg-red-50" : ""}
+                          ${task.isReopen ? "bg-yellow-50 border-l-4 border-yellow-500" : ""}
+                        `}
+      >
         <TableCell>
           {(localCurrentPage - 1) * localItemsPerPage + index + 1}
         </TableCell>
         <TableCell>{task.TaskId || "-"}</TableCell>
-        <TableCell className="font-medium">{task.title}</TableCell>
+        {/* <TableCell className="font-medium">{task.title}</TableCell> */}
+        <TableCell className="font-medium">
+          <div className="flex flex-col gap-1">
+            {/* TITLE + BADGE */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span>{task.title}</span>
+
+              {task.isReopen && (
+                <span
+                  className="
+            inline-flex items-center gap-1
+            px-2 py-0.5
+            rounded-full
+            text-[10px]
+            font-semibold
+            bg-yellow-100
+            text-yellow-800
+            border border-yellow-300
+          "
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Reopened
+                </span>
+              )}
+            </div>
+
+            {/* VIEW REASON ALWAYS NEXT LINE */}
+            {task.reopenedReason && (
+              <div>
+                <Popover
+                  trigger="click"
+                  placement="topLeft"
+                  content={
+                    <div className="w-[280px] space-y-3">
+                      <div className="flex items-center gap-2 border-b pb-2">
+                        <div className="p-1.5 rounded-full bg-yellow-100">
+                          <RotateCcw className="h-4 w-4 text-yellow-700" />
+                        </div>
+
+                        <div>
+                          <h4 className="font-semibold text-sm">
+                            Reopened Task
+                          </h4>
+
+                          <p className="text-xs text-gray-500">
+                            {task.reopenedAt
+                              ? formatDate(task.reopenedAt)
+                              : "-"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 mb-1">
+                          Reason
+                        </p>
+
+                        <div
+                          className="
+                    text-sm
+                    bg-gray-50
+                    border
+                    rounded-lg
+                    p-3
+                    whitespace-pre-wrap
+                    break-words
+                    text-gray-700
+                  "
+                        >
+                          {task.reopenedReason}
+                        </div>
+                      </div>
+
+                      {task.reopenedBy?.name && (
+                        <div className="text-xs text-gray-500">
+                          Reopened By:
+                          <span className="ml-1 font-medium text-gray-700">
+                            {task.reopenedBy.name}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  }
+                >
+                  <button
+                    className="
+              text-[11px]
+              text-blue-600
+              cursor-pointer
+              hover:text-blue-800
+              hover:underline
+            "
+                  >
+                    View Reason
+                  </button>
+                </Popover>
+              </div>
+            )}
+
+            {task.isReopen && task.reopenedAt && (
+              <span className="text-[11px] text-gray-500">
+                Reopened on {formatDate(task.reopenedAt)}
+              </span>
+            )}
+          </div>
+        </TableCell>
         <TableCell>
           <Button
             variant="link"
@@ -1130,17 +1321,20 @@ const ManagerView = () => {
         </TableCell> */}
         <TableCell>{getStatusBadge(task.status)}</TableCell>
         <TableCell>
-          {activeTab === "today" && (
-            <TodayTaskActions
-              task={task}
-              onChecklist={handleChecklistClick}
-              onFillForm={handleFillFormClick}
-              setSelectedQueryTask={setSelectedQueryTask}
-              setQueryDrawerOpen={setQueryDrawerOpen}
-              unreadCount={unreadMap[task.conversationId] || 0}
-              setUnreadMap={setUnreadMap}
-            />
-          )}
+          {/* {activeTab === "today" && ( */}
+          <TodayTaskActions
+            activeTab={activeTab}
+            task={task}
+            onChecklist={handleChecklistClick}
+            onFillForm={handleFillFormClick}
+            setSelectedQueryTask={setSelectedQueryTask}
+            setQueryDrawerOpen={setQueryDrawerOpen}
+            unreadCount={unreadMap[task.conversationId] || 0}
+            setUnreadMap={setUnreadMap}
+            setReopenTask={setReopenTask}
+            setReopenModalOpen={setReopenModalOpen}
+          />
+          {/* )} */}
         </TableCell>
       </TableRow>
     );
@@ -1148,179 +1342,179 @@ const ManagerView = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 py-4">
-        <div className="shadow-xl border-0 overflow-hidden rounded-xl ">
-          {" "}
-          <div className=" p-4 py-4">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-4 border-y border-white/30 rounded-xl">
-              {" "}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                <div>
-                  <div className="text-2xl font-bold">{viewHeading}</div>
-                </div>
+      <div className="shadow-xl border-0 overflow-hidden rounded-xl ">
+        {" "}
+        <div className=" p-4 py-4">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-4 border-y border-white/30 rounded-xl">
+            {" "}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <div>
+                <div className="text-2xl font-bold">{viewHeading}</div>
               </div>
             </div>
           </div>
-          <div className="p-4">
-            <StatsCards
-              allTaskCounts={allTaskCounts}
-              selectedStat={selectedStatFilter}
-              onStatClick={handleStatClick}
+        </div>
+        <div className="p-4">
+          <StatsCards
+            allTaskCounts={allTaskCounts}
+            selectedStat={selectedStatFilter}
+            onStatClick={handleStatClick}
+          />
+
+          <Tabs
+            value={activeTab}
+            onValueChange={handleTabChange}
+            className="space-y-6"
+          >
+            <TabsList className="grid w-full grid-cols-4 p-1 bg-gray-100 rounded-lg">
+              <TabsTrigger value="today">Today's Task</TabsTrigger>
+              <TabsTrigger value="upcoming">Upcoming Tasks</TabsTrigger>
+              <TabsTrigger value="completed">Completed Tasks</TabsTrigger>
+              <TabsTrigger value="escalated">Escalated</TabsTrigger>
+            </TabsList>
+
+            <FilterBar
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              selectedFilterStatus={selectedFilterStatus}
+              setSelectedFilterStatus={setSelectedFilterStatus}
+              showExport={true}
+              onExport={handleExport}
+              isExporting={isExporting}
+              doers={doers}
+              selectedDoer={selectedDoer}
+              setSelectedDoer={setSelectedDoer}
+              managers={managers}
+              selectedManager={selectedManager}
+              setSelectedManager={setSelectedManager}
+              srManagers={srManagers}
+              selectedSrManager={selectedSrManager}
+              setSelectedSrManager={setSelectedSrManager}
+              selectedAssignor={selectedAssignor}
+              setSelectedAssignor={setSelectedAssignor}
+              currentUser={currentUser}
             />
 
-            <Tabs
-              value={activeTab}
-              onValueChange={handleTabChange}
-              className="space-y-6"
-            >
-              <TabsList className="grid w-full grid-cols-4 p-1 bg-gray-100 rounded-lg">
-                <TabsTrigger value="today">Today's Task</TabsTrigger>
-                <TabsTrigger value="upcoming">Upcoming Tasks</TabsTrigger>
-                <TabsTrigger value="completed">Completed Tasks</TabsTrigger>
-                <TabsTrigger value="escalated">Escalated</TabsTrigger>
-              </TabsList>
+            {status === "loading" && (
+              <div className="text-center py-10">
+                <RefreshCcw className="animate-spin h-6 w-6 text-blue-500 mx-auto" />
+              </div>
+            )}
+            {status !== "loading" && (
+              <>
+                {/* --- Today's Task Tab --- */}
+                <TabsContent value="today" className="mt-4">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <CommonTableHeaders />
+                      <TableBody>
+                        {fetchedTasks.length > 0 ? (
+                          fetchedTasks.map((task, index) =>
+                            renderCommonRow(task, index),
+                          )
+                        ) : (
+                          <TableRow>
+                            <TableCell
+                              colSpan={12}
+                              className="text-center py-8 text-gray-500"
+                            >
+                              No tasks found.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
 
-              <FilterBar
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
-                selectedFilterStatus={selectedFilterStatus}
-                setSelectedFilterStatus={setSelectedFilterStatus}
-                showExport={true}
-                onExport={handleExport}
-                isExporting={isExporting}
-                doers={doers}
-                selectedDoer={selectedDoer}
-                setSelectedDoer={setSelectedDoer}
-                managers={managers}
-                selectedManager={selectedManager}
-                setSelectedManager={setSelectedManager}
-                srManagers={srManagers}
-                selectedSrManager={selectedSrManager}
-                setSelectedSrManager={setSelectedSrManager}
-                selectedAssignor={selectedAssignor}
-                setSelectedAssignor={setSelectedAssignor}
-                currentUser={currentUser}
-              />
+                {/* --- Upcoming Tasks Tab --- */}
+                <TabsContent value="upcoming" className="mt-4">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <CommonTableHeaders />
+                      <TableBody>
+                        {fetchedTasks.length > 0 ? (
+                          fetchedTasks.map((task, index) =>
+                            renderCommonRow(task, index),
+                          )
+                        ) : (
+                          <TableRow>
+                            <TableCell
+                              colSpan={12}
+                              className="text-center py-8 text-gray-500"
+                            >
+                              No upcoming tasks.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
 
-              {status === "loading" && (
-                <div className="text-center py-10">
-                  <RefreshCcw className="animate-spin h-6 w-6 text-blue-500 mx-auto" />
-                </div>
-              )}
-              {status !== "loading" && (
-                <>
-                  {/* --- Today's Task Tab --- */}
-                  <TabsContent value="today" className="mt-4">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <CommonTableHeaders />
-                        <TableBody>
-                          {fetchedTasks.length > 0 ? (
-                            fetchedTasks.map((task, index) =>
-                              renderCommonRow(task, index),
-                            )
-                          ) : (
-                            <TableRow>
-                              <TableCell
-                                colSpan={12}
-                                className="text-center py-8 text-gray-500"
-                              >
-                                No tasks found.
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </TabsContent>
+                {/* --- Completed Tasks Tab --- */}
+                <TabsContent value="completed" className="mt-4">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <CommonTableHeaders />
+                      <TableBody>
+                        {fetchedTasks.length > 0 ? (
+                          fetchedTasks.map((task, index) =>
+                            renderCommonRow(task, index),
+                          )
+                        ) : (
+                          <TableRow>
+                            <TableCell
+                              colSpan={12}
+                              className="text-center py-8 text-gray-500"
+                            >
+                              No completed tasks.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
 
-                  {/* --- Upcoming Tasks Tab --- */}
-                  <TabsContent value="upcoming" className="mt-4">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <CommonTableHeaders />
-                        <TableBody>
-                          {fetchedTasks.length > 0 ? (
-                            fetchedTasks.map((task, index) =>
-                              renderCommonRow(task, index),
-                            )
-                          ) : (
-                            <TableRow>
-                              <TableCell
-                                colSpan={12}
-                                className="text-center py-8 text-gray-500"
-                              >
-                                No upcoming tasks.
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </TabsContent>
+                {/* --- Escalated Tasks Tab --- */}
+                <TabsContent value="escalated" className="mt-4">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <CommonTableHeaders />
+                      <TableBody>
+                        {fetchedTasks.length > 0 ? (
+                          fetchedTasks.map((task, index) =>
+                            renderCommonRow(task, index),
+                          )
+                        ) : (
+                          <TableRow>
+                            <TableCell
+                              colSpan={12}
+                              className="text-center py-8 text-gray-500"
+                            >
+                              No escalated tasks.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
 
-                  {/* --- Completed Tasks Tab --- */}
-                  <TabsContent value="completed" className="mt-4">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <CommonTableHeaders />
-                        <TableBody>
-                          {fetchedTasks.length > 0 ? (
-                            fetchedTasks.map((task, index) =>
-                              renderCommonRow(task, index),
-                            )
-                          ) : (
-                            <TableRow>
-                              <TableCell
-                                colSpan={12}
-                                className="text-center py-8 text-gray-500"
-                              >
-                                No completed tasks.
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </TabsContent>
-
-                  {/* --- Escalated Tasks Tab --- */}
-                  <TabsContent value="escalated" className="mt-4">
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <CommonTableHeaders />
-                        <TableBody>
-                          {fetchedTasks.length > 0 ? (
-                            fetchedTasks.map((task, index) =>
-                              renderCommonRow(task, index),
-                            )
-                          ) : (
-                            <TableRow>
-                              <TableCell
-                                colSpan={12}
-                                className="text-center py-8 text-gray-500"
-                              >
-                                No escalated tasks.
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </TabsContent>
-
-                  <Pagination
-                    totalItems={totalTasks || 0}
-                    itemsPerPage={localItemsPerPage}
-                    setItemsPerPage={setLocalItemsPerPage}
-                    currentPage={localCurrentPage}
-                    onPageChange={setLocalCurrentPage}
-                    isLoading={status === "loading"}
-                  />
-                </>
-              )}
-            </Tabs>
-          </div>
+                <Pagination
+                  totalItems={totalTasks || 0}
+                  itemsPerPage={localItemsPerPage}
+                  setItemsPerPage={setLocalItemsPerPage}
+                  currentPage={localCurrentPage}
+                  onPageChange={setLocalCurrentPage}
+                  isLoading={status === "loading"}
+                />
+              </>
+            )}
+          </Tabs>
         </div>
+      </div>
 
       {/* --- DIALOGS --- */}
       {/* <Dialog
@@ -1568,6 +1762,46 @@ const ManagerView = () => {
           <DialogFooter>
             <Button onClick={() => setIsDescriptionDialogOpen(false)}>
               OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={reopenModalOpen} onOpenChange={setReopenModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reopen Task</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Reopen Reason</label>
+
+            <textarea
+              rows={4}
+              value={reopenReason}
+              onChange={(e) => setReopenReason(e.target.value)}
+              placeholder="Enter reopen reason..."
+              className="
+          w-full border rounded-lg p-3 outline-none
+          focus:ring-2 focus:ring-yellow-500
+        "
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReopenModalOpen(false)}
+              disabled={reopenLoading}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleReopenTask}
+              disabled={reopenLoading}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              {reopenLoading ? "Reopening..." : "Reopen Task"}
             </Button>
           </DialogFooter>
         </DialogContent>

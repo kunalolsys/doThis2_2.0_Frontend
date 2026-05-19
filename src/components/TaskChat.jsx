@@ -10,6 +10,7 @@ import {
   Collapse,
   Tag,
   Input,
+  Popover,
 } from "antd";
 import {
   Send,
@@ -24,6 +25,7 @@ import {
   Smile,
   AlertTriangle,
   Reply,
+  RotateCcw,
 } from "lucide-react";
 import EmojiPicker from "emoji-picker-react";
 import { useSelector } from "react-redux";
@@ -380,7 +382,9 @@ const TaskChat = ({ task, open, onClose }) => {
               </Avatar> */}
 
               <div>
-                <h2 className="font-bold text-xl">{safeTask?.title}</h2>
+                <h2 className="font-bold text-xl flex items-center gap-2">
+                  {safeTask?.title}
+                </h2>
 
                 <div className="flex items-center gap-2 mt-1">
                   {/* Task ID */}
@@ -437,7 +441,113 @@ const TaskChat = ({ task, open, onClose }) => {
                 >
                   {dayjs(safeTask?.dueDate).format("MMM DD")}
                 </Tag>
-              </div>
+              </div>{" "}
+              {safeTask?.isReopen && (
+                <div>
+                  {/* <div className="text-xs text-slate-400 uppercase tracking-wide font-medium mb-2">
+                    Task Status
+                  </div> */}
+
+                  {safeTask?.isReopen && (
+                    <Popover
+                      trigger="click"
+                      placement="bottomLeft"
+                      content={
+                        <div className="w-[300px]">
+                          {/* HEADER */}
+                          <div className="flex items-start gap-3 pb-3 border-b">
+                            <div
+                              className="
+                w-10 h-10 rounded-full
+                bg-gradient-to-br from-yellow-100 to-orange-100
+                flex items-center justify-center
+                shadow-sm
+              "
+                            >
+                              <RotateCcw className="w-5 h-5 text-yellow-700" />
+                            </div>
+
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-800 text-sm">
+                                Task Reopened
+                              </h3>
+
+                              <p className="text-xs text-gray-500 mt-1">
+                                {safeTask?.reopenedAt
+                                  ? dayjs(safeTask?.reopenedAt).format(
+                                      "DD MMM YYYY • hh:mm A",
+                                    )
+                                  : "-"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* REASON */}
+                          <div className="mt-4">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                              Reopen Reason
+                            </p>
+
+                            <div
+                              className="
+                bg-gradient-to-br from-gray-50 to-gray-100
+                border border-gray-200
+                rounded-xl
+                p-3
+                text-sm
+                text-gray-700
+                leading-relaxed
+                whitespace-pre-wrap
+                break-words
+              "
+                            >
+                              {safeTask?.reopenedReason || "No reason provided"}
+                            </div>
+                          </div>
+
+                          {/* FOOTER */}
+                          {safeTask?.reopenedBy?.name && (
+                            <div className="mt-4 flex items-center justify-between text-xs text-gray-500 border-t pt-3">
+                              <span>Reopened By</span>
+
+                              <span className="font-medium text-gray-700">
+                                {safeTask?.reopenedBy?.name}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      }
+                    >
+                      <div
+                        className="
+          inline-flex items-center gap-2
+          px-3 py-2
+          rounded-xl
+          cursor-pointer
+          border border-yellow-200
+          bg-gradient-to-r from-yellow-50 to-orange-50
+          hover:shadow-md
+          transition-all duration-200
+        "
+                      >
+                        <div className="w-7 h-7 rounded-full bg-yellow-100 flex items-center justify-center">
+                          <RotateCcw className="w-4 h-4 text-yellow-700" />
+                        </div>
+
+                        <div className="flex flex-col leading-tight">
+                          <span className="text-sm font-semibold text-yellow-800">
+                            Reopened
+                          </span>
+
+                          <span className="text-[11px] text-yellow-700">
+                            Click to view details
+                          </span>
+                        </div>
+                      </div>
+                    </Popover>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Checklist */}

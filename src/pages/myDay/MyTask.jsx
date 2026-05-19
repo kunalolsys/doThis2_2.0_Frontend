@@ -84,7 +84,7 @@ import * as XLSX from "xlsx";
 import { formatDate, formatLabel } from "../../lib/utilFunctions";
 import ViewLink from "./attachmentViewer";
 import { useDebounce } from "../../lib/debounce";
-import { DatePicker } from "antd";
+import { DatePicker, Popover } from "antd";
 const { RangePicker } = DatePicker;
 import * as Yup from "yup";
 import { useFormik } from "formik";
@@ -240,22 +240,22 @@ const TaskActions = ({
         </TooltipContent>
       </Tooltip>
       {/* Complete/Reopen Button */}
-       <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              disabled={upComing || onHold || stopped ||isCompleted}
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-green-600 hover:bg-green-50"
-              onClick={() => onToggleComplete(task)}
-            >
-              <CheckCircle className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Mark as Done</p>
-          </TooltipContent>
-        </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            disabled={upComing || onHold || stopped || isCompleted}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-green-600 hover:bg-green-50"
+            onClick={() => onToggleComplete(task)}
+          >
+            <CheckCircle className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Mark as Done</p>
+        </TooltipContent>
+      </Tooltip>
       {/* {!isCompleted ? (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -861,12 +861,121 @@ const TodayTasksTable = ({
 
               return (
                 <React.Fragment key={task._id}>
-                  <TableRow className={task.isOverdue ? "bg-red-50" : ""}>
+                  <TableRow
+                    className={`
+                    ${task.isOverdue ? "bg-red-50" : ""}
+                    ${task.isReopen ? "bg-yellow-50 border-l-4 border-yellow-500" : ""}
+                  `}
+                  >
                     <TableCell>
                       {(currentPage - 1) * itemsPerPage + index + 1}
                     </TableCell>
                     <TableCell>{task.TaskId || "-"}</TableCell>
-                    <TableCell className="font-medium">{task.title}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex flex-col gap-1">
+                        {/* TITLE + BADGE */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>{task.title}</span>
+
+                          {task.isReopen && (
+                            <span
+                              className="
+            inline-flex items-center gap-1
+            px-2 py-0.5
+            rounded-full
+            text-[10px]
+            font-semibold
+            bg-yellow-100
+            text-yellow-800
+            border border-yellow-300
+          "
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              Reopened
+                            </span>
+                          )}
+                        </div>
+
+                        {/* VIEW REASON ALWAYS NEXT LINE */}
+                        {task.reopenedReason && (
+                          <div>
+                            <Popover
+                              trigger="click"
+                              placement="topLeft"
+                              content={
+                                <div className="w-[280px] space-y-3">
+                                  <div className="flex items-center gap-2 border-b pb-2">
+                                    <div className="p-1.5 rounded-full bg-yellow-100">
+                                      <RotateCcw className="h-4 w-4 text-yellow-700" />
+                                    </div>
+
+                                    <div>
+                                      <h4 className="font-semibold text-sm">
+                                        Reopened Task
+                                      </h4>
+
+                                      <p className="text-xs text-gray-500">
+                                        {task.reopenedAt
+                                          ? formatDate(task.reopenedAt)
+                                          : "-"}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 mb-1">
+                                      Reason
+                                    </p>
+
+                                    <div
+                                      className="
+                    text-sm
+                    bg-gray-50
+                    border
+                    rounded-lg
+                    p-3
+                    whitespace-pre-wrap
+                    break-words
+                    text-gray-700
+                  "
+                                    >
+                                      {task.reopenedReason}
+                                    </div>
+                                  </div>
+
+                                  {task.reopenedBy?.name && (
+                                    <div className="text-xs text-gray-500">
+                                      Reopened By:
+                                      <span className="ml-1 font-medium text-gray-700">
+                                        {task.reopenedBy.name}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              }
+                            >
+                              <button
+                                className="
+              text-[11px]
+              text-blue-600
+              cursor-pointer
+              hover:text-blue-800
+              hover:underline
+            "
+                              >
+                                View Reason
+                              </button>
+                            </Popover>
+                          </div>
+                        )}
+
+                        {task.isReopen && task.reopenedAt && (
+                          <span className="text-[11px] text-gray-500">
+                            Reopened on {formatDate(task.reopenedAt)}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-row gap-1">
                         <span className="text-sm font-medium text-gray-900">

@@ -213,22 +213,19 @@ const CreateTaskForm = ({
 
     setAssignmentRows((prev) => [...prev, { departmentId: "", users: [] }]);
   };
-const isDepartmentFullySelected = (deptId) => {
-  const deptUsers = users.filter(
-    (u) =>
-      Array.isArray(u.department) &&
-      u.department.some((d) => d?._id === deptId),
-  );
+  const isDepartmentFullySelected = (deptId) => {
+    const deptUsers = users.filter(
+      (u) =>
+        Array.isArray(u.department) &&
+        u.department.some((d) => d?._id === deptId),
+    );
 
-  const selectedUsers = assignmentRows
-    .filter((r) => r.departmentId === deptId)
-    .flatMap((r) => r.users || []);
+    const selectedUsers = assignmentRows
+      .filter((r) => r.departmentId === deptId)
+      .flatMap((r) => r.users || []);
 
-  return (
-    deptUsers.length > 0 &&
-    selectedUsers.length >= deptUsers.length
-  );
-};
+    return deptUsers.length > 0 && selectedUsers.length >= deptUsers.length;
+  };
   const removeAssignmentRow = (index) => {
     // Always keep one row
     if (assignmentRows.length === 1) return;
@@ -611,11 +608,11 @@ const isDepartmentFullySelected = (deptId) => {
                         onChange={(value) => updateDepartment(index, value)}
                         style={{ width: "100%", minHeight: 38 }}
                         optionFilterProp="label"
-                     options={departments.map((d) => ({
-  value: d._id,
-  label: d.name,
-  disabled: isDepartmentFullySelected(d._id), // ✅ ONLY ADD THIS
-}))}
+                        options={departments.map((d) => ({
+                          value: d._id,
+                          label: d.name,
+                          disabled: isDepartmentFullySelected(d._id), // ✅ ONLY ADD THIS
+                        }))}
                       />
                     </div>
 
@@ -1092,6 +1089,7 @@ const isDepartmentFullySelected = (deptId) => {
                         <SelectItem value="weekly">Weekly</SelectItem>
                         <SelectItem value="monthly">Monthly</SelectItem>
                         <SelectItem value="quarterly">Quarterly</SelectItem>
+                        <SelectItem value="fortnightly">Fortnightly</SelectItem>
                         <SelectItem value="half-yearly">Half Yearly</SelectItem>
                         <SelectItem value="yearly">Yearly</SelectItem>
                       </SelectContent>
