@@ -1239,7 +1239,6 @@ const MyTask = () => {
   const [queryDrawerOpen, setQueryDrawerOpen] = useState(false);
   const [selectedQueryTask, setSelectedQueryTask] = useState(null);
   const [raiseQueryModalOpen, setRaiseQueryModalOpen] = useState(false);
-  // console.log(dateRange);
   // --- Initial Data Load ---
   useEffect(() => {
     if (currentUser?._id) {

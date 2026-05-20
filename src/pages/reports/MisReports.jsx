@@ -104,7 +104,6 @@ const MisReports = () => {
 
       const response = await api.post("/mis/report", payload);
 
-      console.log("MIS REPORT", response.data);
 
       setTaskDetails(response.data.reports || []);
       setAllTasks(response.data.tasks || []);

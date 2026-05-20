@@ -197,7 +197,6 @@ const CreateNewFmsTem = () => {
     //   }),
     // }),
     onSubmit: async (values) => {
-      console.log(values);
       setLoading(true);
       try {
         // ✅ FIRST TIME → CREATE TEMPLATE ONLY
@@ -411,7 +410,6 @@ const CreateNewFmsTem = () => {
 
     try {
       const values = { ...formik.values };
-      console.log(values);
       // ✅ remove endDate if Timeless
       if (values.fmsDuration === "Timeless") {
         values.endDate = null;
@@ -447,8 +445,6 @@ const CreateNewFmsTem = () => {
 
         tasks: cleanedTasks,
       };
-
-      console.log(payload);
 
       await api.put(`/fms/templates/${templateId}`, payload);
 

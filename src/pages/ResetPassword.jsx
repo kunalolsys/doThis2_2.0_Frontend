@@ -42,7 +42,6 @@ const ResetPassword = () => {
 
         // --- FOR LOCAL TESTING ONLY: Display the token ---
         if (import.meta.env.DEV && res.data.token) {
-          console.log('Password Reset Token (for local testing):', res.data.token);
           toast.info(`Local Test Token: ${res.data.token}`, { duration: 10000 });
         }
       } else {

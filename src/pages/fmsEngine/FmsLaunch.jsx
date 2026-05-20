@@ -118,34 +118,6 @@ const FmsLaunch = () => {
     setEndDate(null);
   };
 
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   setLoading(true);
-  //   if (!startDate) {
-  //     setLoading(false);
-  //     toast.error("Start date is required.");
-  //     return;
-  //   }
-  //   const payload = {
-  //     launchDate: startDate ? dayjs(startDate).format("YYYY-MM-DD") : null,
-  //     endDate,
-  //   };
-  //   try {
-  //     const res = await api.post(
-  //       `/fms/instances/${selectedTemplate}/launch`,
-  //       payload,
-  //     );
-  //     if (res.data.success) {
-  //       toast.success("FMS has been launched successfully 🚀");
-  //       navigate("/fms-engine/upcoming");
-  //     }
-  //   } catch (error) {
-  //     console.log(error);
-  //     toast.error(error.response.data.message || "Something went wrong");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
   const handleSubmit = async (e) => {
     e.preventDefault();
 

@@ -361,7 +361,6 @@ export default function TaskReassignmentPage() {
       },
     },
   ];
-  console.log(taskFrequency);
   return (
     <div
       style={{

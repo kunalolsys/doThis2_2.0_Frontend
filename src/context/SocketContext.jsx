@@ -54,7 +54,6 @@ export const SocketProvider = ({ children }) => {
       // ✅ REMOVE OLD LISTENERS FIRST
       sock.off();
       const handleConnect = () => {
-        console.log("🔌 Socket connected:", sock.id);
         setIsConnected(true);
         addEvent("connect", { id: sock.id });
 
@@ -66,7 +65,6 @@ export const SocketProvider = ({ children }) => {
       };
 
       const handleDisconnect = () => {
-        console.log("🔌 Socket disconnected");
         setIsConnected(false);
         addEvent("disconnect", {});
       };
