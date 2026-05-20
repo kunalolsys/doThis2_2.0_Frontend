@@ -1046,11 +1046,15 @@ const TaskTable = ({
       toast.error("Please upload a file first!");
       return;
     }
+
     setIsImporting(true);
     setImportError(null);
     setErrorFileUrl(null);
+
     const formData = new FormData();
+
     formData.append("file", uploadFile);
+
     if (uploadedAttachmentBackendNames.length > 0) {
       formData.append(
         "attachmentFilenames",
@@ -1060,30 +1064,60 @@ const TaskTable = ({
 
     try {
       const response = await api.post("/tasks/import", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
-      if (response.status === 201) {
-        toast.success(response.data.message);
-        setIsImportDialogOpen(false);
-        onRefreshTasks(); // Refresh tasks in parent
-      }
-    } catch (error) {
-      console.error("Import error:", error);
-      if (error.response) {
-        if (error.response.status === 422) {
-          setImportError(
-            error.response.data.message ||
-              "The uploaded file has validation errors.",
-          );
+
+      const data = response.data;
+
+      // ✅ success toast
+      toast.success(data.message);
+
+      // ✅ partial import handling
+      if (data.summary?.errors > 0 || data.summary?.skipped > 0) {
+        setImportError(
+          `Import completed with ${data.summary.errors} error(s) and ${data.summary.skipped} skipped row(s).`,
+        );
+
+        // ✅ download link
+        if (data.errorFile) {
           const apiBaseUrl =
             import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
-          const fullUrl = `${apiBaseUrl}/tasks/download?filePath=${encodeURIComponent(error.response.data.errorFile)}`;
+
+          const fullUrl = `${apiBaseUrl}/tasks/download?filePath=${encodeURIComponent(
+            data.errorFile,
+          )}`;
+
           setErrorFileUrl(fullUrl);
-        } else {
-          setImportError(
-            error.response.data?.message ||
-              `An error occurred: ${error.response.statusText}`,
-          );
+        }
+      } else {
+        // ✅ fully successful
+        setImportError(null);
+        setErrorFileUrl(null);
+      }
+
+      // setIsImportDialogOpen(false);
+
+      onRefreshTasks();
+    } catch (error) {
+      console.error("Import error:", error);
+
+      if (error.response) {
+        const data = error.response.data;
+
+        setImportError(data.message || "Failed to import tasks.");
+
+        // ✅ even on error return downloadable file
+        if (data.errorFile) {
+          const apiBaseUrl =
+            import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+
+          const fullUrl = `${apiBaseUrl}/tasks/download?filePath=${encodeURIComponent(
+            data.errorFile,
+          )}`;
+
+          setErrorFileUrl(fullUrl);
         }
       } else {
         setImportError("Network error or cannot connect to the server.");
@@ -3113,17 +3147,28 @@ const TaskTable = ({
             </div>
             {/* Error Display */}
             {importError && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3 text-red-900 text-sm">
-                <p className="font-semibold mb-1">⚠️ {importError}</p>
-                {errorFileUrl && (
-                  <a
-                    href={errorFileUrl}
-                    download
-                    className="text-red-700 underline font-bold"
-                  >
-                    Download Error Report
-                  </a>
-                )}
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mt-3">
+                <div className="flex items-start gap-3">
+                  <div className="text-red-600 text-lg">⚠️</div>
+
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-900">
+                      Import Validation Summary
+                    </p>
+
+                    <p className="text-sm text-red-700 mt-1">{importError}</p>
+
+                    {errorFileUrl && (
+                      <a
+                        href={errorFileUrl}
+                        download
+                        className="inline-flex items-center gap-2 mt-3 text-sm font-semibold text-red-800 hover:text-red-900 underline"
+                      >
+                        Download Detailed Error Report
+                      </a>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
             <DialogFooter>
