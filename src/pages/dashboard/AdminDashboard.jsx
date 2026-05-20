@@ -98,17 +98,7 @@ const AdminDashboard = () => {
       console.log(error);
     }
   };
-  // useEffect(() => {
-  //   dispatch(fetchUsers());
-  //   dispatch(fetchDepartments());
-  //   dispatch(fetchHolidays());
-  //   if (isAdmin) {
-  //     // dispatch(fetchTasks());
-  //   }
-  //   if (currentUser?._id) {
-  //     dispatch(fetchMyTasks({ userId: currentUser._id }));
-  //   }
-  // }, [dispatch, currentUser, isAdmin]);
+
   useEffect(() => {
     fetchTasksForDashboard(filterType);
   }, [filterType, currentUser]);
@@ -258,10 +248,6 @@ const AdminDashboard = () => {
         />
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          ZONE 1 — Alerts (2 cols) + Stats (4 cols)
-          Always visible. Never changes shape.
-      ══════════════════════════════════════════════════════════════════ */}
 
       {/* Alert row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -303,7 +289,12 @@ const AdminDashboard = () => {
       </div>
 
       {/* Stats row — always 4 cols on large screens */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div
+        className={`grid grid-cols-1 md:grid-cols-2 ${
+          fmsOn ? "lg:grid-cols-5" : "lg:grid-cols-4"
+        } gap-4`}
+      >
+        {" "}
         <StatCard
           title="Total Tasks"
           value={dynamicStats.totalTasks}
@@ -338,178 +329,22 @@ const AdminDashboard = () => {
         )}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          ZONE 2 — Metric cards
-          Derives column count from visible items so grid never has gaps.
-          FMS on  → 4 cols: [FMS Perf] [Delegated Perf] [Ongoing FMS] [Active Users]
-          FMS off → 2 cols: [Delegated Perf] [Active Users]
-      ══════════════════════════════════════════════════════════════════ */}
       <div
         className="grid gap-4"
         style={{
           gridTemplateColumns: `repeat(${zone2Items.length}, minmax(0, 1fr))`,
         }}
       >
-        {/* FMS Engine Performance — only when FMS on */}
-        {/* {fmsOn && (
-          <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
-            <CardHeader className="p-0 pb-2">
-              <CardTitle className="text-sm font-semibold text-gray-700">
-                FMS Engine Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <p className="text-gray-500 text-sm">Data not available</p>
-            </CardContent>
-          </Card>
-        )} */}
-
-        {/* Delegated Tasks Performance — always visible */}
-        {/* <Card className="p-4 hover:scale-[1.02] transition-all duration-500">
-          <CardHeader className="p-0 pb-2">
-            <CardTitle className="text-sm font-semibold text-gray-700">
-              Delegated Tasks Performance
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <p className="text-gray-500 text-sm">Data not available</p>
-          </CardContent>
-        </Card> */}
-
-        {/* Active Users — always visible */}
-        {/* <Card className="flex items-center justify-center border shadow-sm bg-white p-4 hover:scale-[1.02] transition-all duration-500">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-green-50">
-              <Users2 className="w-8 h-8 text-green-600" />
-            </div>
-            <div>
-              <p className="text-md font-medium text-gray-600">
-                Total Active Users
-              </p>
-              <p className="text-xl font-bold text-green-600">{userCount}</p>
-            </div>
-          </div>
-        </Card> */}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          ZONE 3 — Leaderboards
-          Derives column count from visible items so grid never has gaps.
-          FMS on  → 3 cols: [Top Performers] [Top FMS] [Top Managers]
-          FMS off → 2 cols: [Top Performers] [Top Managers]
-      ══════════════════════════════════════════════════════════════════ */}
       <div
         className="grid gap-4 mb-4"
         style={{
           gridTemplateColumns: `repeat(${zone3Items.length}, minmax(0, 1fr))`,
         }}
       >
-        {/* Top Performers — always visible */}
-        {/* <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <Crown className="w-4 h-4 text-amber-600" />
-              </div>
-              <h3 className="text-base font-semibold text-gray-900">
-                Top Performers — This Year
-              </h3>
-            </div>
-          </div>
-          <div className="space-y-3">
-            {Array.isArray(topPerformers) && topPerformers.length > 0 ? (
-              topPerformers.map((item, id) => {
-                const rankStyles = [
-                  {
-                    bg: "bg-yellow-50",
-                    border: "border-yellow-300",
-                    badge: "bg-yellow-500",
-                  },
-                  {
-                    bg: "bg-gray-50",
-                    border: "border-gray-300",
-                    badge: "bg-gray-500",
-                  },
-                  {
-                    bg: "bg-orange-50",
-                    border: "border-orange-300",
-                    badge: "bg-orange-500",
-                  },
-                ];
-                const style = rankStyles[id] || {
-                  bg: "bg-blue-50",
-                  border: "border-blue-200",
-                  badge: "bg-blue-500",
-                };
-
-                return (
-                  <div
-                    key={id}
-                    className={`flex justify-between items-center p-3 rounded-lg border ${style.bg} ${style.border}`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-5 h-5 ${style.badge} rounded-full flex items-center justify-center text-white text-xs font-semibold`}
-                      >
-                        {id + 1}
-                      </div>
-                      <span className="font-medium text-gray-800 text-sm">
-                        {item.name}
-                      </span>
-                    </div>
-                    <div className="flex gap-4 justify-end items-center">
-                      <div className="flex flex-col items-end">
-                        <span className="font-semibold text-sm text-green-600">
-                          {item.score}%
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          Done on Time
-                        </span>
-                      </div>
-                      <div className="flex flex-col items-end">
-                        <span className="font-semibold text-sm text-red-600">
-                          {item.lateScore}%
-                        </span>
-                        <span className="text-xs text-gray-500">Late</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-gray-500 text-sm">No data available</p>
-            )}
-          </div>
-        </Card> */}
-
-        {/* Top FMS — only when FMS on */}
-        {/* {fmsOn && (
-          <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
-            <TopFmsCard title="Top 5 FMS by On-Time %" items={topFmsItems} />
-          </Card>
-        )} */}
-
-        {/* Top Managers — always visible */}
-        {/* <Card className="border p-4 shadow-sm bg-white hover:scale-[1.02] transition-all duration-500">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-1.5 bg-purple-100 rounded-md">
-              <Medal className="w-4 h-4 text-purple-600" />
-            </div>
-            <h1 className="text-md text-gray-700 font-bold">
-              Top 3 Managers by On-Time %
-            </h1>
-          </div>
-          <div className="flex flex-col gap-2">
-            <p className="text-gray-500 text-sm">Data not available</p>
-          </div>
-        </Card> */}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          ZONE 4 — Performance overview
-          Fixed layout: 1/3 chart + 2/3 deadlines. No FMS dependency.
-          Uses fr units so it never collapses.
-      ══════════════════════════════════════════════════════════════════ */}
       <div
         className="grid gap-4 mb-6"
         style={{ gridTemplateColumns: "1fr 2fr" }}

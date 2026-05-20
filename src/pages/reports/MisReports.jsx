@@ -37,12 +37,14 @@ import {
 } from "recharts";
 import { Button } from "../../components/ui/button";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { EyeFilled } from "@ant-design/icons";
 
 const { RangePicker } = DatePicker;
 
 const MisReports = () => {
   const { currentUser } = useSelector((state) => state.users);
-
+  const navigate = useNavigate();
   const [selectedDoer, setSelectedDoer] = useState("all");
   const [selectedManager, setSelectedManager] = useState("all");
   const [selectedSrManager, setSelectedSrManager] = useState("all");
@@ -103,7 +105,6 @@ const MisReports = () => {
       };
 
       const response = await api.post("/mis/report", payload);
-
 
       setTaskDetails(response.data.reports || []);
       setAllTasks(response.data.tasks || []);
@@ -473,18 +474,24 @@ const MisReports = () => {
 
               <XAxis dataKey="userName" tick={{ fontSize: 12 }} interval={0} />
 
-              <YAxis />
+              <YAxis
+                domain={[-100, 0]}
+                reversed={true}
+                ticks={[0, -25, -50, -75, -100]}
+              />
 
-              <Tooltip />
+              <Tooltip
+                formatter={(value) => [`${value}%`, "Completion Rate"]}
+              />
 
               <Bar dataKey="completionRate" radius={[8, 8, 0, 0]}>
                 {taskDetails.map((entry, index) => (
                   <Cell
                     key={index}
                     fill={
-                      entry.completionRate >= 70
+                      entry.completionRate >= -30
                         ? "#22c55e"
-                        : entry.completionRate >= 40
+                        : entry.completionRate >= -70
                           ? "#eab308"
                           : "#ef4444"
                     }
@@ -542,6 +549,7 @@ const MisReports = () => {
                 <TableHead className="text-center">On Time %</TableHead>
 
                 <TableHead className="text-center">Not On Time %</TableHead>
+                <TableHead className="text-center">Action</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -642,46 +650,41 @@ const MisReports = () => {
                       {/* COMPLETION RATE */}
                       <TableCell className="text-center">
                         <span
-                          className={`px-2 py-1 rounded-md text-xs font-bold ${
-                            completionRate >= 80
-                              ? "bg-green-100 text-green-700"
-                              : completionRate >= 50
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
-                          }`}
+                          className={`px-2 py-1 rounded-md text-xs font-bold `}
                         >
-                          {completionRate}%
+                          {completionRate}
                         </span>
                       </TableCell>
 
                       {/* ON TIME RATE */}
                       <TableCell className="text-center">
                         <span
-                          className={`px-2 py-1 rounded-md text-xs font-bold ${
-                            onTimeRate >= 80
-                              ? "bg-emerald-100 text-emerald-700"
-                              : onTimeRate >= 50
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
-                          }`}
+                          className={`px-2 py-1 rounded-md text-xs font-bold `}
                         >
-                          {onTimeRate}%
+                          {onTimeRate}
                         </span>
                       </TableCell>
 
                       {/* DELAYED RATE */}
                       <TableCell className="text-center">
                         <span
-                          className={`px-2 py-1 rounded-md text-xs font-bold ${
-                            delayedRate <= 20
-                              ? "bg-green-100 text-green-700"
-                              : delayedRate <= 50
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
-                          }`}
+                          className={`px-2 py-1 rounded-md text-xs font-bold `}
                         >
-                          {delayedRate}%
+                          {delayedRate}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <EyeFilled
+                          height={35}
+                          width={35}
+                          onClick={() =>
+                            navigate(`/user/${item.userId}`, {
+                              state: {
+                                userName: item.userName,
+                              },
+                            })
+                          }
+                        />
                       </TableCell>
                     </TableRow>
                   );

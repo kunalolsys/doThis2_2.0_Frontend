@@ -906,489 +906,360 @@ export default function TaskReassignmentPage() {
                 const totalChecklist = record?.checklist?.length || 0;
 
                 return (
-                  <div
+                  <Card
+                    bordered={false}
                     style={{
-                      background: "#fafbfd",
-                      borderRadius: "16px",
-                      padding: "24px",
+                      borderRadius: 20,
+                      overflow: "hidden",
                       border: `1px solid ${token.colorBorderSecondary}`,
+                      boxShadow: "0 4px 18px rgba(0,0,0,0.05)",
+                    }}
+                    bodyStyle={{
+                      padding: 0,
                     }}
                   >
-                    <Row gutter={[24, 24]}>
-                      {/* LEFT SECTION */}
-                      <Col xs={24} lg={15}>
-                        <Space
-                          direction="vertical"
-                          size={20}
-                          style={{ width: "100%" }}
-                        >
-                          {/* Task Header */}
-                          <div>
-                            <Space align="center" wrap>
-                              <Text
-                                strong
-                                style={{
-                                  fontSize: "18px",
-                                }}
-                              >
-                                {record?.title}
-                              </Text>
-
-                              <Tag color="blue">{record?.taskType}</Tag>
-
-                              <Tag
-                                color={
-                                  record?.status === "Completed"
-                                    ? "success"
-                                    : record?.status === "Pending"
-                                      ? "warning"
-                                      : "processing"
-                                }
-                              >
-                                {record?.status}
-                              </Tag>
-
-                              {record?.isReopen && (
-                                <Tag color="volcano">Reopened</Tag>
-                              )}
-                            </Space>
-
-                            <Paragraph
+                    {/* HEADER */}
+                    <div
+                      style={{
+                        padding: "24px",
+                        background:
+                          "linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)",
+                        borderBottom: `1px solid ${token.colorBorderSecondary}`,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 20,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <Space wrap align="center">
+                            <Text
+                              strong
                               style={{
-                                marginTop: 10,
-                                marginBottom: 0,
-                                fontSize: "13px",
-                                lineHeight: "24px",
-                                color: token.colorTextSecondary,
+                                fontSize: 22,
+                                lineHeight: 1.3,
                               }}
                             >
-                              {record?.description ||
-                                "No description available"}
-                            </Paragraph>
-                          </div>
+                              {record?.title}
+                            </Text>
 
-                          {/* Checklist Section */}
+                            <Tag color="blue">{record?.taskType}</Tag>
+
+                            <Tag
+                              color={
+                                record?.status === "Completed"
+                                  ? "success"
+                                  : record?.status === "Pending"
+                                    ? "warning"
+                                    : record?.status === "Overdue"
+                                      ? "error"
+                                      : "processing"
+                              }
+                            >
+                              {record?.status}
+                            </Tag>
+
+                            {record?.isReopen && (
+                              <Tag color="volcano">Reopened</Tag>
+                            )}
+                          </Space>
+
+                          <Paragraph
+                            style={{
+                              marginTop: 14,
+                              marginBottom: 0,
+                              color: token.colorTextSecondary,
+                              fontSize: 13,
+                              lineHeight: "24px",
+                              maxWidth: "95%",
+                            }}
+                          >
+                            {record?.description || "No description available"}
+                          </Paragraph>
+                        </div>
+
+                        <div>
                           <div
                             style={{
                               background: "#fff",
-                              borderRadius: "12px",
-                              padding: "18px",
+                              padding: "14px 18px",
+                              borderRadius: 14,
                               border: `1px solid ${token.colorBorderSecondary}`,
+                              minWidth: 220,
                             }}
                           >
-                            <div
+                            <Text
+                              type="secondary"
                               style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                marginBottom: "14px",
+                                fontSize: 11,
+                                display: "block",
+                                marginBottom: 6,
                               }}
                             >
-                              <Text strong>
-                                <CheckSquareOutlined /> Task Checklist
-                              </Text>
+                              TASK TRACKING ID
+                            </Text>
 
-                              <Tag color="processing">
-                                {completedChecklist}/{totalChecklist} Completed
-                              </Tag>
-                            </div>
-
-                            <Progress
-                              percent={
-                                totalChecklist > 0
-                                  ? Math.round(
-                                      (completedChecklist / totalChecklist) *
-                                        100,
-                                    )
-                                  : 0
-                              }
-                              showInfo={false}
-                              strokeWidth={7}
-                            />
-
-                            <List
-                              style={{ marginTop: "14px" }}
-                              dataSource={record?.checklist || []}
-                              renderItem={(item, index) => (
-                                <List.Item
-                                  style={{
-                                    border: "none",
-                                    padding: "8px 0",
-                                  }}
-                                >
-                                  <Checkbox
-                                    checked={item?.isCompleted}
-                                    disabled
-                                  >
-                                    <span
-                                      style={{
-                                        fontSize: "13px",
-                                        textDecoration: item?.isCompleted
-                                          ? "line-through"
-                                          : "none",
-                                        color: item?.isCompleted
-                                          ? token.colorTextDisabled
-                                          : token.colorText,
-                                      }}
-                                    >
-                                      {index + 1}. {item?.text}
-                                    </span>
-                                  </Checkbox>
-                                </List.Item>
-                              )}
-                            />
+                            <Text
+                              strong
+                              copyable
+                              style={{
+                                fontFamily: "monospace",
+                                fontSize: 15,
+                              }}
+                            >
+                              {record?.TaskId}
+                            </Text>
                           </div>
+                        </div>
+                      </div>
+                    </div>
 
-                          {/* Reopened Reason */}
-                          {record?.isReopen && record?.reopenedReason && (
-                            <Alert
-                              type="warning"
-                              showIcon
-                              message="Task Reopened"
-                              description={record?.reopenedReason}
-                            />
-                          )}
-                        </Space>
-                      </Col>
-
-                      {/* RIGHT SIDEBAR */}
-                      <Col xs={24} lg={9}>
-                        <div
-                          style={{
-                            background: "#fff",
-                            borderRadius: "16px",
-                            padding: "22px",
-                            border: `1px solid ${token.colorBorderSecondary}`,
-                            height: "100%",
-                            boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
-                          }}
-                        >
+                    {/* BODY */}
+                    <div
+                      style={{
+                        padding: 24,
+                      }}
+                    >
+                      <Row gutter={[20, 20]}>
+                        {/* LEFT */}
+                        <Col xs={24} lg={16}>
                           <Space
                             direction="vertical"
                             size={20}
                             style={{ width: "100%" }}
                           >
-                            {/* Header */}
-                            <div
+                            {/* TASK INFO */}
+                            <Card
+                              size="small"
+                              title="Task Information"
                               style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
+                                borderRadius: 16,
                               }}
                             >
-                              <Text
-                                strong
-                                style={{
-                                  fontSize: "15px",
-                                }}
-                              >
-                                Task Information
-                              </Text>
+                              <Row gutter={[16, 16]}>
+                                <Col xs={24} md={12}>
+                                  <Statistic
+                                    title="Assigned To"
+                                    value={record?.assignedTo?.name || "-"}
+                                    valueStyle={{ fontSize: 15 }}
+                                  />
 
-                              <Tag color="blue">
-                                {record?.taskType || "General"}
-                              </Tag>
-                            </div>
-
-                            {/* Task Tracking */}
-                            <div
-                              style={{
-                                background: "#fafafa",
-                                borderRadius: "12px",
-                                padding: "14px",
-                                border: `1px solid ${token.colorBorderSecondary}`,
-                              }}
-                            >
-                              <Text
-                                type="secondary"
-                                style={{
-                                  fontSize: "11px",
-                                  display: "block",
-                                  marginBottom: "6px",
-                                }}
-                              >
-                                Task Tracking ID
-                              </Text>
-
-                              <Text
-                                strong
-                                copyable
-                                style={{
-                                  fontFamily: "monospace",
-                                  fontSize: "14px",
-                                  letterSpacing: "0.5px",
-                                }}
-                              >
-                                {record?.TaskId}
-                              </Text>
-                            </div>
-
-                            {/* Assigned To */}
-                            <div
-                              style={{
-                                background: "#fafafa",
-                                borderRadius: "12px",
-                                padding: "14px",
-                                border: `1px solid ${token.colorBorderSecondary}`,
-                              }}
-                            >
-                              <Text
-                                type="secondary"
-                                style={{
-                                  fontSize: "11px",
-                                  display: "block",
-                                  marginBottom: "6px",
-                                }}
-                              >
-                                Assigned To
-                              </Text>
-
-                              <Text strong style={{ fontSize: "14px" }}>
-                                {record?.assignedTo?.name || "-"}
-                              </Text>
-
-                              <div
-                                style={{
-                                  marginTop: "4px",
-                                  fontSize: "12px",
-                                  color: token.colorTextSecondary,
-                                }}
-                              >
-                                {record?.assignedTo?.email}
-                              </div>
-                            </div>
-
-                            {/* Assigned By */}
-                            <div
-                              style={{
-                                background: "#fafafa",
-                                borderRadius: "12px",
-                                padding: "14px",
-                                border: `1px solid ${token.colorBorderSecondary}`,
-                              }}
-                            >
-                              <Text
-                                type="secondary"
-                                style={{
-                                  fontSize: "11px",
-                                  display: "block",
-                                  marginBottom: "6px",
-                                }}
-                              >
-                                Assigned By
-                              </Text>
-
-                              <Text strong style={{ fontSize: "14px" }}>
-                                {record?.assignedBy?.name || "-"}
-                              </Text>
-
-                              <div
-                                style={{
-                                  marginTop: "4px",
-                                  fontSize: "12px",
-                                  color: token.colorTextSecondary,
-                                }}
-                              >
-                                {record?.assignedBy?.email}
-                              </div>
-                            </div>
-
-                            {/* Department & Duration */}
-                            <Row gutter={[12, 12]}>
-                              <Col span={12}>
-                                <div
-                                  style={{
-                                    background: "#fafafa",
-                                    borderRadius: "12px",
-                                    padding: "14px",
-                                    border: `1px solid ${token.colorBorderSecondary}`,
-                                    height: "100%",
-                                  }}
-                                >
                                   <Text
                                     type="secondary"
-                                    style={{
-                                      fontSize: "11px",
-                                      display: "block",
-                                      marginBottom: "6px",
-                                    }}
+                                    style={{ fontSize: 12 }}
                                   >
-                                    Department
+                                    {record?.assignedTo?.email}
                                   </Text>
+                                </Col>
 
-                                  <Tag color="geekblue">
-                                    {record?.departmentOfAssignToUser?.name ||
-                                      "-"}
-                                  </Tag>
-                                </div>
-                              </Col>
+                                <Col xs={24} md={12}>
+                                  <Statistic
+                                    title="Assigned By"
+                                    value={record?.assignedBy?.name || "-"}
+                                    valueStyle={{ fontSize: 15 }}
+                                  />
 
-                              <Col span={12}>
-                                <div
-                                  style={{
-                                    background: "#fafafa",
-                                    borderRadius: "12px",
-                                    padding: "14px",
-                                    border: `1px solid ${token.colorBorderSecondary}`,
-                                    height: "100%",
-                                  }}
-                                >
                                   <Text
                                     type="secondary"
-                                    style={{
-                                      fontSize: "11px",
-                                      display: "block",
-                                      marginBottom: "6px",
-                                    }}
+                                    style={{ fontSize: 12 }}
                                   >
-                                    Duration
+                                    {record?.assignedBy?.email}
                                   </Text>
-
-                                  <Text strong style={{ fontSize: "14px" }}>
-                                    {record?.taskEndDays || 0} Days
-                                  </Text>
-                                </div>
-                              </Col>
-                            </Row>
-
-                            {/* Dates */}
-                            <div>
-                              <Text
-                                strong
-                                style={{
-                                  fontSize: "13px",
-                                  marginBottom: "12px",
-                                  display: "block",
-                                }}
-                              >
-                                Timeline
-                              </Text>
-
-                              <Row gutter={[12, 12]}>
-                                <Col span={12}>
-                                  <div
-                                    style={{
-                                      background: "#fafafa",
-                                      borderRadius: "12px",
-                                      padding: "14px",
-                                      border: `1px solid ${token.colorBorderSecondary}`,
-                                    }}
-                                  >
-                                    <Text
-                                      type="secondary"
-                                      style={{
-                                        fontSize: "11px",
-                                        display: "block",
-                                        marginBottom: "6px",
-                                      }}
-                                    >
-                                      Start Date
-                                    </Text>
-
-                                    <Text strong style={{ fontSize: "13px" }}>
-                                      {startDate}
-                                    </Text>
-                                  </div>
                                 </Col>
 
-                                <Col span={12}>
-                                  <div
-                                    style={{
-                                      background: "#fff7e6",
-                                      borderRadius: "12px",
-                                      padding: "14px",
-                                      border: "1px solid #ffd591",
-                                    }}
-                                  >
-                                    <Text
-                                      type="secondary"
-                                      style={{
-                                        fontSize: "11px",
-                                        display: "block",
-                                        marginBottom: "6px",
-                                      }}
-                                    >
-                                      Due Date
-                                    </Text>
-
-                                    <Text
-                                      strong
-                                      style={{
-                                        fontSize: "13px",
-                                        color: "#d46b08",
-                                      }}
-                                    >
-                                      {dueDate}
-                                    </Text>
-                                  </div>
+                                <Col xs={12} md={8}>
+                                  <Statistic
+                                    title="Department"
+                                    value={
+                                      record?.departmentOfAssignToUser?.name ||
+                                      "-"
+                                    }
+                                    valueStyle={{ fontSize: 15 }}
+                                  />
                                 </Col>
 
-                                <Col span={12}>
-                                  <div
-                                    style={{
-                                      background: "#fafafa",
-                                      borderRadius: "12px",
-                                      padding: "14px",
-                                      border: `1px solid ${token.colorBorderSecondary}`,
-                                    }}
-                                  >
-                                    <Text
-                                      type="secondary"
-                                      style={{
-                                        fontSize: "11px",
-                                        display: "block",
-                                        marginBottom: "6px",
-                                      }}
-                                    >
-                                      Created At
-                                    </Text>
-
-                                    <Text strong style={{ fontSize: "13px" }}>
-                                      {createdDate}
-                                    </Text>
-                                  </div>
+                                <Col xs={12} md={8}>
+                                  <Statistic
+                                    title="Duration"
+                                    value={record?.taskEndDays || 0}
+                                    suffix="Days"
+                                    valueStyle={{ fontSize: 15 }}
+                                  />
                                 </Col>
 
-                                {record?.completedAt && (
-                                  <Col span={12}>
-                                    <div
-                                      style={{
-                                        background: "#f6ffed",
-                                        borderRadius: "12px",
-                                        padding: "14px",
-                                        border: "1px solid #b7eb8f",
-                                      }}
-                                    >
-                                      <Text
-                                        type="secondary"
-                                        style={{
-                                          fontSize: "11px",
-                                          display: "block",
-                                          marginBottom: "6px",
-                                        }}
-                                      >
-                                        Completed At
-                                      </Text>
-
-                                      <Text
-                                        strong
-                                        style={{
-                                          fontSize: "13px",
-                                          color: "#389e0d",
-                                        }}
-                                      >
-                                        {completedDate}
-                                      </Text>
-                                    </div>
-                                  </Col>
-                                )}
+                                <Col xs={12} md={8}>
+                                  <Statistic
+                                    title="Checklist"
+                                    value={`${completedChecklist}/${totalChecklist}`}
+                                    valueStyle={{ fontSize: 15 }}
+                                  />
+                                </Col>
                               </Row>
-                            </div>
+                            </Card>
+
+                            {/* CHECKLIST */}
+                            <Card
+                              size="small"
+                              title="Task Checklist"
+                              extra={
+                                <Tag color="processing">
+                                  {completedChecklist}/{totalChecklist}{" "}
+                                  Completed
+                                </Tag>
+                              }
+                              style={{
+                                borderRadius: 16,
+                              }}
+                            >
+                              <Progress
+                                percent={
+                                  totalChecklist > 0
+                                    ? Math.round(
+                                        (completedChecklist / totalChecklist) *
+                                          100,
+                                      )
+                                    : 0
+                                }
+                                strokeWidth={8}
+                              />
+
+                              <List
+                                style={{ marginTop: 18 }}
+                                dataSource={record?.checklist || []}
+                                locale={{
+                                  emptyText: "No checklist items",
+                                }}
+                                renderItem={(item, index) => (
+                                  <List.Item
+                                    style={{
+                                      padding: "10px 0",
+                                      borderBottom:
+                                        index !== totalChecklist - 1
+                                          ? `1px solid ${token.colorBorderSecondary}`
+                                          : "none",
+                                    }}
+                                  >
+                                    <Checkbox
+                                      checked={item?.isCompleted}
+                                      disabled
+                                    >
+                                      <span
+                                        style={{
+                                          fontSize: 13,
+                                          textDecoration: item?.isCompleted
+                                            ? "line-through"
+                                            : "none",
+                                          color: item?.isCompleted
+                                            ? token.colorTextDisabled
+                                            : token.colorText,
+                                        }}
+                                      >
+                                        {item?.text}
+                                      </span>
+                                    </Checkbox>
+                                  </List.Item>
+                                )}
+                              />
+                            </Card>
+
+                            {/* REOPEN */}
+                            {record?.isReopen && record?.reopenedReason && (
+                              <Alert
+                                type="warning"
+                                showIcon
+                                message="Task Reopened"
+                                description={record?.reopenedReason}
+                                style={{
+                                  borderRadius: 14,
+                                }}
+                              />
+                            )}
                           </Space>
-                        </div>
-                      </Col>
-                    </Row>
-                  </div>
+                        </Col>
+
+                        {/* RIGHT */}
+                        <Col xs={24} lg={8}>
+                          <Card
+                            size="small"
+                            title="Timeline & Activity"
+                            style={{
+                              borderRadius: 16,
+                              height: "100%",
+                            }}
+                          >
+                            <Space
+                              direction="vertical"
+                              size={16}
+                              style={{ width: "100%" }}
+                            >
+                              {[
+                                {
+                                  label: "Start Date",
+                                  value: startDate,
+                                },
+                                {
+                                  label: "Due Date",
+                                  value: dueDate,
+                                  color: "#d46b08",
+                                  bg: "#fff7e6",
+                                },
+                                {
+                                  label: "Created At",
+                                  value: createdDate,
+                                },
+                                ...(record?.completedAt
+                                  ? [
+                                      {
+                                        label: "Completed At",
+                                        value: completedDate,
+                                        color: "#389e0d",
+                                        bg: "#f6ffed",
+                                      },
+                                    ]
+                                  : []),
+                              ].map((item, index) => (
+                                <div
+                                  key={index}
+                                  style={{
+                                    padding: 16,
+                                    borderRadius: 14,
+                                    background: item.bg || "#fafafa",
+                                    border: `1px solid ${token.colorBorderSecondary}`,
+                                  }}
+                                >
+                                  <Text
+                                    type="secondary"
+                                    style={{
+                                      fontSize: 11,
+                                      display: "block",
+                                      marginBottom: 6,
+                                    }}
+                                  >
+                                    {item.label}
+                                  </Text>
+
+                                  <Text
+                                    strong
+                                    style={{
+                                      fontSize: 13,
+                                      color: item.color || token.colorText,
+                                      lineHeight: "22px",
+                                    }}
+                                  >
+                                    {item.value}
+                                  </Text>
+                                </div>
+                              ))}
+                            </Space>
+                          </Card>
+                        </Col>
+                      </Row>
+                    </div>
+                  </Card>
                 );
               },
 
