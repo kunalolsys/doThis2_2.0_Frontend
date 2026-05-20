@@ -50,6 +50,7 @@ import SuperModuleSettings from "./pages/SuperModuleSettings";
 import CompanyProfile from "./pages/CompanyProfile";
 import NotificationIntegrations from "./pages/Notificationintegrations";
 import api from "./lib/api";
+import TaskReassignmentPage from "./pages/myDay/TaskReassignmentPage";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -112,6 +113,14 @@ function App() {
                   element={
                     <PermissionRoute requiredPermission="delegation_task_view">
                       <TaskPage />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/reassign"
+                  element={
+                    <PermissionRoute requiredPermission="delegation_task_view">
+                      <TaskReassignmentPage />
                     </PermissionRoute>
                   }
                 />

@@ -57,6 +57,7 @@ const permissionMap = {
   fmsEngine: "FmsEngine",
   reports: "Reports",
   delegationTask: "Delegation Task",
+  taskReassigning: "Task Reassigning",
 };
 
 const transformRoles = (roles) => {
@@ -67,6 +68,7 @@ const transformRoles = (roles) => {
     fmsEngine: role.permissions.includes(permissionMap.fmsEngine),
     reports: role.permissions.includes(permissionMap.reports),
     delegationTask: role.permissions.includes(permissionMap.delegationTask),
+    taskReassigning: role.permissions.includes(permissionMap.taskReassigning),
     isSystem: nonDeletableRoles.includes(role.name) || !role.canDelete,
   }));
 };
@@ -143,6 +145,7 @@ const RolesPermissions = () => {
     fmsEngine: false,
     reports: false,
     delegationTask: false,
+    taskReassigning: false,
   });
 
   // We moved this to the useEffect above to only fetch if user has permission
@@ -208,6 +211,7 @@ const RolesPermissions = () => {
       fmsEngine: false,
       reports: false,
       delegationTask: false,
+      taskReassigning: false,
     });
     setIsDialogOpen(false);
   };
@@ -344,6 +348,14 @@ const RolesPermissions = () => {
                         <FileText className="w-4 h-4" /> Delegation Task
                       </div>
                     </TableHead>
+                  )}{" "}
+                  {isDoThisEnabled && (
+                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                      <div className="flex items-center justify-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Task Reassigning
+                      </div>
+                    </TableHead>
                   )}
                   <TableHead className="text-right pr-6 font-semibold text-slate-600 text-xs uppercase tracking-wider">
                     Action
@@ -381,7 +393,6 @@ const RolesPermissions = () => {
                           </div>
                         </div>
                       </TableCell>
-
                       {/* Manage Users Switch */}
                       <TableCell className="text-center">
                         <Switch
@@ -392,7 +403,6 @@ const RolesPermissions = () => {
                           className="data-[state=checked]:bg-blue-600"
                         />
                       </TableCell>
-
                       {/* FMS Design Switch */}
                       {isFmsEnabled && (
                         <TableCell className="text-center">
@@ -436,8 +446,22 @@ const RolesPermissions = () => {
                             className="data-[state=checked]:bg-blue-600"
                           />
                         </TableCell>
+                      )}{" "}
+                      {isDoThisEnabled && (
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={role.taskReassigning}
+                            onCheckedChange={(value) =>
+                              handlePermissionChange(
+                                role._id,
+                                "taskReassigning",
+                                value,
+                              )
+                            }
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                        </TableCell>
                       )}
-
                       {/* Actions */}
                       <TableCell className="text-right pr-6">
                         <Button

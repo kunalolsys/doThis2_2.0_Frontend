@@ -18,6 +18,7 @@ const Login = () => {
     email: "",
     password: "",
   });
+  const redirectPath = localStorage.getItem("redirectAfterLogin");
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -54,8 +55,13 @@ const Login = () => {
         Cookies.set("permissions", JSON.stringify(res.data.permissions), {
           expires: 1,
         });
-
-        navigate("/dashboard");
+        if (redirectPath) {
+          navigate(redirectPath);
+          localStorage.removeItem("redirectAfterLogin");
+        } else {
+          navigate("/dashboard");
+        }
+        // navigate("/dashboard");
       }
     } catch (err) {
       setIsLoading(false);

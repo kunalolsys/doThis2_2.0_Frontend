@@ -91,6 +91,7 @@ import { useFormik } from "formik";
 import RaiseQueryModal from "../../components/RaiseQueryModal";
 import QueryDrawer from "../../components/QueryDrawer";
 import TaskChat from "../../components/TaskChat";
+import { useLocation, useParams, useSearchParams } from "react-router-dom";
 
 // --- Helper: Status Badge ---
 const getStatusBadge = (status) => {
@@ -1121,6 +1122,19 @@ const TodayTasksTable = ({
 // --- MAIN COMPONENT ---
 const MyTask = () => {
   const dispatch = useDispatch();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const currentUser = useSelector((state) => state.users.currentUser);
+
+  // 🔴 AUTH CHECK
+  // only save if NOT login page
+  if (location.pathname !== "/") {
+    const redirectPath = location.pathname + location.search + location.hash;
+
+    localStorage.setItem("redirectAfterLogin", redirectPath);
+  }
+
+  const taskId = searchParams.get("taskId");
   const {
     tasks: fetchedTasks,
     upcomingRecurringTasks,
@@ -1129,7 +1143,45 @@ const MyTask = () => {
     error,
     totalTasks,
   } = useSelector((state) => state.myTasks);
-  const { currentUser } = useSelector((state) => state.users);
+  const fetchTaskById = async () => {
+    try {
+      const res = await api.get(`/tasks/${taskId}`);
+      const task = res.data.data || [];
+      // ✅ task not found
+      if (!task) return;
+
+      // ✅ only assignee OR assigner can open
+      const currentUserId = currentUser?._id?.toString();
+      const assignedToId =
+        task?.assignedTo?._id?.toString() || task?.assignedTo?.id?.toString();
+
+      const hasAccess = currentUserId === assignedToId;
+
+      if (!hasAccess) return;
+
+      // ✅ set selected task
+      setSelectedQueryTask(task);
+
+      // ✅ open drawer
+      setQueryDrawerOpen(true);
+
+      // optional unread reset
+      if (task?.conversationId) {
+        setUnreadMap((prev) => ({
+          ...prev,
+          [task.conversationId]: 0,
+        }));
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  useEffect(() => {
+    if (!taskId) return;
+
+    fetchTaskById();
+  }, [taskId,currentUser]);
+
   // UI State
   const [activeTab, setActiveTab] = useState("today");
   const [configOpen, setConfigOpen] = useState(false);

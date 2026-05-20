@@ -393,7 +393,18 @@ const TaskChat = ({ task, open, onClose }) => {
                   </span>
 
                   {/* Status */}
-                  <span className="px-2 py-[2px] text-[11px] rounded-full bg-gray-100 text-gray-600 border">
+                  <span
+                    className={`px-2 py-[2px] text-[11px] rounded-full border font-medium ${
+                      safeTask?.status === "Completed"
+                        ? "bg-green-100 text-green-700 border-green-200"
+                        : safeTask?.status === "Delayed" ||
+                            safeTask?.status === "Overdue"
+                          ? "bg-red-100 text-red-700 border-red-200"
+                          : safeTask?.status === "Upcoming"
+                            ? "bg-blue-100 text-blue-700 border-blue-200"
+                            : "bg-gray-100 text-gray-600 border-gray-200"
+                    }`}
+                  >
                     {safeTask?.status}
                   </span>
                 </div>

@@ -579,11 +579,12 @@ const Users = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Sr. No.</TableHead>
+                {/* <TableHead>Sr. No.</TableHead> */}
                 <TableHead>EMPLOYEE CODE</TableHead>
                 <TableHead>NAME</TableHead>
                 <TableHead>EMAIL</TableHead>
                 <TableHead>DEPARTMENT(S)</TableHead>
+                <TableHead>REPORTING MANAGER</TableHead>
                 <TableHead>PRIMARY ROLE</TableHead>
                 <TableHead>SHIFTS</TableHead>
                 <TableHead>ACTIONS</TableHead>
@@ -599,7 +600,7 @@ const Users = () => {
               ) : Array.isArray(users) && users.length > 0 ? (
                 users.map((user, index) => (
                   <TableRow key={user._id}>
-                    <TableCell>{(page - 1) * limit + index + 1}</TableCell>
+                    {/* <TableCell>{(page - 1) * limit + index + 1}</TableCell> */}
                     <TableCell>
                       {(user.employeeCode !== "" ? user.employeeCode : "-") ??
                         "-"}
@@ -609,6 +610,7 @@ const Users = () => {
                     <TableCell>
                       {user.department?.map((d) => d.name).join(", ")}
                     </TableCell>
+                    <TableCell>{user.reportingManager?.name || ""}</TableCell>
                     <TableCell>{user.role?.name}</TableCell>
                     <TableCell>{user.assignShift?.name}</TableCell>
                     <TableCell className="flex gap-1">

@@ -41,6 +41,7 @@ import { setCurrentUser } from "../redux/slices/user/userSlice";
 import { logoutUser } from "../lib/authAPI";
 import api from "../lib/api";
 import { fetchCompany } from "../redux/slices/company/companySlice";
+import { UserSwitchOutlined } from "@ant-design/icons";
 
 const Sidebar = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -383,9 +384,10 @@ const Sidebar = ({ children }) => {
           {/* Delegation Task Section */}
           {hasPermission("delegation_task_view") &&
             isModuleEnabled("DO_THIS2") && (
-              <Link
-                to="/delegation-tasks"
-                className={`
+              <>
+                <Link
+                  to="/delegation-tasks"
+                  className={`
                                 relative flex items-center ${isCollapsed ? "justify-center" : ""} 
                                 rounded-xl px-3 py-2.5 transition-all duration-300 group
                                 backdrop-blur-sm border
@@ -394,20 +396,52 @@ const Sidebar = ({ children }) => {
                                     ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
                                     : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
                                 }
+                                    `}
+                >
+                  <div
+                    className={`relative ${isActiveLink("/delegation-tasks") ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
+                  >
+                    <ClipboardList className="w-4 h-4" />
+                    {isActiveLink("/delegation-tasks") && (
+                      <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
+                    )}
+                  </div>
+
+                  {!isCollapsed && (
+                    <span className="ml-2 font-medium text-sm">
+                      Delegation Task
+                    </span>
+                  )}
+                </Link>
+              </>
+            )}
+          {hasPermission("task_reassigning_view") &&
+            isModuleEnabled("DO_THIS2") && (
+              <Link
+                to="/reassign"
+                className={`
+                                relative flex items-center ${isCollapsed ? "justify-center" : ""} 
+                                rounded-xl px-3 py-2.5 transition-all duration-300 group
+                                backdrop-blur-sm border
+                                ${
+                                  isActiveLink("/reassign")
+                                    ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
+                                    : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
+                                }
                             `}
               >
                 <div
-                  className={`relative ${isActiveLink("/delegation-tasks") ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
+                  className={`relative ${isActiveLink("/reassign") ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
                 >
-                  <ClipboardList className="w-4 h-4" />
-                  {isActiveLink("/delegation-tasks") && (
+                  <UserSwitchOutlined className="w-4 h-4" />
+                  {isActiveLink("/reassign") && (
                     <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
                   )}
                 </div>
 
                 {!isCollapsed && (
                   <span className="ml-2 font-medium text-sm">
-                    Delegation Task
+                    Task Reassignment
                   </span>
                 )}
               </Link>
