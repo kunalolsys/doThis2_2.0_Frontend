@@ -647,7 +647,7 @@ const TaskTable = ({
       localSetLoading(false);
     }
   };
-
+  //**Global commit */
   const handleDeleteClick = (task) => {
     // Check if this task is a parent with dependent children
     const parentTaskId = task._id || task.id;
