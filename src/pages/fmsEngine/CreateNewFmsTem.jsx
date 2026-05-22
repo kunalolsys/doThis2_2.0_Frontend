@@ -400,7 +400,7 @@ const CreateNewFmsTem = () => {
     setTasks((prev) =>
       prev.map((t, i) => ({
         ...t,
-        taskId: `${templateFMSId}-${String(i + 1).padStart(2, "0")}`,
+        taskId: `${templateFMSId}_T${i + 1}`,
       })),
     );
   }, [templateFMSId, tasks.length]);

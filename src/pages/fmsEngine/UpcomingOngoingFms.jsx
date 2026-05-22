@@ -50,7 +50,7 @@ import { cn } from "../../lib/utils";
 import { useDebounce } from "../../lib/debounce";
 import DataPagination from "../../components/ui/commonPagination";
 import { useNavigate } from "react-router-dom";
-import { Modal,Input as AntdInput } from "antd";
+import { Modal, Input as AntdInput } from "antd";
 const { TextArea } = AntdInput;
 
 const getStatusBadge = (status) => {
@@ -81,18 +81,25 @@ const getStatusBadge = (status) => {
 const FmsTableHeader = () => (
   <TableHeader>
     <TableRow>
-      <TableHead className="whitespace-nowrap">LAUNCH ID</TableHead>
-      <TableHead className="whitespace-nowrap">LAUNCH DATE</TableHead>
-      <TableHead className="whitespace-nowrap">FMS NAME</TableHead>
-      {/* <TableHead className="whitespace-nowrap">DESCRIPTION</TableHead> */}
-      {/* <TableHead className="whitespace-nowrap">FMS DURATION</TableHead> */}
-      <TableHead className="whitespace-nowrap">SR. MANAGER</TableHead>
-      <TableHead className="whitespace-nowrap">MANAGER</TableHead>
-      <TableHead className="whitespace-nowrap">START DATE</TableHead>
-      <TableHead className="whitespace-nowrap">END DATE</TableHead>
-      <TableHead className="whitespace-nowrap">OVERALL STATUS</TableHead>
-      {/* <TableHead className="whitespace-nowrap">PROGRESS</TableHead> */}
-      <TableHead className="text-right whitespace-nowrap">ACTIONS</TableHead>
+      <TableHead className="whitespace-nowrap">Launch Id</TableHead>
+
+      <TableHead className="whitespace-nowrap">Launch Date</TableHead>
+
+      <TableHead className="whitespace-nowrap">Fms Name</TableHead>
+
+      <TableHead className="whitespace-nowrap">Trigger Source</TableHead>
+
+      <TableHead className="whitespace-nowrap">Sr. Manager</TableHead>
+
+      <TableHead className="whitespace-nowrap">Manager</TableHead>
+
+      <TableHead className="whitespace-nowrap">Start Date</TableHead>
+
+      <TableHead className="whitespace-nowrap">End Date</TableHead>
+
+      {/* <TableHead className="whitespace-nowrap">Overall Status</TableHead> */}
+
+      <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
     </TableRow>
   </TableHeader>
 );
@@ -272,6 +279,10 @@ const UpcomingOngoingFms = () => {
       toast.error(err?.response?.data?.message || "Action failed");
     }
   };
+  const triggerSourceMap = {
+    FORM_SUBMISSION: "Open Form",
+    SYSTEM_SUBMISSION: "Manual",
+  };
   return (
     <div className="m-4">
       <Card className="shadow-lg">
@@ -320,6 +331,9 @@ const UpcomingOngoingFms = () => {
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
                             {fms.instanceName || "-"}
+                          </TableCell>{" "}
+                          <TableCell className="whitespace-nowrap">
+                            {triggerSourceMap[fms.triggerType] || "-"}
                           </TableCell>
                           {/* <TableCell className="whitespace-nowrap">""</TableCell> */}
                           {/* <TableCell className="whitespace-nowrap">
@@ -337,9 +351,9 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {formatDate(fms.endDate) || "-"}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap">
+                          {/* <TableCell className="whitespace-nowrap">
                             {getStatusBadge(formatLabel(fms.status)) || "-"}
-                          </TableCell>
+                          </TableCell> */}
                           {/* <TableCell className="whitespace-nowrap min-w-[180px]">
                             <div className="flex flex-col gap-1">
                               <div className="flex justify-between text-xs text-slate-600">
@@ -422,6 +436,9 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {fms.instanceName || "-"}
                           </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {triggerSourceMap[fms.triggerType] || "-"}
+                          </TableCell>
                           {/* <TableCell className="whitespace-nowrap">""</TableCell> */}
                           {/* <TableCell className="whitespace-nowrap">
                           {fms.endDate}
@@ -439,9 +456,9 @@ const UpcomingOngoingFms = () => {
                             {formatDate(fms.endDate) || "-"}
                           </TableCell>
 
-                          <TableCell className="whitespace-nowrap">
+                          {/* <TableCell className="whitespace-nowrap">
                             {getStatusBadge(formatLabel(fms.status)) || "-"}
-                          </TableCell>
+                          </TableCell> */}
                           {/* <TableCell className="whitespace-nowrap min-w-[180px]">
                             <div className="flex flex-col gap-1">
                               <div className="flex justify-between text-xs text-slate-600">
@@ -525,6 +542,9 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {fms.instanceName || "-"}
                           </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {triggerSourceMap[fms.triggerType] || "-"}
+                          </TableCell>
                           {/* <TableCell className="whitespace-nowrap">""</TableCell> */}
                           {/* <TableCell className="whitespace-nowrap">
                           {fms.endDate}
@@ -541,9 +561,9 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {formatDate(fms.endDate) || "-"}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap">
+                          {/* <TableCell className="whitespace-nowrap">
                             {getStatusBadge(formatLabel(fms.status)) || "-"}
-                          </TableCell>
+                          </TableCell> */}
                           {/* <TableCell className="whitespace-nowrap min-w-[180px]">
                             <div className="flex flex-col gap-1">
                               <div className="flex justify-between text-xs text-slate-600">
@@ -627,6 +647,9 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {fms.instanceName || "-"}
                           </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {triggerSourceMap[fms.triggerType] || "-"}
+                          </TableCell>
                           {/* <TableCell className="whitespace-nowrap">""</TableCell> */}
                           {/* <TableCell className="whitespace-nowrap">
                           {fms.endDate}
@@ -643,9 +666,9 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {formatDate(fms.endDate) || "-"}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap">
+                          {/* <TableCell className="whitespace-nowrap">
                             {getStatusBadge(formatLabel(fms.status)) || "-"}
-                          </TableCell>
+                          </TableCell> */}
                           {/* <TableCell className="whitespace-nowrap min-w-[180px]">
                             <div className="flex flex-col gap-1">
                               <div className="flex justify-between text-xs text-slate-600">
@@ -729,6 +752,9 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {fms.instanceName || "-"}
                           </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {triggerSourceMap[fms.triggerType] || "-"}
+                          </TableCell>
                           {/* <TableCell className="whitespace-nowrap">""</TableCell> */}
                           {/* <TableCell className="whitespace-nowrap">
                           {fms.endDate}
@@ -745,9 +771,9 @@ const UpcomingOngoingFms = () => {
                           <TableCell className="whitespace-nowrap">
                             {formatDate(fms.endDate) || "-"}
                           </TableCell>
-                          <TableCell className="whitespace-nowrap">
+                          {/* <TableCell className="whitespace-nowrap">
                             {getStatusBadge(formatLabel(fms.status)) || "-"}
-                          </TableCell>
+                          </TableCell> */}
                           {/* <TableCell className="whitespace-nowrap min-w-[180px]">
                             <div className="flex flex-col gap-1">
                               <div className="flex justify-between text-xs text-slate-600">

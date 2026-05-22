@@ -248,7 +248,6 @@ const AdminDashboard = () => {
         />
       </div>
 
-
       {/* Alert row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div className="rounded-lg p-4 bg-amber-50 border border-amber-200">
@@ -334,16 +333,14 @@ const AdminDashboard = () => {
         style={{
           gridTemplateColumns: `repeat(${zone2Items.length}, minmax(0, 1fr))`,
         }}
-      >
-      </div>
+      ></div>
 
       <div
         className="grid gap-4 mb-4"
         style={{
           gridTemplateColumns: `repeat(${zone3Items.length}, minmax(0, 1fr))`,
         }}
-      >
-      </div>
+      ></div>
 
       <div
         className="grid gap-4 mb-6"
@@ -365,53 +362,102 @@ const AdminDashboard = () => {
         </div>
 
         {/* Upcoming deadlines — always 2-col inner grid */}
-        <Card className="border-0 p-4 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-2xl hover:scale-[1.02] transition-all duration-500 group">
-          <div className="w-full">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-red-100 rounded-lg group-hover:scale-110 transition-transform duration-300">
-                <Calendar className="w-5 h-5 text-red-600" />
+        <Card className="h-[550px] border-0 bg-white/80 backdrop-blur-sm shadow-lg hover:shadow-2xl transition-all duration-500 overflow-hidden">
+          <div className="flex h-full flex-col p-5">
+            {/* Header */}
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-red-100 to-red-50 shadow-sm">
+                  <Calendar className="h-5 w-5 text-red-600" />
+                </div>
+
+                <div>
+                  <h2 className="text-base font-semibold text-gray-800">
+                    Upcoming Deadlines
+                  </h2>
+
+                  <p className="text-xs text-gray-500">
+                    Tasks approaching due date
+                  </p>
+                </div>
               </div>
-              <h1 className="text-md font-medium">Upcoming Deadlines</h1>
+
+              <div className="rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
+                {sortedUpcoming.length}
+              </div>
             </div>
-            {sortedUpcoming.length === 0 ? (
-              <p className="text-sm text-gray-500">No upcoming deadlines</p>
-            ) : (
-              <div
-                className={`grid gap-2 ${
-                  sortedUpcoming.length === 1
-                    ? "grid-cols-1"
-                    : "grid-cols-1 md:grid-cols-2"
-                }`}
-              >
-                {" "}
-                {sortedUpcoming.map((task) => {
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3 custom-scrollbar">
+              {sortedUpcoming.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center text-center">
+                  <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100">
+                    <Calendar className="h-6 w-6 text-gray-400" />
+                  </div>
+
+                  <p className="text-sm font-medium text-gray-600">
+                    No upcoming deadlines
+                  </p>
+
+                  <p className="mt-1 text-xs text-gray-400">
+                    Everything looks on track
+                  </p>
+                </div>
+              ) : (
+                sortedUpcoming.map((task) => {
                   const daysLeft = dayjs(task.dueDate).diff(dayjs(), "day");
+
                   return (
                     <div
                       key={task._id}
-                      className="flex justify-between items-center p-2 rounded-md border bg-red-50"
+                      className="group rounded-2xl border border-red-100 bg-gradient-to-r from-red-50 to-white p-3 transition-all duration-300 hover:border-red-200 hover:shadow-md"
                     >
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">
-                          {task.title}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {task.assignedTo?.name}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-600">
-                          {dayjs(task.dueDate).format("DD MMM")}
-                        </p>
-                        <p className="text-xs font-semibold text-red-600">
-                          {daysLeft <= 0 ? "Today" : `${daysLeft}d left`}
-                        </p>
+                      <div className="flex items-start justify-between gap-3">
+                        {/* Left */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-gray-800">
+                              {task.title}
+                            </p>
+
+                            <span className="rounded-full bg-white px-2 py-[2px] text-[10px] font-medium text-gray-500 border">
+                              {task.departmentOfAssignToUser?.name}
+                            </span>
+                          </div>
+
+                          <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-500">
+                            <span>{task.assignedTo?.name}</span>
+
+                            <span>•</span>
+
+                            <span>{task.TaskId}</span>
+                          </div>
+                        </div>
+
+                        {/* Right */}
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-medium text-gray-600">
+                            {dayjs(task.dueDate).format("DD MMM")}
+                          </p>
+
+                          <p
+                            className={`mt-1 text-xs font-bold ${
+                              daysLeft <= 0
+                                ? "text-red-600"
+                                : daysLeft <= 2
+                                  ? "text-orange-500"
+                                  : "text-green-600"
+                            }`}
+                          >
+                            {daysLeft <= 0 ? "Today" : `${daysLeft}d left`}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
           </div>
         </Card>
       </div>

@@ -199,6 +199,7 @@ const TodayTaskActions = ({
     task.createdForm && Array.isArray(task.createdForm) ? task.createdForm : [];
   const isCompleteActiveTab = activeTab == "completed";
   const alreadyReopened = task?.isReopen;
+  const fmsType = task.taskType == "FmsInstanceTask";
   return (
     <TooltipProvider>
       <div className="flex gap-1">
@@ -280,7 +281,7 @@ const TodayTaskActions = ({
             </TooltipContent>
           </Tooltip>
         )}{" "}
-        {isCompleteActiveTab && (
+        {isCompleteActiveTab && !fmsType && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

@@ -51,6 +51,7 @@ import CompanyProfile from "./pages/CompanyProfile";
 import NotificationIntegrations from "./pages/Notificationintegrations";
 import TaskReassignmentPage from "./pages/myDay/TaskReassignmentPage";
 import UserTaskHistory from "./pages/myDay/userTaskView";
+import OpenFormBuilder from "./pages/fmsEngine/OpenForm";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -106,6 +107,7 @@ function App() {
                 <Route path="/my-day/mytasks" element={<MyTask />} />
                 <Route path="/my-day/view" element={<ManagerView />} />
                 <Route path="/user/:userId" element={<UserTaskHistory />} />
+                <Route path="/form-builder" element={<OpenFormBuilder />} />
                 {/* <Route path="/my-day/sr-manager-view" element={<SrManagerView />} />
             <Route path="/my-day/owner-view" element={<OwnerView />} /> */}
                 {/* Delegation Task */}
