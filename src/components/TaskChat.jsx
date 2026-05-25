@@ -35,11 +35,18 @@ import { toast } from "sonner";
 import dayjs from "dayjs";
 import ViewLink from "../pages/myDay/attachmentViewer";
 import { formatLabel } from "../lib/utilFunctions";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 const { Panel } = Collapse;
 const { TextArea } = Input;
 
-const TaskChat = ({ task, open, onClose }) => {
+const TaskChat = ({ task, open, onClose, setRefreshTaskAfterReopen }) => {
   const currentUser = useSelector((state) => state.users.currentUser);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -360,6 +367,40 @@ const TaskChat = ({ task, open, onClose }) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+  const [reopenModalOpen, setReopenModalOpen] = useState(false);
+  const [reopenTask, setReopenTask] = useState(null);
+  const [reopenReason, setReopenReason] = useState("");
+  const [reopenLoading, setReopenLoading] = useState(false);
+
+  const handleReopenTask = async () => {
+    if (!reopenReason.trim()) {
+      toast.error("Please enter reopen reason");
+      return;
+    }
+    try {
+      setReopenLoading(true);
+
+      await api.patch(`/tasks/${reopenTask._id}/reopen`, {
+        reason: reopenReason,
+      });
+
+      toast.success("Task reopened successfully");
+
+      setReopenModalOpen(false);
+      setReopenTask(null);
+      setReopenReason("");
+      onClose();
+      setRefreshTaskAfterReopen(true);
+      // ✅ REFRESH API HERE
+      // fetchTasks();
+    } catch (error) {
+      console.log(error);
+
+      toast.error(error?.response?.data?.message || "Failed to reopen task");
+    } finally {
+      setReopenLoading(false);
+    }
+  };
   if (!task) return;
   return (
     <div
@@ -407,6 +448,28 @@ const TaskChat = ({ task, open, onClose }) => {
                   >
                     {safeTask?.status}
                   </span>
+                  {safeTask?.status === "Completed" && !itsMe && (
+                    <button
+                      disabled={safeTask?.isReopen}
+                      onClick={() => {
+                        setReopenTask(task);
+                        setReopenModalOpen(true);
+                      }}
+                      className={`
+        flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px]
+        transition-all duration-200 font-semibold shadow-sm cursor-pointer
+        ${
+          safeTask?.isReopen
+            ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+            : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+        }
+      `}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+
+                      {safeTask?.isReopen ? "Reopened" : "Reopen Task"}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -915,6 +978,50 @@ const TaskChat = ({ task, open, onClose }) => {
           </div>
         </div>
       </div>
+      {/* Reopen task */}
+      <Dialog open={reopenModalOpen} onOpenChange={setReopenModalOpen}>
+        <DialogContent
+          className="sm:max-w-md"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {" "}
+          <DialogHeader>
+            <DialogTitle>Reopen Task</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Reopen Reason</label>
+
+            <textarea
+              rows={4}
+              value={reopenReason}
+              onChange={(e) => setReopenReason(e.target.value)}
+              placeholder="Enter reopen reason..."
+              className="
+                w-full border rounded-lg p-3 outline-none
+                focus:ring-2 focus:ring-yellow-500
+              "
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReopenModalOpen(false)}
+              disabled={reopenLoading}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleReopenTask}
+              disabled={reopenLoading}
+              className="bg-yellow-600 hover:bg-yellow-700"
+            >
+              {reopenLoading ? "Reopening..." : "Reopen Task"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

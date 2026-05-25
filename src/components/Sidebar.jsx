@@ -41,7 +41,7 @@ import { setCurrentUser } from "../redux/slices/user/userSlice";
 import { logoutUser } from "../lib/authAPI";
 import api from "../lib/api";
 import { fetchCompany } from "../redux/slices/company/companySlice";
-import { UserSwitchOutlined } from "@ant-design/icons";
+import { FormatPainterOutlined, UserSwitchOutlined } from "@ant-design/icons";
 
 const Sidebar = ({ children }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -500,6 +500,16 @@ const Sidebar = ({ children }) => {
                           path: "/fms-engine/upcoming",
                           label: "Upcoming & Ongoing FMSs",
                           icon: ListRestart,
+                        },
+                        {
+                          path: "/form-builder",
+                          label: "Form Builder",
+                          icon: FormatPainterOutlined,
+                        },
+                        {
+                          path: "/form-submissions",
+                          label: "Responses",
+                          icon: ClipboardCheck,
                         },
                       ].map((item) => (
                         <Link

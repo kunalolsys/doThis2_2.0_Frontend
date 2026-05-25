@@ -1180,7 +1180,7 @@ const MyTask = () => {
     if (!taskId) return;
 
     fetchTaskById();
-  }, [taskId,currentUser]);
+  }, [taskId, currentUser]);
 
   // UI State
   const [activeTab, setActiveTab] = useState("today");
@@ -1239,6 +1239,8 @@ const MyTask = () => {
   const [queryDrawerOpen, setQueryDrawerOpen] = useState(false);
   const [selectedQueryTask, setSelectedQueryTask] = useState(null);
   const [raiseQueryModalOpen, setRaiseQueryModalOpen] = useState(false);
+  const [refreshTaskAfterReopen, setRefreshTaskAfterReopen] = useState(false);
+  const [refreshUI, setRefreshUI] = useState(false);
   // --- Initial Data Load ---
   useEffect(() => {
     if (currentUser?._id) {
@@ -1264,83 +1266,7 @@ const MyTask = () => {
       fetchUsers();
     }
   }, [currentUser]);
-  // --- CORE LOGIC: Get Fetch Params ---
-  const getFetchParams = () => {
-    const params = {
-      userId: currentUser._id,
-      page: localCurrentPage,
-      limit: localItemsPerPage,
-      type:
-        selectedFilterTaskType === "all" ? undefined : selectedFilterTaskType,
-    };
 
-    // 1. STAT CARD MODE (Overrides Tabs)
-    if (selectedStatFilter) {
-      switch (selectedStatFilter) {
-        case "total":
-          // Fetch ALL tasks regardless of status/date
-          params.taskCategory = "all_tasks";
-          params.status = undefined;
-          // Fetch all for client-side pagination
-          params.page = 1;
-          params.limit = 1000;
-          break;
-
-        case "overdue":
-          // Fetch ONLY Pending Overdue tasks
-          params.status = "Overdue";
-          break;
-
-        case "dueToday":
-          // Fetch ONLY Pending tasks Due Today
-          params.taskCategory = "today_backlog";
-          params.dateFilter = "dueToday";
-          params.status = "Due Today";
-          break;
-
-        case "completed":
-          // Fetch Completed
-          params.taskCategory = "completed";
-          params.status = "Completed";
-          break;
-
-        default:
-          break;
-      }
-    }
-    // 2. TAB MODE (Standard Navigation)
-    else {
-      params.status =
-        selectedFilterStatus === "all" ? undefined : selectedFilterStatus;
-
-      switch (activeTab) {
-        case "today":
-          // Today + Backlog (Pending)
-          params.taskCategory = "today_backlog";
-          if (selectedFilterStatus === "all") params.status = "Pending";
-          // Fetch all for client-side pagination
-          params.page = 1;
-          params.limit = 1000;
-          break;
-
-        case "upcoming":
-          // Future Start Date (Pending)
-          params.taskCategory = "upcoming";
-
-          break;
-
-        case "completed":
-          // Completed Tasks
-          params.taskCategory = "completed";
-          params.status = "Completed";
-          break;
-
-        default:
-          params.taskCategory = "today_backlog";
-      }
-    }
-    return params;
-  };
   useEffect(() => {
     setLocalCurrentPage(1);
   }, [
@@ -1356,11 +1282,6 @@ const MyTask = () => {
     let mounted = true;
     if (currentUser?._id) {
       setIsFetching(true);
-      // dispatch(fetchMyTasks(getFetchParams()))
-      //   .catch(() => {})
-      //   .finally(() => {
-      //     if (mounted) setIsFetching(false);
-      //   });
       dispatch(getMyTaskStats({ userId: currentUser._id }));
       dispatch(
         getFilterTasks({
@@ -1416,33 +1337,8 @@ const MyTask = () => {
     debouncedSearch,
     dateRange,
     refetch,
+    refreshUI
   ]);
-
-  // --- Client-side Search Function (Backup) ---
-  const handleClientSideSearch = (tasks, searchTerm) => {
-    if (!searchTerm.trim()) {
-      return tasks;
-    }
-
-    const searchTermLower = searchTerm.toLowerCase().trim();
-
-    return tasks.filter((task) => {
-      // Search in Task ID
-      const taskId = task.TaskId?.toLowerCase() || "";
-      const taskIdMatch = taskId.includes(searchTermLower);
-
-      // Search in Task Title
-      const title = task.title?.toLowerCase() || "";
-      const titleMatch = title.includes(searchTermLower);
-
-      // Search in description (optional)
-      const description = task.description?.toLowerCase() || "";
-      const descriptionMatch = description.includes(searchTermLower);
-
-      // Return true if any of the fields match
-      return taskIdMatch || titleMatch || descriptionMatch;
-    });
-  };
 
   // --- Export Function ---
   const handleExport = async () => {
@@ -1642,6 +1538,7 @@ const MyTask = () => {
           await api.patch(`/tasks/${task._id || task.id}/completion`, {
             completeStatus: newStatus,
           });
+          setRefreshUI(true);
         } else {
           await dispatch(
             completeFMSTask({
@@ -1650,47 +1547,12 @@ const MyTask = () => {
               status: newStatus,
             }),
           ).unwrap();
+          setRefreshUI(true);
         }
         toast.success(newStatus ? "Task Completed" : "Task Reopened");
       } catch (error) {
         toast.error(error.response.data.message || "Failed");
       }
-      // dispatch(fetchMyTasks(getFetchParams()));
-      dispatch(
-        getFilterTasks({
-          userId: currentUser._id,
-          page: localCurrentPage,
-          limit: localItemsPerPage,
-
-          search: debouncedSearch || undefined,
-
-          // ✅ MULTI FILTER OBJECT
-          filters: {
-            // 📊 STAT FILTER
-            stat: selectedStatFilter || null,
-
-            // 📌 TAB FILTER
-            taskCategory: selectedStatFilter
-              ? null
-              : activeTab === "today"
-                ? "today_backlog"
-                : activeTab === "upcoming"
-                  ? "upcoming"
-                  : activeTab === "completed"
-                    ? "completed"
-                    : null,
-
-            // 🔁 TYPE
-            taskType:
-              selectedFilterTaskType === "all" ? null : selectedFilterTaskType,
-
-            // 📊 STATUS
-            status:
-              selectedFilterStatus === "all" ? null : selectedFilterStatus,
-          },
-        }),
-      );
-      dispatch(fetchTaskCounts(currentUser._id));
     } catch (err) {
       toast.error(
         err || err?.response?.data?.message || "Failed to update status",
@@ -2191,6 +2053,7 @@ const MyTask = () => {
 
             setQueryDrawerOpen(false);
           }}
+          setRefreshTaskAfterReopen={setRefreshTaskAfterReopen}
         />
       )}
     </div>

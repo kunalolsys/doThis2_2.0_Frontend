@@ -689,7 +689,7 @@ const ManagerView = () => {
   const [reopenTask, setReopenTask] = useState(null);
   const [reopenReason, setReopenReason] = useState("");
   const [reopenLoading, setReopenLoading] = useState(false);
-
+  const [refreshTaskAfterReopen, setRefreshTaskAfterReopen] = useState(false);
   const handleReopenTask = async () => {
     if (!reopenReason.trim()) {
       toast.error("Please enter reopen reason");
@@ -707,9 +707,24 @@ const ManagerView = () => {
       setReopenModalOpen(false);
       setReopenTask(null);
       setReopenReason("");
+      setReopenModalOpen(false);
+      setReopenTask(null);
+      setReopenReason("");
 
-      // ✅ REFRESH API HERE
-      // fetchTasks();
+      // ✅ RESET FILTERS
+      setActiveTab("today");
+      setSelectedStatFilter("total");
+      setSelectedFilterStatus("all");
+
+      // ✅ RESET PAGINATION + SEARCH
+      setLocalCurrentPage(1);
+      setSearchTerm("");
+
+      // ✅ TRIGGER REFRESH
+      setRefreshTaskAfterReopen((prev) => !prev);
+
+      fetchTasksForDashboard();
+
     } catch (error) {
       console.log(error);
 
@@ -718,6 +733,7 @@ const ManagerView = () => {
       setReopenLoading(false);
     }
   };
+
   useEffect(() => {
     if (!socket) return;
 
@@ -795,7 +811,7 @@ const ManagerView = () => {
   };
   useEffect(() => {
     fetchTasksForDashboard();
-  }, [currentUser, reopenLoading]);
+  }, [currentUser, reopenLoading, refreshTaskAfterReopen]);
 
   // --- Fetch Users for Filters ---
   const [allUsers, setAllUsers] = useState([]);
@@ -921,6 +937,7 @@ const ManagerView = () => {
     localItemsPerPage,
     debouncedSearch,
     reopenLoading,
+    refreshTaskAfterReopen,
   ]);
 
   // --- Client-side Search Function (backup) ---
@@ -1823,6 +1840,7 @@ const ManagerView = () => {
 
             setQueryDrawerOpen(false);
           }}
+          setRefreshTaskAfterReopen={setRefreshTaskAfterReopen}
         />
       )}
     </div>

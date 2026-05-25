@@ -1,11 +1,4 @@
-import React, {
-  useEffect,
-  useMemo,
-  useState,
-  useCallback,
-  useRef,
-} from "react";
-import axios from "axios";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Plus,
   Trash2,
@@ -37,6 +30,9 @@ import {
   X,
   Check,
 } from "lucide-react";
+import { Select } from "antd";
+
+const { Option } = Select;
 import { fetchTemplates } from "../../redux/slices/fms/fmsSlice";
 import { useDispatch } from "react-redux";
 import api from "../../lib/api";
@@ -80,12 +76,11 @@ const FIELD_TYPES = [
   { type: "select", label: "Dropdown", icon: List, color: T.accent },
   { type: "radio", label: "Radio", icon: RadioIcon, color: T.amber },
   { type: "checkbox", label: "Checkbox", icon: CheckSquare, color: T.green },
-  { type: "file", label: "File Upload", icon: Upload, color: T.muted },
+  // { type: "file", label: "File Upload", icon: Upload, color: T.muted },
 ];
 const typeInfo = (t) => FIELD_TYPES.find((f) => f.type === t) || FIELD_TYPES[0];
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
-const uid = () => crypto.randomUUID();
 
 const fmtDate = (iso) =>
   iso
@@ -1032,7 +1027,7 @@ export default function OpenFormBuilder() {
     try {
       setSubmitting(true);
       const res = await api.post(
-        `/open-forms/${selectedForm._id}/submit`,
+        `/open-forms/${selectedForm.slug}/submit`,
         submissionData,
       );
       setSubmitSuccess(res.data?.instance?.instanceId || "triggered");
@@ -1058,13 +1053,27 @@ export default function OpenFormBuilder() {
       badge: forms.length,
     },
   ];
+  const [copiedId, setCopiedId] = useState(null);
 
+  const handleCopy = async (url, id) => {
+    try {
+      await navigator.clipboard.writeText(url);
+
+      setCopiedId(id);
+
+      setTimeout(() => {
+        setCopiedId(null);
+      }, 2000);
+    } catch (err) {
+      console.error("Copy failed", err);
+    }
+  };
   /* ── Render ─────────────────────────────────────────────────────────────── */
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: T.bg,
+        // background: T.bg,
         fontFamily: "'DM Sans','Segoe UI',sans-serif",
         padding: "28px 24px",
       }}
@@ -1283,23 +1292,29 @@ export default function OpenFormBuilder() {
                   </div>
                   <div>
                     <Label required>Link FMS Template</Label>
-                    <SelectField
-                      value={config.linkedTemplate}
-                      onChange={(e) =>
-                        setConf("linkedTemplate", e.target.value)
-                      }
+
+                    <Select
+                      value={config.linkedTemplate || undefined}
+                      onChange={(value) => setConf("linkedTemplate", value)}
                       placeholder={
                         loadingTpl
                           ? "Loading templates…"
                           : "— Select FMS Template —"
                       }
+                      loading={loadingTpl}
+                      showSearch
+                      optionFilterProp="children"
+                      style={{
+                        width: "100%",
+                      }}
+                      size="large"
                     >
                       {templates.map((t) => (
-                        <option key={t._id} value={t._id}>
+                        <Option key={t._id} value={t._id}>
                           {t.templateName}
-                        </option>
+                        </Option>
                       ))}
-                    </SelectField>
+                    </Select>
                     {selectedTemplate && (
                       <div
                         style={{
@@ -1355,12 +1370,12 @@ export default function OpenFormBuilder() {
                       label="Form Active"
                       sub="Makes this form publicly accessible"
                     />
-                    <Toggle
+                    {/* <Toggle
                       checked={config.allowMultipleSubmissions}
                       onChange={(v) => setConf("allowMultipleSubmissions", v)}
                       label="Multiple Submissions"
                       sub="Each submission triggers a new FMS instance"
-                    />
+                    /> */}
                   </div>
 
                   <Btn
@@ -1506,7 +1521,10 @@ export default function OpenFormBuilder() {
                     }}
                   >
                     {fields.map((field, idx) => (
-                      <div kkey={field.fieldId || idx} className="field-card-enter">
+                      <div
+                        kkey={field.fieldId || idx}
+                        className="field-card-enter"
+                      >
                         <FieldCard
                           field={field}
                           index={idx}
@@ -1912,7 +1930,7 @@ export default function OpenFormBuilder() {
                               ⚡ {tpl.templateName}
                             </Pill>
                           )}
-                          {form.allowMultipleSubmissions && (
+                          {/* {form.allowMultipleSubmissions && (
                             <Pill
                               color={T.purple}
                               bg={T.purpleL}
@@ -1920,7 +1938,7 @@ export default function OpenFormBuilder() {
                             >
                               Multi-submit
                             </Pill>
-                          )}
+                          )} */}
                           <Pill color={T.muted} bg={T.surf} border={T.border}>
                             {fmtDate(form.createdAt)}
                           </Pill>
@@ -1963,25 +1981,32 @@ export default function OpenFormBuilder() {
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              /open-form/{form._id}
+                              {form.formUrl || "-"}
                             </div>
                           </div>
                           <button
-                            onClick={() =>
-                              navigator.clipboard.writeText(
-                                `/open-form/${form._id}`,
-                              )
-                            }
+                            onClick={() => handleCopy(form.formUrl, form._id)}
                             style={{
                               background: "none",
                               border: "none",
                               cursor: "pointer",
-                              color: T.muted2,
+                              color:
+                                copiedId === form._id ? "#16a34a" : T.muted2,
                               padding: 4,
                               display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              transition: "0.2s ease",
                             }}
                           >
-                            <Copy size={13} />
+                            {copiedId === form._id ? (
+                              <>
+                                <Check size={14} />
+                                <span style={{ fontSize: 12 }}>Copied</span>
+                              </>
+                            ) : (
+                              <Copy size={13} />
+                            )}
                           </button>
                         </div>
 
@@ -2002,9 +2027,11 @@ export default function OpenFormBuilder() {
                             variant="secondary"
                             size="sm"
                             onClick={() => {
-                              setSelectedForm(form);
-                              setSubmissionData({});
-                              setTab("preview");
+                              navigator.clipboard.writeText(form.formUrl);
+
+                              window.open(form.formUrl, "_blank");
+
+                              toast.success("Form URL copied");
                             }}
                           >
                             <ExternalLink size={13} />

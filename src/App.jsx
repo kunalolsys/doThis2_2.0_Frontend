@@ -52,6 +52,10 @@ import NotificationIntegrations from "./pages/Notificationintegrations";
 import TaskReassignmentPage from "./pages/myDay/TaskReassignmentPage";
 import UserTaskHistory from "./pages/myDay/userTaskView";
 import OpenFormBuilder from "./pages/fmsEngine/OpenForm";
+import TaskDistributionCenter from "./pages/task-distribution/TaskDistribution";
+import PublicOpenForm from "./pages/public-form/PublicOpenForm";
+import OpenFormResponses from "./pages/fmsEngine/OpenFormResponses";
+import RoleTaskAssignment from "./pages/task-distribution/BulkTaskDistribution";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -91,7 +95,7 @@ function App() {
               <Route path="/" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/page-restrict-found" element={<AccessDenied />} />
-
+              <Route path="/open-form/:slug" element={<PublicOpenForm />} />
               <Route element={<ProtectedLayout />}>
                 {/* dashboard routes - assuming all logged-in users can see this */}
                 <Route path="/dashboard" element={<AdminDashboard />} />
@@ -108,6 +112,18 @@ function App() {
                 <Route path="/my-day/view" element={<ManagerView />} />
                 <Route path="/user/:userId" element={<UserTaskHistory />} />
                 <Route path="/form-builder" element={<OpenFormBuilder />} />
+                <Route
+                  path="/form-submissions"
+                  element={<OpenFormResponses />}
+                />
+                <Route
+                  path="/task-distribution"
+                  element={<TaskDistributionCenter />}
+                />{" "}
+                <Route
+                  path="/bulk-task-distribution"
+                  element={<RoleTaskAssignment />}
+                />
                 {/* <Route path="/my-day/sr-manager-view" element={<SrManagerView />} />
             <Route path="/my-day/owner-view" element={<OwnerView />} /> */}
                 {/* Delegation Task */}
