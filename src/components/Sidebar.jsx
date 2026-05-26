@@ -35,6 +35,9 @@ import {
   ListRestart,
   CalendarDays,
   Building2Icon,
+  Briefcase,
+  Send,
+  GitBranch,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { setCurrentUser } from "../redux/slices/user/userSlice";
@@ -120,10 +123,13 @@ const Sidebar = ({ children }) => {
     isActiveLink(path),
   );
   const isLogsDropdownActive = ["/logs"].some((path) => isActiveLink(path));
+  const isMyBucketActive = ["/bucket/my-bucket"].some((path) => isActiveLink(path));
 
   const isMyDayDropdownActive = location.pathname.startsWith("/my-day");
   const isFmsEngineDropdownActive = location.pathname.startsWith("/fms-engine");
   const isReportsDropdownActive = location.pathname.startsWith("/reports");
+  const isDelegationDropdownActive =
+    location.pathname.startsWith("/delegation");
   const isSetupDropdownActive = location.pathname.startsWith("/setup");
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
@@ -657,6 +663,131 @@ const Sidebar = ({ children }) => {
               </Link>
             </div>
           </div> */}
+          <div>
+            <div className="relative">
+              <Link
+                to="/bucket/my-bucket"
+                className={`
+                                    relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
+                                    rounded-xl px-3 py-2.5 transition-all duration-300 group
+                                    backdrop-blur-sm border
+                                    ${
+                                      isMyBucketActive
+                                        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
+                                        : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
+                                    }
+                                `}
+              >
+                <div
+                  className={`relative ${isMyBucketActive ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
+                >
+                  <LayoutDashboard className="w-4 h-4" />
+                  {isMyBucketActive && (
+                    <div className="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
+                  )}
+                </div>
+
+                {!isCollapsed && (
+                  <span className="ml-2 font-medium flex-1 text-left text-sm">
+                    My Bucket
+                  </span>
+                )}
+              </Link>
+            </div>
+          </div>
+          {hasPermission("delegation_task_view") && !isBothDisable && (
+            <div>
+              <div className="relative">
+                <button
+                  onClick={() => toggleDropdown("delegation")}
+                  className={`
+          relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
+          rounded-xl px-3 py-2.5 transition-all duration-300 group
+          backdrop-blur-sm border
+          ${
+            isDelegationDropdownActive
+              ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
+              : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
+          }
+        `}
+                >
+                  <div
+                    className={`relative ${
+                      isDelegationDropdownActive
+                        ? "text-white"
+                        : "text-gray-400 group-hover:text-blue-500"
+                    }`}
+                  >
+                    <GitBranch className="w-4 h-4" />
+                  </div>
+
+                  {!isCollapsed && (
+                    <span className="ml-2 font-medium flex-1 text-left text-sm">
+                      Delegation Buckets{" "}
+                    </span>
+                  )}
+
+                  {!isCollapsed && (
+                    <ChevronDown
+                      className={`w-3 h-3 transition-transform duration-300 ${
+                        openDropdowns.delegation ? "rotate-180" : ""
+                      } ${
+                        isDelegationDropdownActive
+                          ? "text-white/80"
+                          : "text-gray-400"
+                      }`}
+                    />
+                  )}
+                </button>
+
+                {openDropdowns.delegation && !isCollapsed && (
+                  <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
+                    {[
+                      {
+                        path: "/delegation/task-buckets",
+                        label: "Task Buckets",
+                        icon: Briefcase,
+                      },
+                      // {
+                      //   path: "/delegation/distribution-buckets",
+                      //   label: "My Bucket",
+                      //   icon: Send,
+                      // },
+                      {
+                        path: "/delegation/audience-master",
+                        label: "Manage Assignee",
+                        icon: Users,
+                      },
+                    ].map((item) => (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`
+                flex items-center rounded-lg px-2 py-2 text-sm transition-all duration-200 group
+                ${
+                  isActiveLink(item.path)
+                    ? "text-blue-600 bg-blue-50/80 border border-blue-200/60"
+                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/80"
+                }
+              `}
+                      >
+                        <item.icon
+                          className={`w-3 h-3 mr-2 ${
+                            isActiveLink(item.path)
+                              ? "text-blue-500"
+                              : "text-gray-400 group-hover:text-gray-600"
+                          }`}
+                        />
+
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Setup Section */}
           {hasPermission("setup_view") && !isBothDisable && (
             <div>
