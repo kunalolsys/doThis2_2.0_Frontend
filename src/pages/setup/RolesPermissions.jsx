@@ -58,6 +58,8 @@ const permissionMap = {
   reports: "Reports",
   delegationTask: "Delegation Task",
   taskReassigning: "Task Reassigning",
+  bucket: "Bucket",
+  myBucket: "My Bucket",
 };
 
 const transformRoles = (roles) => {
@@ -69,6 +71,8 @@ const transformRoles = (roles) => {
     reports: role.permissions.includes(permissionMap.reports),
     delegationTask: role.permissions.includes(permissionMap.delegationTask),
     taskReassigning: role.permissions.includes(permissionMap.taskReassigning),
+    bucket: role.permissions.includes(permissionMap.bucket),
+    myBucket: role.permissions.includes(permissionMap.myBucket),
     isSystem: nonDeletableRoles.includes(role.name) || !role.canDelete,
   }));
 };
@@ -353,6 +357,22 @@ const RolesPermissions = () => {
                     <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
                       <div className="flex items-center justify-center gap-2">
                         <FileText className="w-4 h-4" />
+                        Bucket
+                      </div>
+                    </TableHead>
+                  )}{" "}
+                  {isDoThisEnabled && (
+                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                      <div className="flex items-center justify-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        My Bucket
+                      </div>
+                    </TableHead>
+                  )}{" "}
+                  {isDoThisEnabled && (
+                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                      <div className="flex items-center justify-center gap-2">
+                        <FileText className="w-4 h-4" />
                         Task Reassigning
                       </div>
                     </TableHead>
@@ -440,6 +460,32 @@ const RolesPermissions = () => {
                               handlePermissionChange(
                                 role._id,
                                 "delegationTask",
+                                value,
+                              )
+                            }
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                        </TableCell>
+                      )}{" "}
+                      {isDoThisEnabled && (
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={role.bucket}
+                            onCheckedChange={(value) =>
+                              handlePermissionChange(role._id, "bucket", value)
+                            }
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                        </TableCell>
+                      )}{" "}
+                      {isDoThisEnabled && (
+                        <TableCell className="text-center">
+                          <Switch
+                            checked={role.myBucket}
+                            onCheckedChange={(value) =>
+                              handlePermissionChange(
+                                role._id,
+                                "myBucket",
                                 value,
                               )
                             }

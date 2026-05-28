@@ -123,7 +123,9 @@ const Sidebar = ({ children }) => {
     isActiveLink(path),
   );
   const isLogsDropdownActive = ["/logs"].some((path) => isActiveLink(path));
-  const isMyBucketActive = ["/bucket/my-bucket"].some((path) => isActiveLink(path));
+  const isMyBucketActive = ["/bucket/my-bucket"].some((path) =>
+    isActiveLink(path),
+  );
 
   const isMyDayDropdownActive = location.pathname.startsWith("/my-day");
   const isFmsEngineDropdownActive = location.pathname.startsWith("/fms-engine");
@@ -663,11 +665,12 @@ const Sidebar = ({ children }) => {
               </Link>
             </div>
           </div> */}
-          <div>
-            <div className="relative">
-              <Link
-                to="/bucket/my-bucket"
-                className={`
+          {hasPermission("my_bucket_view") && isModuleEnabled("DO_THIS2") && (
+            <div>
+              <div className="relative">
+                <Link
+                  to="/bucket/my-bucket"
+                  className={`
                                     relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
                                     rounded-xl px-3 py-2.5 transition-all duration-300 group
                                     backdrop-blur-sm border
@@ -677,25 +680,26 @@ const Sidebar = ({ children }) => {
                                         : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
                                     }
                                 `}
-              >
-                <div
-                  className={`relative ${isMyBucketActive ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
                 >
-                  <LayoutDashboard className="w-4 h-4" />
-                  {isMyBucketActive && (
-                    <div className="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
-                  )}
-                </div>
+                  <div
+                    className={`relative ${isMyBucketActive ? "text-white" : "text-gray-400 group-hover:text-blue-500"}`}
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    {isMyBucketActive && (
+                      <div className="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
+                    )}
+                  </div>
 
-                {!isCollapsed && (
-                  <span className="ml-2 font-medium flex-1 text-left text-sm">
-                    My Bucket
-                  </span>
-                )}
-              </Link>
+                  {!isCollapsed && (
+                    <span className="ml-2 font-medium flex-1 text-left text-sm">
+                      My Bucket
+                    </span>
+                  )}
+                </Link>
+              </div>
             </div>
-          </div>
-          {hasPermission("delegation_task_view") && !isBothDisable && (
+          )}
+          {hasPermission("bucket_view") && isModuleEnabled("DO_THIS2") && (
             <div>
               <div className="relative">
                 <button

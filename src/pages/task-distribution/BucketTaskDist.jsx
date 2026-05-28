@@ -17,12 +17,14 @@ import {
   Send,
   FileText,
   SlidersHorizontal,
+  Clock,
 } from "lucide-react";
 
 import { Table, Tag, Checkbox, Empty } from "antd";
 import api from "../../lib/api.js";
 import dayjs from "dayjs";
 import { Input, Select } from "antd";
+import TaskBucketListCard from "./TaskBucketListCard.jsx";
 
 const { Search } = Input;
 const TaskDistribution = () => {
@@ -99,7 +101,11 @@ const TaskDistribution = () => {
 
       managerName: u.reportingManager?.name || "-",
 
-      alreadyAssigned: u.alreadyAssigned || false,
+      alreadyAssigned: u.hasBucketTask === true,
+      status: u.hasBucketTask ? "Distributed" : "Not Distributed",
+      taskStatus: u.completedStatus || "No Task",
+
+      completedAt: u.completedAt || null,
     }));
   }, [reportingUsers]);
   // =========================================================
@@ -162,38 +168,7 @@ const TaskDistribution = () => {
       return updated;
     });
   };
-  const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("all");
 
-  /* ===================================================== */
-  /* FILTERED BUCKETS */
-  /* ===================================================== */
-
-  const filteredBuckets = useMemo(() => {
-    let data = [...buckets];
-
-    // SEARCH
-    if (search.trim()) {
-      const q = search.toLowerCase();
-
-      data = data.filter(
-        (bucket) =>
-          bucket.title?.toLowerCase().includes(q) ||
-          bucket.description?.toLowerCase().includes(q),
-      );
-    }
-
-    // FILTER
-    if (filterType === "recurring") {
-      data = data.filter((b) => b.isRecurrent);
-    }
-
-    if (filterType === "non-recurring") {
-      data = data.filter((b) => !b.isRecurrent);
-    }
-
-    return data;
-  }, [buckets, search, filterType]);
   // =========================================================
   // TABLE COLUMNS
   // =========================================================
@@ -210,7 +185,11 @@ const TaskDistribution = () => {
           checked={
             record.alreadyAssigned || !!selectedAssignments[record.userId]
           }
-          onChange={(e) => toggleUserSelection(record.userId, e.target.checked)}
+          onChange={(e) => {
+            if (!record.alreadyAssigned) {
+              toggleUserSelection(record.userId, e.target.checked);
+            }
+          }}
         />
       ),
     },
@@ -243,18 +222,51 @@ const TaskDistribution = () => {
         <div className="font-medium text-slate-700">{value}</div>
       ),
     },
+    {
+      title: "Status",
+      dataIndex: "status",
+      render: (value) =>
+        value === "Distributed" ? (
+          <Tag color="green">Distributed</Tag>
+        ) : (
+          <Tag color="orange">Not Distributed</Tag>
+        ),
+    },
+    {
+      title: "Task Status",
+      dataIndex: "taskStatus",
 
-    // {
-    //   title: "Status",
-    //   dataIndex: "alreadyAssigned",
+      render: (value) => {
+        if (value === "Completed") {
+          return <Tag color="green">Completed</Tag>;
+        }
 
-    //   render: (value) =>
-    //     value ? (
-    //       <Tag color="green">Assigned</Tag>
-    //     ) : (
-    //       <Tag color="orange">Pending</Tag>
-    //     ),
-    // },
+        if (value === "Pending") {
+          return <Tag color="orange">Pending</Tag>;
+        }
+
+        return <Tag>No Task</Tag>;
+      },
+    },
+    {
+      title: "Completed Time",
+      dataIndex: "completedAt",
+
+      render: (value) => {
+        if (!value) {
+          return <span className="text-slate-400 text-xs">-</span>;
+        }
+
+        return (
+          <div className="text-xs text-slate-600">
+            {new Date(value).toLocaleString("en-IN", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
+          </div>
+        );
+      },
+    },
   ];
 
   return (
@@ -293,125 +305,20 @@ const TaskDistribution = () => {
           {/* ==================================================== */}
 
           <div className="xl:col-span-1">
-            <Card className="rounded-[24px] border border-slate-200 shadow-sm overflow-hidden h-full">
-              {/* ===================================================== */}
-              {/* HEADER */}
-              {/* ===================================================== */}
+            <TaskBucketListCard
+              buckets={buckets}
+              selectedBucket={selectedBucket}
+              onSelectBucket={handleSelectBucket}
+              onBucketCompleted={async () => {
+                await fetchBuckets();
 
-              <CardHeader className="border-b bg-white px-5 py-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-slate-800">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                    Task Buckets
-                  </CardTitle>
-
-                  <div className="text-sm font-semibold text-slate-500">
-                    {filteredBuckets.length}
-                  </div>
-                </div>
-
-                {/* ===================================================== */}
-                {/* SEARCH + FILTER */}
-                {/* ===================================================== */}
-
-                <div className="flex items-center gap-3">
-                  {/* SEARCH */}
-
-                  <Search
-                    placeholder="Search buckets..."
-                    allowClear
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="flex-1"
-                    size="large"
-                  />
-
-                  {/* FILTER */}
-
-                  <Select
-                    value={filterType}
-                    onChange={(value) => setFilterType(value)}
-                    size="large"
-                    style={{ width: 180 }}
-                    options={[
-                      {
-                        label: "All Buckets",
-                        value: "all",
-                      },
-                      {
-                        label: "Recurring",
-                        value: "recurring",
-                      },
-                      {
-                        label: "Non Recurring",
-                        value: "non-recurring",
-                      },
-                    ]}
-                  />
-                </div>
-              </CardHeader>
-
-              {/* ===================================================== */}
-              {/* LIST */}
-              {/* ===================================================== */}
-
-              <CardContent className="p-0 max-h-[78vh] overflow-y-auto mt-3">
-                {filteredBuckets.length === 0 ? (
-                  <div className="py-16 text-center text-slate-400">
-                    No buckets found
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-100">
-                    {filteredBuckets.map((bucket) => {
-                      const isSelected = selectedBucket?._id === bucket._id;
-
-                      return (
-                        <div
-                          key={bucket._id}
-                          onClick={() => handleSelectBucket(bucket)}
-                          className={`
-                  px-5 py-4 cursor-pointer transition-all
-                  ${
-                    isSelected
-                      ? "bg-blue-50 border-l-4 border-blue-500"
-                      : "hover:bg-slate-50 border-l-4 border-transparent"
-                  }
-                `}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-semibold text-slate-800 truncate">
-                                {bucket.title}
-                              </h3>
-
-                              <p className="text-sm text-slate-500 mt-1 line-clamp-1">
-                                {bucket.description}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-4 mt-3 text-xs text-slate-500 flex-wrap">
-                            <div className="flex items-center gap-1">
-                              <Repeat className="w-3.5 h-3.5" />
-
-                              {bucket.isRecurrent
-                                ? bucket.frequency
-                                : "Non Recurring"}
-                            </div>
-
-                            <div className="flex items-center gap-1">
-                              <CalendarDays className="w-3.5 h-3.5" />
-
-                              {dayjs(bucket.createdAt).format("DD MMM YYYY")}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                // refresh selected bucket users also
+                if (selectedBucket?._id) {
+                  await fetchReportingUsers(selectedBucket._id);
+                }
+              }}
+              reportingUsers={reportingUsers}
+            />
           </div>
 
           {/* ==================================================== */}

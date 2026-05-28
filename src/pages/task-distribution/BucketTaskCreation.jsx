@@ -231,30 +231,30 @@ const BucketCreation = () => {
         alert("Start date required");
         return;
       }
-      if (isRecurrent) {
-        if (!recurrenceFrequency) {
-          alert("Recurrence frequency required");
-          return;
-        }
+      // if (isRecurrent) {
+      //   if (!recurrenceFrequency) {
+      //     alert("Recurrence frequency required");
+      //     return;
+      //   }
 
-        // if (!recurrenceEndDate) {
-        //   alert("Recurrence end date required");
-        //   return;
-        // }
+      //   // if (!recurrenceEndDate) {
+      //   //   alert("Recurrence end date required");
+      //   //   return;
+      //   // }
 
-        if (
-          recurrenceFrequency === "weekly" &&
-          weeklyRecurrenceDays.length === 0
-        ) {
-          alert("Please select weekly days");
-          return;
-        }
-      } else {
-        if (!taskEndDays) {
-          alert("Task End Days required");
-          return;
-        }
+      //   if (
+      //     recurrenceFrequency === "weekly" &&
+      //     weeklyRecurrenceDays.length === 0
+      //   ) {
+      //     alert("Please select weekly days");
+      //     return;
+      //   }
+      // } else {
+      if (!taskEndDays) {
+        alert("Task End Days required");
+        return;
       }
+      // }
 
       setLoading(true);
 
@@ -534,8 +534,16 @@ const BucketCreation = () => {
 
                       <Input
                         type="number"
+                        min={0}
                         value={taskEndDays}
-                        onChange={(e) => setTaskEndDays(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+
+                          // prevent negative values
+                          if (Number(value) >= 0 || value === "") {
+                            setTaskEndDays(value);
+                          }
+                        }}
                         placeholder="Enter days"
                         className="h-12 rounded-2xl"
                       />
@@ -552,7 +560,7 @@ const BucketCreation = () => {
                     </div>
                   </div>
                 )}
-                <div className="flex items-center gap-3 mt-2">
+                {/* <div className="flex items-center gap-3 mt-2">
                   <Checkbox
                     checked={isRecurrent}
                     onChange={(e) => setIsRecurrent(e.target.checked)}
@@ -652,7 +660,7 @@ const BucketCreation = () => {
                       </div>
                     )}
                   </div>
-                )}
+                )} */}
               </CardContent>
             </Card>
           </div>
