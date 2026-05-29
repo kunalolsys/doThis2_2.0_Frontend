@@ -25,6 +25,7 @@ import api from "../../lib/api.js";
 import dayjs from "dayjs";
 import { Input, Select } from "antd";
 import TaskBucketListCard from "./TaskBucketListCard.jsx";
+import { useDebounce } from "../../lib/debounce.js";
 
 const { Search } = Input;
 const TaskDistribution = () => {
@@ -33,18 +34,28 @@ const TaskDistribution = () => {
   const [selectedBucket, setSelectedBucket] = useState(null);
 
   const [reportingUsers, setReportingUsers] = useState([]);
+  const [isBucketComplete, setIsBucketComplete] = useState(false);
 
   const [selectedAssignments, setSelectedAssignments] = useState({});
 
   const [loading, setLoading] = useState(false);
-
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("all"); // all | recurring | non-recurring
+  const [sortBy, setSortBy] = useState("newest"); // date | title | status
+  const debounceSearch = useDebounce(search);
   // =========================================================
   // FETCH BUCKETS
   // =========================================================
 
   const fetchBuckets = async () => {
     try {
-      const res = await api.get("/task-buckets");
+      const res = await api.get("/task-buckets", {
+        params: {
+          search: debounceSearch || undefined,
+          sortBy: sortBy || undefined,
+          status: filterType !== "all" ? filterType : undefined,
+        },
+      });
 
       setBuckets(res?.data?.data || []);
     } catch (err) {
@@ -60,6 +71,7 @@ const TaskDistribution = () => {
     try {
       const res = await api.get(`/task-buckets/${bucketId}/reporting-users`);
       setReportingUsers(res?.data?.data || []);
+      setIsBucketComplete(res?.data?.isBucketComplete);
     } catch (err) {
       console.log(err);
     }
@@ -67,7 +79,7 @@ const TaskDistribution = () => {
 
   useEffect(() => {
     fetchBuckets();
-  }, []);
+  }, [debounceSearch, filterType, sortBy]);
 
   // =========================================================
   // HANDLE SELECT BUCKET
@@ -181,7 +193,7 @@ const TaskDistribution = () => {
 
       render: (_, record) => (
         <Checkbox
-          disabled={record.alreadyAssigned}
+          disabled={record.alreadyAssigned || isBucketComplete}
           checked={
             record.alreadyAssigned || !!selectedAssignments[record.userId]
           }
@@ -318,6 +330,12 @@ const TaskDistribution = () => {
                 }
               }}
               reportingUsers={reportingUsers}
+              setSearch={setSearch}
+              search={search}
+              setFilterType={setFilterType}
+              filterType={filterType}
+              setSortBy={setSortBy}
+              sortBy={sortBy}
             />
           </div>
 

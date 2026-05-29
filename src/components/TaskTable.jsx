@@ -28,7 +28,7 @@ import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../lib/api";
-import { Button as AntButton } from "antd";
+import { Button as AntButton, Modal } from "antd";
 import { cn, frequencyMap } from "./utils";
 import {
   Card,
@@ -74,14 +74,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/index.jsx";
-import { Tabs as AntdTabs } from "antd";
+import { Tabs as AntdTabs, Input as AntdInput } from "antd";
 import {
   Dropdown,
   Button as AntdBTN,
   Checkbox as AntdCheckBox,
   Divider,
 } from "antd";
-import { SettingOutlined } from "@ant-design/icons";
+import { SearchOutlined, SettingOutlined } from "@ant-design/icons";
 import { formatDate } from "../lib/utilFunctions.js";
 import dayjs from "dayjs";
 import { DatePicker, Upload } from "antd";
@@ -1526,7 +1526,186 @@ const TaskTable = ({
       </div>
     </div>
   );
+  const [selectedOneTimeTaskIds, setSelectedOneTimeTaskIds] = useState([]);
+  const [selectedRecurringTaskIds, setSelectedRecurringTaskIds] = useState([]);
+  //**ONE TIME TASK MULTIPLE DELETION */
+  const toggleOneTaskSelection = (taskId) => {
+    setSelectedOneTimeTaskIds((prev) =>
+      prev.includes(taskId)
+        ? prev.filter((id) => id !== taskId)
+        : [...prev, taskId],
+    );
+  };
+  const handleSelectAllOneTimeTasks = () => {
+    const currentIds = currentOneTimeTasks.map((t) => t._id);
 
+    const isAllSelected = currentIds.every((id) =>
+      selectedOneTimeTaskIds.includes(id),
+    );
+
+    if (isAllSelected) {
+      // deselect all
+      setSelectedOneTimeTaskIds([]);
+    } else {
+      // select all
+      setSelectedOneTimeTaskIds(currentIds);
+    }
+  };
+  const handleDeleteMultipleTasks = async () => {
+    if (selectedOneTimeTaskIds.length === 0) {
+      toast.error("Please select tasks");
+      return;
+    }
+
+    Modal.confirm({
+      title: "Delete Selected Tasks",
+      content: `Are you sure you want to delete ${selectedOneTimeTaskIds.length} selected task(s)?`,
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+
+      onOk: async () => {
+        try {
+          for (const taskId of selectedOneTimeTaskIds) {
+            const task = oneTimeTasksList.find(
+              (t) => String(t._id) === String(taskId),
+            );
+
+            if (!task) continue;
+
+            // ✅ find dependent child tasks
+            const dependentChildren = allTasks.filter((t) => {
+              if (!t.parentTask) return false;
+
+              const parentId =
+                typeof t.parentTask === "object" && t.parentTask !== null
+                  ? t.parentTask._id
+                  : t.parentTask;
+
+              return String(parentId) === String(task._id);
+            });
+
+            const isParentWithChildren = dependentChildren.length > 0;
+
+            // ✅ parent delete
+            if (isParentWithChildren) {
+              await api.delete(`/tasks/${task._id}/force`, {
+                data: {
+                  remark: "",
+                },
+              });
+            }
+
+            // ✅ normal delete
+            else {
+              await api.delete(`/tasks/${task._id}`);
+            }
+          }
+
+          toast.success("Selected tasks deleted successfully");
+
+          setSelectedOneTimeTaskIds([]);
+
+          onRefreshTasks();
+        } catch (error) {
+          console.log(error);
+
+          toast.error(
+            error.response?.data?.message || "Failed to delete tasks",
+          );
+        }
+      },
+    });
+  };
+
+  //**RECURRING TASK MULTIPLE DELETION */
+  const toggleRecurringTaskSelection = (taskId) => {
+    setSelectedRecurringTaskIds((prev) =>
+      prev.includes(taskId)
+        ? prev.filter((id) => id !== taskId)
+        : [...prev, taskId],
+    );
+  };
+  const handleSelectAllRecurringTasks = () => {
+    const currentIds = currentRecurringTasks.map((t) => t._id);
+
+    const isAllSelected = currentIds.every((id) =>
+      selectedRecurringTaskIds.includes(id),
+    );
+
+    if (isAllSelected) {
+      // deselect all
+      setSelectedRecurringTaskIds([]);
+    } else {
+      // select all
+      setSelectedRecurringTaskIds(currentIds);
+    }
+  };
+  const handleDeleteMultipleRecurringTasks = async () => {
+    if (selectedRecurringTaskIds.length === 0) {
+      toast.error("Please select tasks");
+      return;
+    }
+    Modal.confirm({
+      title: "Delete Selected Tasks",
+      content: `Are you sure you want to delete ${selectedRecurringTaskIds.length} selected task(s)?`,
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+
+      onOk: async () => {
+        try {
+          for (const taskId of selectedRecurringTaskIds) {
+            const task = recurringTasksList.find(
+              (t) => String(t._id) === String(taskId),
+            );
+
+            if (!task) continue;
+
+            // ✅ find dependent child tasks
+            const dependentChildren = allTasks.filter((t) => {
+              if (!t.parentTask) return false;
+
+              const parentId =
+                typeof t.parentTask === "object" && t.parentTask !== null
+                  ? t.parentTask._id
+                  : t.parentTask;
+
+              return String(parentId) === String(task._id);
+            });
+
+            const isParentWithChildren = dependentChildren.length > 0;
+
+            // ✅ parent delete
+            if (isParentWithChildren) {
+              await api.delete(`/tasks/${task._id}/force`, {
+                data: {
+                  remark: "",
+                },
+              });
+            }
+
+            // ✅ normal delete
+            else {
+              await api.delete(`/tasks/${task._id}`);
+            }
+          }
+
+          toast.success("Selected tasks deleted successfully");
+
+          setSelectedRecurringTaskIds([]);
+
+          onRefreshTasks();
+        } catch (error) {
+          console.log(error);
+
+          toast.error(
+            error.response?.data?.message || "Failed to delete tasks",
+          );
+        }
+      },
+    });
+  };
   return (
     <Card className="m-4 shadow-xl bg-white/80 border-0 group">
       <CardHeader className="border-b border-gray-200/50">
@@ -1593,13 +1772,24 @@ const TaskTable = ({
           {/* Filters */}
           <div className="flex gap-3 mb-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <AntdInput
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by title or description..."
+                prefix={<SearchOutlined style={{ color: "#94a3b8" }} />}
+                allowClear
+                size="large"
+                style={{
+                  borderRadius: 12,
+                }}
+              />
+              {/* <Search className="absolute left-3 top-1/3 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
                 placeholder="Search by title or description..."
                 className="pl-9"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-              />
+              /> */}
             </div>
             {/* User Filter */}
             <Select
@@ -1679,6 +1869,27 @@ const TaskTable = ({
                 />
               </Dropdown>
             )}
+            <div className="flex items-center justify-between mb-4">
+              {activeTabForExport == "one-time" ? (
+                <Button
+                  variant="destructive"
+                  disabled={selectedOneTimeTaskIds.length === 0}
+                  onClick={handleDeleteMultipleTasks}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Selected
+                </Button>
+              ) : (
+                <Button
+                  variant="destructive"
+                  disabled={selectedRecurringTaskIds.length === 0}
+                  onClick={handleDeleteMultipleRecurringTasks}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Selected
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* --- ONE TIME TASKS TAB --- */}
@@ -1687,6 +1898,17 @@ const TaskTable = ({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={
+                          currentOneTimeTasks.length > 0 &&
+                          currentOneTimeTasks.every((t) =>
+                            selectedOneTimeTaskIds.includes(t._id),
+                          )
+                        }
+                        onChange={handleSelectAllOneTimeTasks}
+                      />
+                    </TableHead>
                     {columns
                       .filter((col) => col.visible)
                       .map((col) => (
@@ -1710,6 +1932,14 @@ const TaskTable = ({
                           key={task._id || i}
                           className="hover:bg-slate-50"
                         >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedOneTimeTaskIds.includes(
+                                task._id,
+                              )}
+                              onChange={() => toggleOneTaskSelection(task._id)}
+                            />
+                          </TableCell>
                           {columns.find((c) => c.key === "sr")?.visible && (
                             <TableCell>
                               {indexOfFirstOneTimeTask + i + 1}
@@ -2038,6 +2268,17 @@ const TaskTable = ({
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={
+                          currentRecurringTasks.length > 0 &&
+                          currentRecurringTasks.every((t) =>
+                            selectedRecurringTaskIds.includes(t._id),
+                          )
+                        }
+                        onChange={handleSelectAllRecurringTasks}
+                      />
+                    </TableHead>
                     {recurringColumns
                       .filter((col) => col.visible)
                       .map((col) => (
@@ -2064,6 +2305,16 @@ const TaskTable = ({
                             key={task._id || i}
                             className="hover:bg-slate-50"
                           >
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedRecurringTaskIds.includes(
+                                  task._id,
+                                )}
+                                onChange={() =>
+                                  toggleRecurringTaskSelection(task._id)
+                                }
+                              />
+                            </TableCell>
                             {recurringColumns.find((c) => c.key === "sr")
                               ?.visible && (
                               <TableCell>

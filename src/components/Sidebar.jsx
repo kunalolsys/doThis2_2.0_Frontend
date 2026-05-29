@@ -100,7 +100,7 @@ const Sidebar = ({ children }) => {
       fmsEngine: false,
       reports: false,
       setup: false,
-
+      delgate:false,
       // toggle selected one
       [menu]: !prev[menu],
     }));
@@ -131,7 +131,7 @@ const Sidebar = ({ children }) => {
   const isFmsEngineDropdownActive = location.pathname.startsWith("/fms-engine");
   const isReportsDropdownActive = location.pathname.startsWith("/reports");
   const isDelegationDropdownActive =
-    location.pathname.startsWith("/delegation");
+    location.pathname.startsWith("/delegate");
   const isSetupDropdownActive = location.pathname.startsWith("/setup");
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
@@ -703,7 +703,7 @@ const Sidebar = ({ children }) => {
             <div>
               <div className="relative">
                 <button
-                  onClick={() => toggleDropdown("delegation")}
+                  onClick={() => toggleDropdown("delegate")}
                   className={`
           relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
           rounded-xl px-3 py-2.5 transition-all duration-300 group
@@ -734,7 +734,7 @@ const Sidebar = ({ children }) => {
                   {!isCollapsed && (
                     <ChevronDown
                       className={`w-3 h-3 transition-transform duration-300 ${
-                        openDropdowns.delegation ? "rotate-180" : ""
+                        openDropdowns.delegate ? "rotate-180" : ""
                       } ${
                         isDelegationDropdownActive
                           ? "text-white/80"
@@ -744,21 +744,21 @@ const Sidebar = ({ children }) => {
                   )}
                 </button>
 
-                {openDropdowns.delegation && !isCollapsed && (
+                {openDropdowns.delegate && !isCollapsed && (
                   <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
                     {[
                       {
-                        path: "/delegation/task-buckets",
+                        path: "/delegate/task-buckets",
                         label: "Task Buckets",
                         icon: Briefcase,
                       },
-                      // {
-                      //   path: "/delegation/distribution-buckets",
-                      //   label: "My Bucket",
-                      //   icon: Send,
-                      // },
                       {
-                        path: "/delegation/audience-master",
+                        path: "/delegate/bucket-view",
+                        label: "Buckets",
+                        icon: Send,
+                      },
+                      {
+                        path: "/delegate/audience-master",
                         label: "Manage Assignee",
                         icon: Users,
                       },

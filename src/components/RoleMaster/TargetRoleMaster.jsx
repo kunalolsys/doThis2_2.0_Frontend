@@ -15,6 +15,7 @@ import { useDispatch, useSelector } from "react-redux";
 
 import { fetchRoles } from "../../redux/slices/role/roleSlice";
 import { getUserForDrop } from "../../redux/slices/user/userSlice";
+import { toast } from "sonner";
 
 const TaskAudienceMaster = () => {
   const dispatch = useDispatch();
@@ -131,11 +132,11 @@ const TaskAudienceMaster = () => {
         setMasterId(res?.data?.data?._id);
       }
 
-      alert("Audience master saved");
+      toast.success("Audience master saved");
     } catch (err) {
       console.log(err);
 
-      alert(err?.response?.data?.message || "Failed to save");
+      toast.error(err?.response?.data?.message || "Failed to save");
     } finally {
       setLoading(false);
     }

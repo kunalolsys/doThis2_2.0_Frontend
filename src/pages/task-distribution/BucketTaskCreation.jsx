@@ -47,8 +47,13 @@ import api from "../../lib/api.js";
 import { useDispatch, useSelector } from "react-redux";
 import { getUserForDrop } from "../../redux/slices/user/userSlice.js";
 import { fetchRoles } from "../../redux/slices/role/roleSlice.js";
+import { toast } from "sonner";
+import { useLocation, useParams, useSearchParams } from "react-router-dom";
 
 const BucketCreation = () => {
+  const { bucketId } = useParams();
+
+  const isEditMode = !!bucketId;
   const dispatch = useDispatch();
   const { dropdownUsers: users } = useSelector((state) => state.users);
 
@@ -110,7 +115,6 @@ const BucketCreation = () => {
       if (!master) return;
 
       setMasterId(master._id);
-
       setAssignmentMode(master.assignmentMode);
 
       if (master.assignmentMode === "Role") {
@@ -146,6 +150,14 @@ const BucketCreation = () => {
       console.log(err);
     }
   };
+  useEffect(() => {
+    if (!isEditMode) return;
+
+    // wait until master assignment mode loaded
+    if (!assignmentMode) return;
+
+    fetchBucketById();
+  }, [isEditMode, assignmentMode]);
   const filteredMembers = useMemo(() => {
     if (!selectedMemberRole) return [];
 
@@ -158,6 +170,59 @@ const BucketCreation = () => {
       return roleMatch && allowedUser;
     });
   }, [selectedMemberRole, users, masterUsers]);
+  const fetchBucketById = async () => {
+    try {
+      const res = await api.get(`/task-buckets/${bucketId}`);
+      const data = res.data.data;
+
+      setTitle(data.title);
+      setDescription(data.description);
+      setStartDate(data.startDate);
+      setTaskEndDays(data.taskEndDays);
+
+      // ✅ only set assignment values
+      // if current master mode matches bucket mode
+      if (assignmentMode !== data.assignmentMode) {
+        return;
+      }
+
+      // =====================================
+      // ROLE MODE
+      // =====================================
+      if (data.assignmentMode === "Role") {
+        setSelectedRole(
+          typeof data.targetRole === "object"
+            ? data.targetRole?._id
+            : data.targetRole,
+        );
+      }
+
+      // =====================================
+      // USERS MODE
+      // =====================================
+      if (data.assignmentMode === "Users") {
+        const memberIds =
+          data.assignedTargetUsers?.map((u) =>
+            typeof u === "object" ? u._id : u,
+          ) || [];
+
+        setSelectedMembers(memberIds);
+
+        const roleIds = [
+          ...new Set(
+            users
+              .filter((u) => memberIds.includes(u._id))
+              .map((u) => u.role?._id || u.role)
+              .filter(Boolean),
+          ),
+        ];
+
+        // setSelectedMemberRole(roleIds);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
   useEffect(() => {
     // auto select if only one user available
     if (filteredMembers.length === 1) {
@@ -165,7 +230,7 @@ const BucketCreation = () => {
     }
 
     // clear selection if multiple users available
-    if (filteredMembers.length > 1) {
+    if (!isEditMode && filteredMembers.length > 1) {
       setSelectedMembers([]);
     }
   }, [filteredMembers]);
@@ -208,27 +273,27 @@ const BucketCreation = () => {
   const handleCreateTask = async () => {
     try {
       if (!title.trim()) {
-        alert("Task title required");
+        toast.error("Task title required");
         return;
       }
 
       if (!description.trim()) {
-        alert("Description required");
+        toast.error("Description required");
         return;
       }
 
       if (assignmentMode === "Role" && !selectedRole) {
-        alert("Please select role");
+        toast.error("Please select role");
         return;
       }
 
       if (assignmentMode === "Users" && selectedMembers.length === 0) {
-        alert("Please select members");
+        toast.error("Please select members");
         return;
       }
 
       if (!startDate) {
-        alert("Start date required");
+        toast.error("Start date required");
         return;
       }
       // if (isRecurrent) {
@@ -251,7 +316,7 @@ const BucketCreation = () => {
       //   }
       // } else {
       if (!taskEndDays) {
-        alert("Task End Days required");
+        toast.error("Task End Days required");
         return;
       }
       // }
@@ -326,43 +391,53 @@ const BucketCreation = () => {
         }
       }
 
-      const res = await api.post("/task-buckets", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const res = !isEditMode
+        ? await api.post("/task-buckets", formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          })
+        : await api.put(`/task-buckets/${bucketId}`, formData, {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          });
 
-      alert("Task bucket created successfully");
-      setTitle("");
+      toast.success(
+        `Task bucket ${isEditMode ? "update" : "created"} successfully`,
+      );
+      if (!isEditMode) {
+        setTitle("");
 
-      setDescription("");
-      setStartDate(null);
+        setDescription("");
+        setStartDate(null);
 
-      setTaskEndDays("");
+        setTaskEndDays("");
 
-      setChecklist([]);
+        setChecklist([]);
 
-      setChecklistItem("");
+        setChecklistItem("");
 
-      setParentTask("");
+        setParentTask("");
 
-      setXValue("");
+        setXValue("");
 
-      setIsDependent(false);
+        setIsDependent(false);
 
-      setIsRecurrent(false);
+        setIsRecurrent(false);
 
-      setRecurrenceEndDate(null);
+        setRecurrenceEndDate(null);
 
-      setWeeklyRecurrenceDays([]);
+        setWeeklyRecurrenceDays([]);
 
-      setAttachmentFile([]);
+        setAttachmentFile([]);
 
-      setAttachmentFileList([]);
+        setAttachmentFileList([]);
+      }
     } catch (err) {
       console.log(err);
 
-      alert(err?.response?.data?.message || "Failed to create bucket");
+      toast.error(err?.response?.data?.message || "Failed to create bucket");
     } finally {
       setLoading(false);
     }
@@ -383,13 +458,13 @@ const BucketCreation = () => {
 
             <div>
               <h1 className="text-4xl font-bold text-white tracking-tight">
-                Task Creation
+                {isEditMode ? "Edit Task Bucket" : "Create Task Bucket"}
               </h1>
 
               <p className="text-blue-100 mt-2 text-base max-w-3xl leading-relaxed">
-                Create and manage top-level task buckets with role-based
-                allocation, workflow dependencies, recurring schedules,
-                attachments, and execution planning.
+                {isEditMode
+                  ? "Update bucket details, assignment settings, schedules, dependencies, and execution configuration."
+                  : "Create structured task buckets with assignment rules, schedules, dependencies, attachments, and execution workflows."}
               </p>
             </div>
           </div>
@@ -461,7 +536,7 @@ const BucketCreation = () => {
 
                     {/* MEMBERS */}
                     <div className="space-y-2">
-                      <Label>Select Members</Label>
+                      <Label>Select Members</Label><span className="text-red-600">*</span>
 
                       <AntdSelect
                         mode="multiple"
@@ -494,7 +569,7 @@ const BucketCreation = () => {
 
               <CardContent className="p-6 space-y-6 mt-3">
                 <div className="space-y-2">
-                  <Label>Task Title</Label>
+                  <Label>Task Title</Label><span className="text-red-600">*</span>
 
                   <Input
                     value={title}
@@ -505,7 +580,7 @@ const BucketCreation = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Description</Label>
+                  <Label>Description</Label><span className="text-red-600">*</span>
 
                   <Textarea
                     rows={5}
@@ -519,18 +594,22 @@ const BucketCreation = () => {
                 {!isDependent && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div className="space-y-2">
-                      <Label>Start Date</Label>
+                      <Label>Start Date</Label><span className="text-red-600">*</span>
 
                       <DatePicker
                         size="large"
                         className="w-full h-12 rounded-2xl"
                         value={startDate ? dayjs(startDate) : null}
                         onChange={(date) => setStartDate(date)}
+                        disabledDate={(current) => {
+                          const today = dayjs().startOf("day");
+                          return current && current < today;
+                        }}
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Task End Days</Label>
+                      <Label>Task End Days</Label><span className="text-red-600">*</span>
 
                       <Input
                         type="number"
@@ -784,7 +863,7 @@ const BucketCreation = () => {
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm">
+                    {/* <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-500">Recurring</span>
 
                       <Badge
@@ -796,7 +875,7 @@ const BucketCreation = () => {
                       >
                         {isRecurrent ? "Enabled" : "No"}
                       </Badge>
-                    </div>
+                    </div> */}
 
                     {/* <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-500">Dependency</span>
@@ -824,7 +903,13 @@ const BucketCreation = () => {
                   >
                     <Send className="w-5 h-5 mr-2" />
 
-                    {loading ? "Creating Bucket..." : "Create Task Bucket"}
+                    {loading
+                      ? isEditMode
+                        ? "Updating Bucket..."
+                        : "Creating Bucket..."
+                      : isEditMode
+                        ? "Update Task Bucket"
+                        : "Create Task Bucket"}
                   </Button>
                 </div>
               </CardContent>

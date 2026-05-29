@@ -356,10 +356,13 @@ export function TaskBucketListCard({
   onSelectBucket, // (bucket) => void
   onBucketCompleted,
   reportingUsers,
+  setSearch,
+  search,
+  setFilterType,
+  filterType,
+  setSortBy,
+  sortBy,
 }) {
-  const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState("all"); // all | recurring | non-recurring
-  const [sortBy, setSortBy] = useState("date"); // date | title | status
   const [completeModal, setCompleteModal] = useState(false);
 
   const [selectedCompleteBucket, setSelectedCompleteBucket] = useState(null);
@@ -367,34 +370,6 @@ export function TaskBucketListCard({
   const [remark, setRemark] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const filtered = useMemo(() => {
-    let out = [...buckets];
-
-    if (search) {
-      const q = search.toLowerCase();
-      out = out.filter(
-        (b) =>
-          b.title?.toLowerCase().includes(q) ||
-          b.description?.toLowerCase().includes(q) ||
-          b.targetRole?.name?.toLowerCase().includes(q),
-      );
-    }
-
-    if (filterType === "recurring") out = out.filter((b) => b.isRecurrent);
-    if (filterType === "non-recurring") out = out.filter((b) => !b.isRecurrent);
-
-    out.sort((a, b) => {
-      if (sortBy === "title")
-        return (a.title || "").localeCompare(b.title || "");
-      if (sortBy === "status")
-        return (a.distributionStatus || "").localeCompare(
-          b.distributionStatus || "",
-        );
-      return new Date(b.createdAt) - new Date(a.createdAt); // default: newest first
-    });
-
-    return out;
-  }, [buckets, search, filterType, sortBy]);
 
   // Derived stats
   const stats = useMemo(
@@ -511,7 +486,7 @@ export function TaskBucketListCard({
               borderRadius: 20,
             }}
           >
-            {filtered.length}
+            {buckets.length}
           </span>
         </div>
 
@@ -584,9 +559,9 @@ export function TaskBucketListCard({
           >
             <Option value="all">All types</Option>
 
-            <Option value="recurring">Recurring only</Option>
+            <Option value="Pending">Pending</Option>
 
-            <Option value="non-recurring">One-time only</Option>
+            <Option value="Completed">Completed</Option>
           </Select>
 
           {/* SORT */}
@@ -601,11 +576,15 @@ export function TaskBucketListCard({
               borderRadius: 12,
             }}
           >
-            <Option value="date">Newest first</Option>
+            <Option value="newest">Newest First</Option>
 
-            <Option value="title">Title A–Z</Option>
+            <Option value="oldest">Oldest First</Option>
 
-            <Option value="status">By status</Option>
+            <Option value="title_asc">Title A-Z</Option>
+
+            <Option value="title_desc">Title Z-A</Option>
+
+            <Option value="status">Status</Option>
           </Select>
         </div>
       </div>
@@ -614,7 +593,7 @@ export function TaskBucketListCard({
       <div
         style={{ flex: 1, overflowY: "auto", maxHeight: "calc(100vh - 360px)" }}
       >
-        {filtered.length === 0 ? (
+        {buckets.length === 0 ? (
           <div style={{ padding: "52px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 28, marginBottom: 10, opacity: 0.3 }}>
               📭
@@ -629,7 +608,7 @@ export function TaskBucketListCard({
             </div>
           </div>
         ) : (
-          filtered.map((bucket) => (
+          buckets.map((bucket) => (
             <BucketCard
               key={bucket._id}
               bucket={bucket}
@@ -657,9 +636,9 @@ export function TaskBucketListCard({
           }}
         >
           <span style={{ fontSize: 11, color: T.muted2 }}>
-            {filtered.length === buckets.length
+            {buckets.length === buckets.length
               ? `${buckets.length} bucket${buckets.length !== 1 ? "s" : ""} total`
-              : `${filtered.length} of ${buckets.length} shown`}
+              : `${buckets.length} of ${buckets.length} shown`}
           </span>
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <span

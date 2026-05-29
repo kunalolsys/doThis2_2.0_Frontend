@@ -2,7 +2,7 @@ import { Upload, Button, Modal } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { useState } from "react";
 
-const AttachmentUpload = ({ setFiles,fileList,setFileList }) => {
+const AttachmentUpload = ({ setFiles, fileList, setFileList }) => {
   // const [fileList, setFileList] = useState([]);
   const [preview, setPreview] = useState({
     visible: false,

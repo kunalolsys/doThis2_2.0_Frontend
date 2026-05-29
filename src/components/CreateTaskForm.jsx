@@ -841,10 +841,10 @@ const CreateTaskForm = ({
                       // ✅ Valid date
                       setStartDate(selectedDate);
                     }}
-                    // disabledDate={(current) => {
-                    //   const today = dayjs().startOf("day");
-                    //   return current && current < today;
-                    // }} // Disable past dates
+                    disabledDate={(current) => {
+                      const today = dayjs().startOf("day");
+                      return current && current < today;
+                    }} // Disable past dates
                   />
                   {/* <Input
                   type="date"
@@ -859,7 +859,7 @@ const CreateTaskForm = ({
                 <div className="space-y-2">
                   <Label className={isRecurrent ? "text-gray-400" : ""}>
                     How many days Task Ended{" "}
-                    <span className="text-red-500">*</span>
+                    {!isRecurrent && <span className="text-red-500">*</span>}
                   </Label>
                   <Input
                     type="number"

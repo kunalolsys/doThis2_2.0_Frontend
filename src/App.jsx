@@ -58,6 +58,7 @@ import OpenFormResponses from "./pages/fmsEngine/OpenFormResponses";
 import TaskAudienceMaster from "./components/RoleMaster/TargetRoleMaster";
 import BucketCreation from "./pages/task-distribution/BucketTaskCreation";
 import DistributionBuckets from "./pages/task-distribution/BucketTaskDist";
+import BucketListingPage from "./pages/task-distribution/BucketListingPage";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -123,16 +124,24 @@ function App() {
                   element={<TaskDistributionCenter />}
                 />{" "}
                 <Route
-                  path="/delegation/task-buckets"
+                  path="/delegate/task-buckets"
                   element={<BucketCreation />}
                 />{" "}
                 <Route
-                  path="/delegation/audience-master"
+                  path="/delegate/task-buckets/edit/:bucketId"
+                  element={<BucketCreation />}
+                />{" "}
+                <Route
+                  path="/delegate/audience-master"
                   element={<TaskAudienceMaster />}
                 />
                 <Route
                   path="/bucket/my-bucket"
                   element={<DistributionBuckets />}
+                />{" "}
+                <Route
+                  path="/delegate/bucket-view"
+                  element={<BucketListingPage />}
                 />
                 {/* <Route path="/my-day/sr-manager-view" element={<SrManagerView />} />
             <Route path="/my-day/owner-view" element={<OwnerView />} /> */}
