@@ -94,11 +94,11 @@ const Navbar = () => {
         {/* Right Side - Welcome Message and Profile */}
         <div className="flex items-center space-x-4">
           {/* Welcome Message and Profile */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ">
             {/* Notification Badge */}
             <button
               onClick={toggleFullscreen}
-              className="p-2 rounded-md hover:bg-gray-200 transition"
+              className="p-2 rounded-md hover:bg-gray-200 transition  cursor-pointer"
             >
               {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
             </button>{" "}
@@ -109,10 +109,10 @@ const Navbar = () => {
               </p>
             </div>
             {/* Profile Dropdown */}
-            <div className="relative">
+            <div className="relative cursor-pointer">
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               >
                 <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0">
                   {user?.profilePhoto ? (
@@ -141,7 +141,7 @@ const Navbar = () => {
 
               {/* Profile Dropdown Menu */}
               {isProfileOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 cursor-pointer">
                   <div className="p-4 border-b border-gray-200">
                     <p className="font-medium text-gray-900 truncate">
                       {userName}
@@ -164,7 +164,7 @@ const Navbar = () => {
                   <div className="p-2 border-t border-gray-200">
                     <button
                       onClick={handleLogout}
-                      className="flex items-center space-x-2 w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="flex items-center space-x-2 w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                     >
                       <LogOut className="w-4 h-4" />
                       <span>Logout</span>

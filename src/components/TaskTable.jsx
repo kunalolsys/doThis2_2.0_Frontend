@@ -1083,7 +1083,7 @@ const TaskTable = ({
         // ✅ download link
         if (data.errorFile) {
           const apiBaseUrl =
-            import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+            import.meta.env.VITE_API_BASE_URL || "https://backend.v2.dothis2.com/api/v1";
 
           const fullUrl = `${apiBaseUrl}/tasks/download?filePath=${encodeURIComponent(
             data.errorFile,
@@ -1111,7 +1111,7 @@ const TaskTable = ({
         // ✅ even on error return downloadable file
         if (data.errorFile) {
           const apiBaseUrl =
-            import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+            import.meta.env.VITE_API_BASE_URL || "https://backend.v2.dothis2.com/api/v1";
 
           const fullUrl = `${apiBaseUrl}/tasks/download?filePath=${encodeURIComponent(
             data.errorFile,
@@ -1254,7 +1254,7 @@ const TaskTable = ({
 
   const handleDownloadAttachment = (attachmentFile) => {
     const apiBaseUrl =
-      import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1";
+      import.meta.env.VITE_API_BASE_URL || "https://backend.v2.dothis2.com/api/v1";
     const serverBaseUrl = apiBaseUrl.replace("/api/v1", "");
     const attachmentUrl = `${serverBaseUrl}/download/${attachmentFile}`;
     const link = document.createElement("a");

@@ -130,7 +130,9 @@ const EditUser = () => {
       reportingManager: Yup.string().when("role", {
         is: (roleId) => {
           const selectedRole = roles.find((r) => r._id === roleId);
-          return selectedRole?.name !== "Owner"; // required for all except Owner
+          return (
+            selectedRole?.name !== "Owner" && selectedRole?.name !== "Admin"
+          );
         },
         then: (schema) => schema.required("Reporting Manager is required"),
         otherwise: (schema) => schema.notRequired(),
@@ -454,7 +456,11 @@ const EditUser = () => {
               {selectedRole?.name !== "Owner" && (
                 <div className="space-y-2">
                   <Label htmlFor="reportingManager">
-                    Reporting Manager<span className="text-red-500">*</span>
+                    Reporting Manager{" "}
+                    {selectedRole?.name !== "Owner" &&
+                      selectedRole?.name !== "Admin" && (
+                        <span className="text-red-500">*</span>
+                      )}
                   </Label>
                   <AntdSelect
                     showSearch

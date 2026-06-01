@@ -100,7 +100,7 @@ const Sidebar = ({ children }) => {
       fmsEngine: false,
       reports: false,
       setup: false,
-      delgate:false,
+      delgate: false,
       // toggle selected one
       [menu]: !prev[menu],
     }));
@@ -130,8 +130,7 @@ const Sidebar = ({ children }) => {
   const isMyDayDropdownActive = location.pathname.startsWith("/my-day");
   const isFmsEngineDropdownActive = location.pathname.startsWith("/fms-engine");
   const isReportsDropdownActive = location.pathname.startsWith("/reports");
-  const isDelegationDropdownActive =
-    location.pathname.startsWith("/delegate");
+  const isDelegationDropdownActive = location.pathname.startsWith("/delegate");
   const isSetupDropdownActive = location.pathname.startsWith("/setup");
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
@@ -267,14 +266,14 @@ const Sidebar = ({ children }) => {
                   </p>
                 )}
 
-                <div className="h-1 w-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mt-1"></div>
+                <div className="h-1 w-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mt-1 "></div>
               </div>
             </div>
           )}
 
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1.5 rounded-lg bg-white/80 hover:bg-white border border-gray-200/60 
+            className="p-1.5 rounded-lg bg-white/80 hover:bg-white border border-gray-200/60  cursor-pointer
                                  shadow-sm hover:shadow-md transition-all duration-200 
                                  hover:scale-105 backdrop-blur-sm"
           >
@@ -924,7 +923,7 @@ const Sidebar = ({ children }) => {
                         flex items-center w-full rounded-xl px-3 py-2.5 transition-all duration-300 group
                         bg-white/80 text-gray-600 hover:bg-red-50/80 hover:text-red-700
                         border border-gray-200/60 hover:border-red-200/80 hover:shadow-lg
-                        backdrop-blur-sm
+                        backdrop-blur-sm cursor-pointer
                     "
           >
             <div className="relative">
