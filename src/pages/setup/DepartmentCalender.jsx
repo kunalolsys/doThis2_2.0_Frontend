@@ -77,6 +77,8 @@ import {
 import { Input } from "../../components/ui/input";
 import WorkingWeekCheckbox from "../../components/ui/WorkingWeekCheckbox";
 import { useDebounce } from "../../lib/debounce";
+import { Modal } from "antd";
+import { ExclamationCircleOutlined } from "@ant-design/icons";
 
 const initialWeekConfig = {
   monday: true,
@@ -741,37 +743,65 @@ const DepartmentCalender = () => {
     }
   };
 
-  const handleDeleteHoliday = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this holiday?")) {
-      return;
-    }
+  // const handleDeleteHoliday = async (id) => {
+  //   if (!window.confirm("Are you sure you want to delete this holiday?")) {
+  //     return;
+  //   }
 
-    try {
-      await dispatch(deleteHoliday(id)).unwrap();
-      toast.success("Holiday deleted successfully!");
-    } catch (err) {
-      toast.error(err.message || "Failed to delete holiday.");
-    }
+  //   try {
+  //     await dispatch(deleteHoliday(id)).unwrap();
+  //     toast.success("Holiday deleted successfully!");
+  //   } catch (err) {
+  //     toast.error(err.message || "Failed to delete holiday.");
+  //   }
+  // };
+  const handleDeleteHoliday = (id) => {
+    Modal.confirm({
+      title: "Delete Holiday",
+      // icon: <ExclamationCircleOutlined />,
+      content: "Are you sure you want to delete this holiday?",
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      centered: true,
+
+      onOk: async () => {
+        try {
+          await dispatch(deleteHoliday(id)).unwrap();
+          toast.success("Holiday deleted successfully!");
+        } catch (err) {
+          toast.error(err?.message || "Failed to delete holiday.");
+        }
+      },
+    });
   };
+  const handleDeleteDepartment = (id) => {
+    Modal.confirm({
+      title: "Delete Department",
+      content: "Are you sure you want to delete this department?",
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+      centered: true,
 
-  const handleDeleteDepartment = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this department?")) {
-      return;
-    }
+      onOk: async () => {
+        try {
+          await dispatch(deleteDepartment(id)).unwrap();
 
-    try {
-      await dispatch(deleteDepartment(id)).unwrap();
-      await dispatch(
-        fetchDepartments({
-          departmentPage,
-          departmentLimit,
-          departmentSearchTerm: debouncedDepartmentSearchTerm,
-        }),
-      );
-      toast.success("Department deleted successfully!");
-    } catch (err) {
-      toast.error(err || "Failed to delete department.");
-    }
+          await dispatch(
+            fetchDepartments({
+              departmentPage,
+              departmentLimit,
+              departmentSearchTerm: debouncedDepartmentSearchTerm,
+            }),
+          );
+
+          toast.success("Department deleted successfully!");
+        } catch (err) {
+          toast.error(err || "Failed to delete department.");
+        }
+      },
+    });
   };
 
   const handleSaveScheduleHolidayTask = async () => {

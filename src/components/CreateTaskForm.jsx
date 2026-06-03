@@ -57,7 +57,7 @@ const CreateTaskForm = ({
   // Form States
   const [date, setDate] = useState(); // Unused in final form logic, remove?
   const [startDate, setStartDate] = useState();
-  const [taskEndDateOffset, setTaskEndDateOffset] = useState(""); // New state for task end date offset
+  const [taskEndDateOffset, setTaskEndDateOffset] = useState("1"); // New state for task end date offset
   const [isDependent, setIsDependent] = useState(false);
   const [dependentDueDate, setDependentDueDate] = useState(); // Unused, remove?
   const [parentTask, setParentTask] = useState("");
@@ -482,7 +482,7 @@ const CreateTaskForm = ({
 
       setDependentDueDate(null);
 
-      setTaskEndDateOffset("");
+      setTaskEndDateOffset("1");
 
       onTaskCreated();
 

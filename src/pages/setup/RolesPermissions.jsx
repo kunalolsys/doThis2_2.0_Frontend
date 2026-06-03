@@ -51,6 +51,8 @@ import { Label } from "../../components/ui/label";
 import { Checkbox } from "../../components/ui/checkbox";
 import { toast } from "sonner";
 import useModuleAccess from "../../hooks/useModuleAccess";
+import { Modal } from "antd";
+import { ExclamationCircleOutlined } from "@ant-design/icons";
 
 const permissionMap = {
   setup: "Setup",
@@ -175,32 +177,38 @@ const RolesPermissions = () => {
 
   // Handle deleting a role
   const handleDeleteRole = async (roleId) => {
-    try {
-      const roleToDelete = roles.find((r) => r._id === roleId);
+    const roleToDelete = roles.find((r) => r._id === roleId);
 
-      if (roleToDelete?.isSystem) {
-        alert("System roles cannot be deleted.");
-        return;
-      }
-
-      // ✅ confirm before delete
-      const confirmed = window.confirm(
-        `Are you sure you want to delete "${roleToDelete?.name}" role?`,
-      );
-
-      if (!confirmed) return;
-
-      await dispatch(deleteRole(roleId)).unwrap();
-
-      toast.success("Role deleted successfully");
-    } catch (error) {
-      toast.error(error || "Failed to delete.");
+    if (roleToDelete?.isSystem) {
+      Modal.warning({
+        title: "Cannot Delete Role",
+        content: "System roles cannot be deleted.",
+      });
+      return;
     }
+
+    Modal.confirm({
+      title: "Delete Role",
+      icon: <ExclamationCircleOutlined />,
+      content: `Are you sure you want to delete "${roleToDelete?.name}" role?`,
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+
+      onOk: async () => {
+        try {
+          await dispatch(deleteRole(roleId)).unwrap();
+          toast.success("Role deleted successfully");
+        } catch (error) {
+          toast.error(error || "Failed to delete.");
+        }
+      },
+    });
   };
 
   const handleCreateRole = () => {
     if (!newRoleName.trim()) {
-      alert("Role name is required.");
+      toast.error("Role name is required.");
       return;
     }
 

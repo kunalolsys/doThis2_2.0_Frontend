@@ -26,6 +26,7 @@ import dayjs from "dayjs";
 import { Input, Select } from "antd";
 import TaskBucketListCard from "./TaskBucketListCard.jsx";
 import { useDebounce } from "../../lib/debounce.js";
+import { toast } from "sonner";
 
 const { Search } = Input;
 const TaskDistribution = () => {
@@ -129,12 +130,12 @@ const TaskDistribution = () => {
       const selectedUsers = Object.keys(selectedAssignments);
 
       if (!selectedBucket?._id) {
-        alert("Please select bucket");
+        toast.error("Please select bucket");
         return;
       }
 
       if (selectedUsers.length === 0) {
-        alert("Please select users");
+        toast.error("Please select users");
         return;
       }
 
@@ -144,7 +145,7 @@ const TaskDistribution = () => {
         selectedUsers,
       });
 
-      alert("Tasks distributed successfully");
+      toast.success("Tasks distributed successfully");
 
       // refresh current bucket users
       await fetchReportingUsers(selectedBucket._id);
@@ -157,7 +158,7 @@ const TaskDistribution = () => {
     } catch (err) {
       console.log(err);
 
-      alert(err?.response?.data?.message || "Failed to distribute task");
+      toast.error(err?.response?.data?.message || "Failed to distribute task");
     } finally {
       setLoading(false);
     }

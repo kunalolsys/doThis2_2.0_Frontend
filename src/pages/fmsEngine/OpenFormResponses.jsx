@@ -316,14 +316,14 @@ export default function OpenFormResponses() {
               <div className="p-6 flex-1 overflow-y-auto space-y-6 custom-scrollbar">
                 {/* QUICK INFRASTRUCTURE STAT SHEET BAR */}
                 <div className="grid grid-cols-2 gap-4 p-4 rounded-xl border border-neutral-200/80 bg-white shadow-2xs text-xs">
-                  <div>
+                  {/* <div>
                     <span className="text-neutral-400 text-[10px] font-semibold uppercase tracking-wider block">
                       Log Identifier Hash
                     </span>
                     <span className="font-mono text-neutral-700 mt-1 block font-medium">
                       {selectedSubmission._id.toUpperCase().substring(0, 16)}
                     </span>
-                  </div>
+                  </div> */}
                   <div>
                     <span className="text-neutral-400 text-[10px] font-semibold uppercase tracking-wider block">
                       Registry Source Target

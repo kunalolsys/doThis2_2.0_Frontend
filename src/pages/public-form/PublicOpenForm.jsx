@@ -158,7 +158,7 @@ export default function PublicOpenForm() {
         [fieldId]: res.data.url,
       }));
     } catch (err) {
-      alert("File upload failed");
+      toast.error("File upload failed");
     }
   };
 

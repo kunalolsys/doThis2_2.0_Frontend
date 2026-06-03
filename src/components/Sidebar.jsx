@@ -95,17 +95,31 @@ const Sidebar = ({ children }) => {
   };
 
   const toggleDropdown = (menu) => {
+    // If sidebar is collapsed, expand it first
+    if (isCollapsed) {
+      setIsCollapsed(false);
+
+      setOpenDropdowns({
+        myDay: false,
+        fmsEngine: false,
+        reports: false,
+        setup: false,
+        delegate: false,
+        [menu]: true,
+      });
+
+      return;
+    }
+
     setOpenDropdowns((prev) => ({
       myDay: false,
       fmsEngine: false,
       reports: false,
       setup: false,
-      delgate: false,
-      // toggle selected one
+      delegate: false,
       [menu]: !prev[menu],
     }));
   };
-
   const handleLogout = async () => {
     await logoutUser();
     // Clear all relevant cookies
@@ -334,7 +348,7 @@ const Sidebar = ({ children }) => {
                 className={`
                                     relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
                                     rounded-xl px-3 py-2.5 transition-all duration-300 group
-                                    backdrop-blur-sm border
+                                    backdrop-blur-sm border cursor-pointer
                                     ${
                                       isMyDayDropdownActive
                                         ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
@@ -464,7 +478,7 @@ const Sidebar = ({ children }) => {
                     className={`
                                     relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
                                     rounded-xl px-3 py-2.5 transition-all duration-300 group
-                                    backdrop-blur-sm border
+                                    backdrop-blur-sm border cursor-pointer
                                     ${
                                       isFmsEngineDropdownActive
                                         ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
@@ -554,7 +568,7 @@ const Sidebar = ({ children }) => {
                   className={`
                                     relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
                                     rounded-xl px-3 py-2.5 transition-all duration-300 group
-                                    backdrop-blur-sm border
+                                    backdrop-blur-sm border cursor-pointer
                                     ${
                                       isReportsDropdownActive
                                         ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
@@ -706,7 +720,7 @@ const Sidebar = ({ children }) => {
                   className={`
           relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
           rounded-xl px-3 py-2.5 transition-all duration-300 group
-          backdrop-blur-sm border
+          backdrop-blur-sm border cursor-pointer
           ${
             isDelegationDropdownActive
               ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
@@ -800,7 +814,7 @@ const Sidebar = ({ children }) => {
                   className={`
                                     relative flex items-center w-full ${isCollapsed ? "justify-center" : ""} 
                                     rounded-xl px-3 py-2.5 transition-all duration-300 group
-                                    backdrop-blur-sm border
+                                    backdrop-blur-sm border cursor-pointer
                                     ${
                                       isSetupDropdownActive
                                         ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
