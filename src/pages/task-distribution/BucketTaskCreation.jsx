@@ -17,6 +17,13 @@ import {
   Repeat,
   GitBranch,
   Send,
+  UploadCloud,
+  ListChecks,
+  AlertTriangle,
+  CheckCircle,
+  FileText,
+  AlertCircle,
+  Download,
 } from "lucide-react";
 
 import {
@@ -38,7 +45,14 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "../../components/ui/index.jsx";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "../../components/ui/dialog";
 import { Select as AntdSelect, DatePicker } from "antd";
 import dayjs from "dayjs";
 import { cn, frequencyMap } from "../../components/utils.js";
@@ -106,6 +120,11 @@ const BucketCreation = () => {
 
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [masterUsers, setMasterUsers] = useState([]);
+  const [isBucketBulkUploadOpen, setIsBucketBulkUploadOpen] = useState(false);
+
+  const [bucketUploadFile, setBucketUploadFile] = useState(null);
+
+  const [bucketImportResult, setBucketImportResult] = useState(null);
   const fetchMaster = async () => {
     try {
       const res = await api.get("/task-audience-masters");
@@ -442,7 +461,112 @@ const BucketCreation = () => {
       setLoading(false);
     }
   };
-  //**Setup */
+  //**Import */
+  const handleBucketModalChange = (isOpen) => {
+    setIsBucketBulkUploadOpen(isOpen);
+
+    if (!isOpen) {
+      setBucketUploadFile(null);
+      setBucketImportResult(null);
+      setLoading(false);
+    }
+  };
+  const handleBucketFileChange = (e) => {
+    setBucketUploadFile(e.target.files?.[0] || null);
+  };
+
+  const handleBucketImport = async () => {
+    if (!bucketUploadFile) {
+      toast.error("Please select a file");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const formData = new FormData();
+
+      formData.append("file", bucketUploadFile);
+
+      const { data } = await api.post("/task-buckets/import", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setBucketImportResult(data);
+
+      toast.success(data.message || "Buckets imported successfully");
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to import buckets");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleDownloadBucketTemplate = async () => {
+    try {
+      const response = await api.get(
+        "/task-buckets/downloadTemp?type=delegation",
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], {
+        type: response.headers["content-type"],
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "bucket_delegation_template.xlsx";
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error("Failed to download template");
+    }
+  };
+  const handleDownloadBucketErrorFile = async () => {
+    try {
+      if (!bucketImportResult?.errorFile) {
+        return;
+      }
+
+      const response = await api.get(
+        `/uploads/${bucketImportResult.errorFile}`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data]);
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = bucketImportResult.errorFile;
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      toast.error("Failed to download error report");
+    }
+  };
   return (
     <div className="min-h-screen bg-[#f4f7fb] p-6">
       <div className="mx-auto space-y-6">
@@ -474,10 +598,18 @@ const BucketCreation = () => {
           <div className="xl:col-span-3 space-y-6">
             <Card className="rounded-[30px] border-0 shadow-xl">
               <CardHeader className="border-b bg-slate-50 rounded-t-[30px]">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  Assignment Configuration
-                </CardTitle>
+                <CardTitle className="flex items-center gap-2 justify-between">
+                  <div className="items-center flex gap-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    Assignment Configuration
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsBucketBulkUploadOpen(true)}
+                  >
+                    <UploadCloud className="mr-2 h-4 w-4" /> Bulk Upload
+                  </Button>
+                </CardTitle>{" "}
               </CardHeader>
               <CardContent className="p-6 space-y-5">
                 {assignmentMode === "Role" ? (
@@ -756,7 +888,7 @@ const BucketCreation = () => {
               <CardHeader className="border-b bg-slate-50">
                 <CardTitle className="flex items-center gap-2">
                   <Users className="w-5 h-5 text-blue-600" />
-                  Audience Preview
+                  Assignee Preview
                 </CardTitle>
               </CardHeader>
 
@@ -922,6 +1054,196 @@ const BucketCreation = () => {
           </div>
         </div>
       </div>
+      <Dialog
+        open={isBucketBulkUploadOpen}
+        onOpenChange={handleBucketModalChange}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <UploadCloud className="w-6 h-6 text-blue-600" />
+              Bulk Import Buckets
+            </DialogTitle>
+          </DialogHeader>
+
+          {!bucketImportResult ? (
+            <div className="grid grid-cols-1 gap-6 py-4">
+              {/* Instructions */}
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg border">
+                <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                  <ListChecks className="w-5 h-5 text-gray-500" />
+                  Required Columns
+                </h4>
+
+                <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                  <li>
+                    <code className="bg-gray-200 px-1 rounded">Title</code>
+                  </li>
+                  <li>
+                    <code className="bg-gray-200 px-1 rounded">
+                      Description
+                    </code>
+                  </li>
+                  <li>
+                    <code className="bg-gray-200 px-1 rounded">
+                      Assignment Mode
+                    </code>{" "}
+                    (Role / Users)
+                  </li>
+                  <li>
+                    <code className="bg-gray-200 px-1 rounded">Start Date</code>
+                  </li>
+                  <li>
+                    <code className="bg-gray-200 px-1 rounded">
+                      Task End Days
+                    </code>
+                  </li>
+                </ul>
+
+                <div className="rounded-md border bg-blue-50 p-3 text-xs text-blue-700 space-y-1">
+                  <p>
+                    • Assignment Mode must be <b>Role</b> or <b>Users</b>
+                  </p>
+
+                  <p>
+                    • If Assignment Mode is <b>Role</b>, then <b>Target Role</b>{" "}
+                    is required
+                  </p>
+
+                  <p>
+                    • If Assignment Mode is <b>Users</b>, then{" "}
+                    <b>Target User</b> is required
+                  </p>
+
+                  <p>• Target Role must match an existing role in the system</p>
+
+                  <p>
+                    • Target Users can be comma-separated names or email
+                    addresses
+                  </p>
+
+                  <p>
+                    • Date format: <b>DD-MM-YYYY</b>
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  onClick={handleDownloadBucketTemplate}
+                  className="w-full"
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Download Bucket Template
+                </Button>
+              </div>
+
+              {/* Upload Area */}
+              <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg">
+                <label
+                  htmlFor="bucket-file-upload"
+                  className="flex flex-col items-center justify-center w-full cursor-pointer"
+                >
+                  <UploadCloud className="w-12 h-12 text-gray-400 mb-2" />
+
+                  <span className="text-sm font-semibold text-blue-600">
+                    Click to upload
+                  </span>
+
+                  <p className="text-xs text-gray-500 mt-2">
+                    CSV / XLSX files supported
+                  </p>
+
+                  <Input
+                    id="bucket-file-upload"
+                    type="file"
+                    className="hidden"
+                    accept=".csv,.xlsx,.xls"
+                    onChange={handleBucketFileChange}
+                  />
+                </label>
+
+                {bucketUploadFile && (
+                  <div className="mt-3 text-sm text-green-600 font-medium">
+                    Selected: {bucketUploadFile.name}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="py-4 text-center">
+              <h3 className="text-lg font-semibold mb-6">Import Complete</h3>
+
+              <div className="flex justify-center gap-10">
+                <div className="text-green-600">
+                  <CheckCircle className="w-12 h-12 mx-auto mb-2" />
+                  <p className="text-2xl font-bold">
+                    {bucketImportResult.summary?.imported || 0}
+                  </p>
+                  <p>Buckets Imported</p>
+                </div>
+
+                <div className="text-yellow-600">
+                  <AlertTriangle className="w-12 h-12 mx-auto mb-2" />
+                  <p className="text-2xl font-bold">
+                    {bucketImportResult.summary?.skipped || 0}
+                  </p>
+                  <p>Skipped</p>
+                </div>
+
+                <div className="text-red-600">
+                  <AlertCircle className="w-12 h-12 mx-auto mb-2" />
+                  <p className="text-2xl font-bold">
+                    {bucketImportResult.summary?.errors || 0}
+                  </p>
+                  <p>Errors</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {bucketImportResult ? (
+              <>
+                {(bucketImportResult.summary?.errors > 0 ||
+                  bucketImportResult.summary?.skipped > 0) && (
+                  <Button
+                    variant="destructive"
+                    onClick={handleDownloadBucketErrorFile}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Error Report
+                  </Button>
+                )}
+
+                <Button onClick={() => setIsBucketBulkUploadOpen(false)}>
+                  Close
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsBucketBulkUploadOpen(false)}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  onClick={handleBucketImport}
+                  disabled={!bucketUploadFile || loading}
+                >
+                  {loading && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  )}
+
+                  {loading ? "Importing..." : "Import Buckets"}
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

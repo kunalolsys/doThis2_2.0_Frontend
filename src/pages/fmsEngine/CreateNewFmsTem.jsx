@@ -487,8 +487,12 @@ const CreateNewFmsTem = () => {
       removeTask(index);
       toast.success("Task deleted successfully");
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to delete task");
+      console.log(error);
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to delete task",
+      );
     }
   };
   const handleTaskChange = (index, field, value) => {
@@ -828,18 +832,18 @@ const CreateNewFmsTem = () => {
                           Is Dependent?
                         </TableHead>
                         <TableHead className="w-[160px]">Depend On</TableHead>
-                        <TableHead className="w-[140px]">Frequency</TableHead>
-                        <TableHead className="w-[100px]">Value</TableHead>
                         <TableHead className="w-[180px]">
                           Start Time Setting
                         </TableHead>
-                        <TableHead className="w-[140px]">
+                        <TableHead className="w-[140px]">Frequency</TableHead>
+                        <TableHead className="w-[100px]">Value</TableHead>
+                        {/* <TableHead className="w-[140px]">
                           Decision Step?
                         </TableHead>
                         <TableHead className="w-[160px]">
                           If True - Step
                         </TableHead>
-                        <TableHead className="w-[160px]">Else - Step</TableHead>
+                        <TableHead className="w-[160px]">Else - Step</TableHead> */}
                         <TableHead className="w-[140px]">Checklist</TableHead>
                         <TableHead className="w-[140px]">Create Form</TableHead>
                         <TableHead className="w-[100px]">Action</TableHead>
@@ -1007,6 +1011,32 @@ const CreateNewFmsTem = () => {
                               </TableCell>
                               <TableCell>
                                 <Select
+                                  disabled={
+                                    !isEditable || task.isDependent == "no"
+                                  }
+                                  value={task.startTime}
+                                  onValueChange={(v) =>
+                                    handleTaskChange(index, "startTime", v)
+                                  }
+                                  className="w-[80px]"
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {/* <SelectItem value="none">None</SelectItem> */}
+                                    <SelectItem value="none">None</SelectItem>
+                                    <SelectItem value="planned-to-planned">
+                                      Planned-To-Planned
+                                    </SelectItem>
+                                    <SelectItem value="actual-to-planned">
+                                      Actual-To-Planned
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select
                                   disabled={!isEditable}
                                   value={task.frequency}
                                   onValueChange={(v) =>
@@ -1106,33 +1136,8 @@ const CreateNewFmsTem = () => {
                                   }
                                 />
                               </TableCell>
-                              <TableCell>
-                                <Select
-                                  disabled={
-                                    !isEditable || task.isDependent == "no"
-                                  }
-                                  value={task.startTime}
-                                  onValueChange={(v) =>
-                                    handleTaskChange(index, "startTime", v)
-                                  }
-                                  className="w-[80px]"
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {/* <SelectItem value="none">None</SelectItem> */}
-                                    <SelectItem value="none">None</SelectItem>
-                                    <SelectItem value="planned-to-planned">
-                                      Planned-To-Planned
-                                    </SelectItem>
-                                    <SelectItem value="actual-to-planned">
-                                      Actual-To-Planned
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
+
+                              {/* <TableCell>
                                 <Select
                                   disabled={!isEditable}
                                   value={task.decisionStep}
@@ -1181,7 +1186,7 @@ const CreateNewFmsTem = () => {
                                     )
                                   }
                                 />
-                              </TableCell>
+                              </TableCell> */}
                               <TableCell>
                                 <div className="flex items-center">
                                   <Button

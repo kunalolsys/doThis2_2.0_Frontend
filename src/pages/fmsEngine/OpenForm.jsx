@@ -29,8 +29,9 @@ import {
   RefreshCw,
   X,
   Check,
+  Edit,
 } from "lucide-react";
-import { Select } from "antd";
+import { Modal, Select } from "antd";
 
 const { Option } = Select;
 import { fetchTemplates } from "../../redux/slices/fms/fmsSlice";
@@ -841,7 +842,7 @@ export default function OpenFormBuilder() {
   const [loadingTpl, setLoadingTpl] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null); // { msg, type }
-
+  const [editingFormId, setEditingFormId] = useState(null);
   // Form config
   const [config, setConfig] = useState({
     formName: "",
@@ -976,31 +977,61 @@ export default function OpenFormBuilder() {
     }
     try {
       setSaving(true);
-      await api.post("/open-forms", {
-        ...config,
-        fields: fields.map((f, i) => ({ ...f, order: i + 1 })),
-      });
-      showToast("Open form published successfully");
-      setConfig({
-        formName: "",
-        description: "",
-        linkedTemplate: "",
-        allowMultipleSubmissions: true,
-        isActive: true,
-      });
-      setFields([
-        {
-          fieldId: "",
-          label: "Full Name",
-          fieldType: "text",
-          placeholder: "Enter your full name",
-          isRequired: true,
-          options: [],
-          order: 1,
-        },
-      ]);
-      await fetchForms();
-      setTab("forms");
+      if (editingFormId) {
+        await api.put(`/open-forms/${editingFormId}`, {
+          ...config,
+          fields: fields.map((f, i) => ({ ...f, order: i + 1 })),
+        });
+
+        showToast("Form updated successfully");
+        setEditingFormId(null);
+        setConfig({
+          formName: "",
+          description: "",
+          linkedTemplate: "",
+          allowMultipleSubmissions: true,
+          isActive: true,
+        });
+        setFields([
+          {
+            fieldId: "fullName",
+            label: "Full Name",
+            fieldType: "text",
+            placeholder: "Enter your full name",
+            isRequired: true,
+            options: [],
+            order: 1,
+          },
+        ]);
+        await fetchForms();
+        setTab("forms");
+      } else {
+        await api.post("/open-forms", {
+          ...config,
+          fields: fields.map((f, i) => ({ ...f, order: i + 1 })),
+        });
+        showToast("Open form published successfully");
+        setConfig({
+          formName: "",
+          description: "",
+          linkedTemplate: "",
+          allowMultipleSubmissions: true,
+          isActive: true,
+        });
+        setFields([
+          {
+            fieldId: "fullName",
+            label: "Full Name",
+            fieldType: "text",
+            placeholder: "Enter your full name",
+            isRequired: true,
+            options: [],
+            order: 1,
+          },
+        ]);
+        await fetchForms();
+        setTab("forms");
+      }
     } catch (e) {
       showToast(
         e?.response?.data?.message || "Failed to publish form",
@@ -1067,6 +1098,63 @@ export default function OpenFormBuilder() {
     } catch (err) {
       console.error("Copy failed", err);
     }
+  };
+  const handleEditForm = (form) => {
+    setConfig({
+      formName: form.formName,
+      description: form.description || "",
+      linkedTemplate: form.linkedTemplate.id || form.linkedTemplate._id,
+      isActive: form.isActive,
+      allowMultipleSubmissions: form.allowMultipleSubmissions,
+    });
+
+    setFields(form.fields || []);
+
+    setEditingFormId(form._id);
+
+    setTab("builder");
+  };
+  const handleDeleteForm = (id) => {
+    Modal.confirm({
+      title: "Delete Form",
+      content:
+        "Are you sure you want to delete this form? This action cannot be undone.",
+      okText: "Delete",
+      okType: "danger",
+      cancelText: "Cancel",
+
+      async onOk() {
+        try {
+          await api.delete(`/open-forms/${id}`);
+          setConfig({
+            formName: "",
+            description: "",
+            linkedTemplate: "",
+            allowMultipleSubmissions: true,
+            isActive: true,
+          });
+          setFields([
+            {
+              fieldId: "fullName",
+              label: "Full Name",
+              fieldType: "text",
+              placeholder: "Enter your full name",
+              isRequired: true,
+              options: [],
+              order: 1,
+            },
+          ]);
+          setSelectedForm(null);
+          setEditingFormId(null);
+          setForms((prev) => prev.filter((form) => form._id !== id));
+          await fetchForms();
+
+          showToast("Form deleted successfully");
+        } catch (error) {
+          toast.error(error.response?.data?.message || "Failed to delete form");
+        }
+      },
+    });
   };
   /* ── Render ─────────────────────────────────────────────────────────────── */
   return (
@@ -1394,7 +1482,15 @@ export default function OpenFormBuilder() {
                       </>
                     ) : (
                       <>
-                        <Zap size={15} /> Publish Open Form
+                        {editingFormId ? (
+                          <>
+                            <Edit size={15} /> Update Form
+                          </>
+                        ) : (
+                          <>
+                            <Zap size={15} /> Publish Open Form
+                          </>
+                        )}
                       </>
                     )}
                   </Btn>
@@ -1642,7 +1738,11 @@ export default function OpenFormBuilder() {
                   boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
                 }}
               >
-                <Eye size={32} color={T.muted2} style={{ marginBottom: 12 }} />
+                <Eye
+                  size={32}
+                  color={T.muted2}
+                  style={{ marginBottom: 12, margin: "auto" }}
+                />
                 <h3
                   style={{
                     fontSize: 16,
@@ -1802,7 +1902,7 @@ export default function OpenFormBuilder() {
                 <FileText
                   size={36}
                   color={T.muted2}
-                  style={{ marginBottom: 14, opacity: 0.4 }}
+                  style={{ marginBottom: 14, opacity: 0.4, margin: "auto" }}
                 />
                 <h3
                   style={{
@@ -2016,6 +2116,16 @@ export default function OpenFormBuilder() {
                             size="sm"
                             style={{ flex: 1, justifyContent: "center" }}
                             onClick={() => {
+                              handleEditForm(form);
+                            }}
+                          >
+                            <Edit size={13} /> Edit
+                          </Btn>
+
+                          <Btn
+                            size="sm"
+                            style={{ flex: 1, justifyContent: "center" }}
+                            onClick={() => {
                               setSelectedForm(form);
                               setSubmissionData({});
                               setTab("preview");
@@ -2035,6 +2145,15 @@ export default function OpenFormBuilder() {
                             }}
                           >
                             <ExternalLink size={13} />
+                          </Btn>
+                          <Btn
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                              handleDeleteForm(form._id);
+                            }}
+                          >
+                            <Trash2 size={13} />
                           </Btn>
                         </div>
                       </div>
