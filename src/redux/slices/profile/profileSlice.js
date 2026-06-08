@@ -4,8 +4,6 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import Cookies from "js-cookie";
 import api from "../../../lib/api";
 
-const userId = Cookies.get("userId");
-
 const initialState = {
   user: null,
   loading: false,
@@ -17,6 +15,8 @@ export const getProfile = createAsyncThunk(
   "profile/getProfile",
   async (_, thunkAPI) => {
     try {
+      const userId = Cookies.get("userId");
+
       const res = await api.get(`/users/${userId}`);
 
       return res.data?.data || res.data;
@@ -33,6 +33,7 @@ export const updateProfile = createAsyncThunk(
   async ({ form, profileFile, currentUser }, thunkAPI) => {
     try {
       const fd = new FormData();
+      const userId = Cookies.get("userId");
 
       // only changed name
       if (form.name?.trim() !== currentUser?.name) {
@@ -50,9 +51,9 @@ export const updateProfile = createAsyncThunk(
       }
 
       // nothing changed
-    //   if ([...fd.entries()].length === 0) {
-    //     return thunkAPI.rejectWithValue("No changes detected");
-    //   }
+      //   if ([...fd.entries()].length === 0) {
+      //     return thunkAPI.rejectWithValue("No changes detected");
+      //   }
 
       const res = await api.put(`/users/${userId}`, fd, {
         headers: {

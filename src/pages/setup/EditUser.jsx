@@ -85,6 +85,7 @@ const EditUser = () => {
       name: "",
       email: "",
       phone: "",
+      telegramUserName: "",
       role: "",
       department: [],
       reportingManager: "",
@@ -95,15 +96,21 @@ const EditUser = () => {
       secondaryEmail: "",
       mainEmailType: "email",
       isEmailNotificationEnabled: true,
+      telegramNotificationsEnabled: true,
     },
 
     validationSchema: Yup.object({
       name: Yup.string().required("Name is required"),
-
-      email: Yup.string().email("Invalid email").required("Email is required"),
+      // telegramUserName: Yup.string().required("Chat id is required"),
+      // email: Yup.string().email("Invalid email").required("Email is required"),
       secondaryEmail: Yup.string().when("mainEmailType", {
         is: "secondaryEmail", // 👉 condition
         then: (schema) => schema.required("Secondary email is required"),
+        otherwise: (schema) => schema.notRequired(),
+      }),
+      telegramUserName: Yup.string().when("telegramNotificationsEnabled", {
+        is: true, // 👉 condition
+        then: (schema) => schema.required("Chat id is required"),
         otherwise: (schema) => schema.notRequired(),
       }),
       phone: Yup.string()
@@ -138,9 +145,15 @@ const EditUser = () => {
         otherwise: (schema) => schema.notRequired(),
       }),
       assignShift: Yup.string().required("Assign Shift is required"),
-      // password: Yup.string()
-      //   .min(6, "Minimum 6 characters")
-      //   .required("Password is required"),
+      password: Yup.string().min(6, "Password must be at least 6 characters"),
+      confirmPassword: Yup.string().when("password", {
+        is: (password) => password && password.length > 0,
+        then: (schema) =>
+          schema
+            .required("Confirm Password is required")
+            .oneOf([Yup.ref("password")], "Passwords must match"),
+        otherwise: (schema) => schema.notRequired(),
+      }),
     }),
 
     onSubmit: async (values) => {
@@ -180,7 +193,9 @@ const EditUser = () => {
         secondaryEmail: currentUser.secondaryEmail || "",
         mainEmailType: currentUser.mainEmailType || "",
         isEmailNotificationEnabled: currentUser.isEmailNotificationEnabled,
+        telegramNotificationsEnabled: currentUser.telegramNotificationsEnabled,
         phone: currentUser.phone || "",
+        telegramUserName: currentUser.telegramUserName || "",
         employeeCode:
           currentUser.employeeCode && currentUser.employeeCode !== "null"
             ? currentUser.employeeCode
@@ -194,13 +209,13 @@ const EditUser = () => {
           Array.isArray(currentUser.department) &&
           currentUser.department.length > 0
             ? currentUser.department?.map((dept) => dept._id)
-            : [] || [],
+            : [],
       });
       // setSelectedDepts(
       //   new Set(currentUser.department?.map((dept) => dept._id) || []),
       // );
     }
-  }, [currentUser]);
+  }, [currentUser, id]);
 
   // const handleInputChange = (e) => {
   //   const { id, value } = e.target;
@@ -289,7 +304,8 @@ const EditUser = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">
-                Email Address<span className="text-red-500">*</span>
+                Email Address
+                {/* <span className="text-red-500">*</span> */}
               </Label>
               <Input
                 id="email"
@@ -359,16 +375,35 @@ const EditUser = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer font-semibold">
-                Email Notification
-              </label>
-              <Switch
-                checked={formik.values.isEmailNotificationEnabled}
-                onCheckedChange={(value) =>
-                  formik.setFieldValue("isEmailNotificationEnabled", value)
-                }
-                className="data-[state=checked]:bg-blue-600"
-              />
+              <div className="flex items-center justify-between px-2">
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                    Email Notification
+                  </label>
+                  <Switch
+                    checked={formik.values.isEmailNotificationEnabled}
+                    onCheckedChange={(value) =>
+                      formik.setFieldValue("isEmailNotificationEnabled", value)
+                    }
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                    Telegram Notification
+                  </label>
+                  <Switch
+                    checked={formik.values.telegramNotificationsEnabled}
+                    onCheckedChange={(value) =>
+                      formik.setFieldValue(
+                        "telegramNotificationsEnabled",
+                        value,
+                      )
+                    }
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                </div>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">
@@ -387,6 +422,31 @@ const EditUser = () => {
                   {formik.errors.phone}
                 </span>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="telegramUserName">
+                Telegram username
+                {formik.values.telegramNotificationsEnabled == false && (
+                  <span className="font-light text-sm">(optional)</span>
+                )}
+                {formik.values.telegramNotificationsEnabled == true && (
+                  <span className="text-red-500">*</span>
+                )}
+              </Label>
+              <Input
+                id="telegramUserName"
+                type="text"
+                placeholder="Enter username"
+                value={formik.values.telegramUserName}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
+              {formik.touched.telegramUserName &&
+                formik.errors.telegramUserName && (
+                  <span className="text-red-500 text-xs">
+                    {formik.errors.telegramUserName}
+                  </span>
+                )}
             </div>
           </div>
 
@@ -643,7 +703,12 @@ const EditUser = () => {
               )} */}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">
+                  Confirm Password{" "}
+                  {formik.values.password && (
+                    <span className="text-red-500">*</span>
+                  )}
+                </Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -651,6 +716,12 @@ const EditUser = () => {
                   value={formik.values.confirmPassword}
                   onChange={formik.handleChange}
                 />
+                {formik.touched.confirmPassword &&
+                  formik.errors.confirmPassword && (
+                    <span className="text-red-500 text-xs">
+                      {formik.errors.confirmPassword}
+                    </span>
+                  )}
               </div>
             </div>
           </div>

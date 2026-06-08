@@ -59,9 +59,11 @@ import { Button } from "../../components/ui/button";
 import dayjs from "dayjs";
 import axios from "axios";
 import api from "../../lib/api";
+import { useNavigate } from "react-router-dom";
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { tasks, loading: tasksLoading } = useSelector((state) => state.tasks);
   const { users } = useSelector((state) => state.users);
   const { departments } = useSelector((state) => state.departments);
@@ -70,6 +72,7 @@ const AdminDashboard = () => {
   const { currentUser } = useSelector((state) => state.users);
   const isAdmin =
     currentUser?.role?.name === "Admin" || currentUser?.role?.name === "Owner";
+  const redirectPath = isAdmin ? "/my-day/view" : "/my-day/mytasks";
   // const displayTasks = isAdmin ? tasks : myTasks;
   const [userCount, setUserCount] = useState(0);
   const [fmsCounts, setFmsCounts] = useState({
@@ -213,6 +216,7 @@ const AdminDashboard = () => {
   }, []);
   const role = Cookies.get("role") || "";
   const isSuper = role === "Super";
+  const isAdminRole = role === "Admin";
   const isModuleEnabled = (moduleKey) => {
     // ✅ Super user can access all modules
     if (isSuper) return true;
@@ -233,6 +237,11 @@ const AdminDashboard = () => {
     fmsOn ? "top-fms" : null,
     "top-managers",
   ].filter(Boolean);
+
+  const overduePercentage =
+    dynamicStats.totalTasks > 0
+      ? (dynamicStats.overdueTasks / dynamicStats.totalTasks) * 100
+      : 0;
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       {/* ── Page header ──────────────────────────────────────────────────── */}
@@ -249,8 +258,8 @@ const AdminDashboard = () => {
       </div>
 
       {/* Alert row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div className="rounded-lg p-4 bg-amber-50 border border-amber-200">
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-4">
+        {/* <div className="rounded-lg p-4 bg-amber-50 border border-amber-200">
           <div className="flex gap-3 items-center">
             <div className="p-2 bg-amber-100 rounded-md">
               <Zap className="text-amber-600" size={20} />
@@ -265,9 +274,18 @@ const AdminDashboard = () => {
           <div className="mt-1 w-full bg-amber-200 rounded-full h-1">
             <div className="bg-amber-500 h-1 rounded-full w-0" />
           </div>
-        </div>
+        </div> */}
 
-        <div className="rounded-lg p-4 bg-red-50 border border-red-200">
+        <div
+          className="rounded-lg p-4 bg-red-50 border border-red-200 cursor-pointer"
+          onClick={() =>
+            navigate(redirectPath, {
+              state: {
+                source: "overdue",
+              },
+            })
+          }
+        >
           <div className="flex gap-3 items-center">
             <div className="p-2 bg-red-100 rounded-md">
               <TriangleAlert className="text-red-600" size={20} />
@@ -282,7 +300,10 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className="mt-1 w-full bg-red-200 rounded-full h-1">
-            <div className="bg-red-500 h-1 rounded-full w-2/3" />
+            <div
+              className="bg-red-500 h-1 rounded-full"
+              style={{ width: `${Math.min(overduePercentage, 100)}%` }}
+            />
           </div>
         </div>
       </div>
@@ -290,7 +311,7 @@ const AdminDashboard = () => {
       {/* Stats row — always 4 cols on large screens */}
       <div
         className={`grid grid-cols-1 md:grid-cols-2 ${
-          fmsOn ? "lg:grid-cols-5" : "lg:grid-cols-4"
+          fmsOn && isAdminRole ? "lg:grid-cols-5" : "lg:grid-cols-4"
         } gap-4`}
       >
         {" "}
@@ -299,31 +320,40 @@ const AdminDashboard = () => {
           value={dynamicStats.totalTasks}
           icon={ClipboardList}
           color="blue"
+          path={redirectPath}
+          source="total"
         />
         <StatCard
           title="Completed Tasks"
           value={dynamicStats.completedTasks}
           icon={CheckCircle}
           color="green"
+          path={redirectPath}
+          source="completed"
         />
         <StatCard
           title="Pending Tasks"
           value={dynamicStats.pendingTasks}
           icon={Clock}
           color="yellow"
+          path={redirectPath}
+          source="pending"
         />
         <StatCard
           title="Today's Tasks"
           value={dynamicStats.todaysTasks}
           icon={CalendarCheck2}
           color="purple"
+          path={redirectPath}
         />
-        {fmsOn && (
+        {fmsOn && isAdminRole && (
           <StatCard
             title="Ongoing FMS"
             value={fmsCounts.ongoing}
             icon={Settings}
             color="yellow"
+            path={"/fms-engine/upcoming"}
+            source="ongoing"
           />
         )}
       </div>

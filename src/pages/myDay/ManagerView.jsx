@@ -8,7 +8,7 @@ import {
 } from "../../redux/slices/myTask/myTaskSlice.js";
 import api from "../../lib/api";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Upload,
   FileText,
@@ -655,6 +655,8 @@ const ManagerView = () => {
   const { isConnected, socket, events } = useSocket();
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const source = location.state?.source;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilterStatus, setSelectedFilterStatus] = useState("all");
@@ -664,6 +666,10 @@ const ManagerView = () => {
   const [selectedAssignor, setSelectedAssignor] = useState("all");
   const [activeTab, setActiveTab] = useState("today");
   const [selectedStatFilter, setSelectedStatFilter] = useState(null);
+  useEffect(() => {
+    if (!source) return;
+    setSelectedStatFilter(source);
+  }, [source]);
   const [localCurrentPage, setLocalCurrentPage] = useState(1);
   const [localItemsPerPage, setLocalItemsPerPage] = useState(10);
   const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
@@ -724,7 +730,6 @@ const ManagerView = () => {
       setRefreshTaskAfterReopen((prev) => !prev);
 
       fetchTasksForDashboard();
-
     } catch (error) {
       console.log(error);
 
@@ -970,21 +975,21 @@ const ManagerView = () => {
     );
   }
 
-  if (!hasAccess) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <Card className="p-8 shadow-lg text-center">
-          <CardTitle className="text-red-600 mb-4">Access Denied</CardTitle>
-          <CardDescription>
-            You do not have permission to view this page.
-          </CardDescription>
-          <Button onClick={() => navigate("/")} className="mt-4">
-            Go to Home
-          </Button>
-        </Card>
-      </div>
-    );
-  }
+  // if (!hasAccess) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen bg-gray-100">
+  //       <Card className="p-8 shadow-lg text-center">
+  //         <CardTitle className="text-red-600 mb-4">Access Denied</CardTitle>
+  //         <CardDescription>
+  //           You do not have permission to view this page.
+  //         </CardDescription>
+  //         <Button onClick={() => navigate("/")} className="mt-4">
+  //           Go to Home
+  //         </Button>
+  //       </Card>
+  //     </div>
+  //   );
+  // }
 
   // --- Handlers ---
   const handleTabChange = (value) => {

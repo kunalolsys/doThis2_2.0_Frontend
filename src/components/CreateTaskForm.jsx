@@ -1017,10 +1017,16 @@ const CreateTaskForm = ({
                     X Value <span className="text-red-500">*</span>
                   </Label>
                   <Input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
                     value={xValue}
-                    onChange={(e) => setXValue(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "");
+
+                      if (value === "" || Number(value) > 0) {
+                        setXValue(value);
+                      }
+                    }}
                     placeholder="Enter value"
                     className="bg-white"
                   />
@@ -1031,12 +1037,18 @@ const CreateTaskForm = ({
                     <span className="text-red-500">*</span>
                   </Label>
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={taskEndDateOffset}
-                    onChange={(e) => setTaskEndDateOffset(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "");
+
+                      if (value === "" || Number(value) >= 1) {
+                        setTaskEndDateOffset(value);
+                      }
+                    }}
                     placeholder="E.g., 1 for same day, 2 for next day"
                     className="hover:shadow-md transition-all duration-200 bg-white"
-                    min="1"
                   />
                 </div>
               </div>

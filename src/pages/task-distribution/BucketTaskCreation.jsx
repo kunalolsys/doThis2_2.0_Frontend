@@ -536,7 +536,8 @@ const BucketCreation = () => {
 
                     {/* MEMBERS */}
                     <div className="space-y-2">
-                      <Label>Select Members</Label><span className="text-red-600">*</span>
+                      <Label>Select Members</Label>
+                      <span className="text-red-600">*</span>
 
                       <AntdSelect
                         mode="multiple"
@@ -569,7 +570,8 @@ const BucketCreation = () => {
 
               <CardContent className="p-6 space-y-6 mt-3">
                 <div className="space-y-2">
-                  <Label>Task Title</Label><span className="text-red-600">*</span>
+                  <Label>Task Title</Label>
+                  <span className="text-red-600">*</span>
 
                   <Input
                     value={title}
@@ -580,7 +582,8 @@ const BucketCreation = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Description</Label><span className="text-red-600">*</span>
+                  <Label>Description</Label>
+                  <span className="text-red-600">*</span>
 
                   <Textarea
                     rows={5}
@@ -594,7 +597,8 @@ const BucketCreation = () => {
                 {!isDependent && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div className="space-y-2">
-                      <Label>Start Date</Label><span className="text-red-600">*</span>
+                      <Label>Start Date</Label>
+                      <span className="text-red-600">*</span>
 
                       <DatePicker
                         size="large"
@@ -609,17 +613,18 @@ const BucketCreation = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>Task End Days</Label><span className="text-red-600">*</span>
+                      <Label>Task End Days</Label>
+                      <span className="text-red-600">*</span>
 
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         min={0}
                         value={taskEndDays}
                         onChange={(e) => {
-                          const value = e.target.value;
+                          const value = e.target.value.replace(/\D/g, "");
 
-                          // prevent negative values
-                          if (Number(value) >= 0 || value === "") {
+                          if (value === "" || Number(value) >= 1) {
                             setTaskEndDays(value);
                           }
                         }}

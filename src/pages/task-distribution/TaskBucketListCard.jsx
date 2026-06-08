@@ -205,9 +205,13 @@ const BucketCard = ({
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               marginBottom: 2,
+              alignItems: "center",
             }}
           >
-            {bucket.title}
+            {bucket.title}{" "}
+            <Pill color={T.blue} bg={T.accentL} border={T.accentB}>
+              {bucket.bucketId}
+            </Pill>{" "}
           </div>
 
           <div

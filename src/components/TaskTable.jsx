@@ -531,8 +531,8 @@ const TaskTable = ({
     if (!editTitle.trim()) return toast.error("Title is required");
     if (!editDescription.trim()) return toast.error("Description is required");
     // Temporary loading state for this specific action
-    const localSetLoading = (val) => console.log("Edit loading state:", val); // Placeholder
-    localSetLoading(true);
+    // const localSetLoading = (val) => console.log("Edit loading state:", val); // Placeholder
+    // localSetLoading(true);
     try {
       // If there's an attachment, use FormData (Multer will parse it).
       // Otherwise send a JSON body to avoid multipart parsing edge-cases.
@@ -544,9 +544,12 @@ const TaskTable = ({
         formData.append("description", editDescription);
         if (editAssignedTo) formData.append("assignedTo", editAssignedTo);
 
-        if (editStartDate)
-          formData.append("startDate", format(editStartDate, "yyyy-MM-dd"));
-
+        if (editStartDate) {
+          formData.append(
+            "startDate",
+            dayjs(editStartDate).format("YYYY-MM-DD"),
+          );
+        }
         if (editingTask.taskType === "RecurringTask" || editingTask.frequency) {
           formData.append("isRecurrent", "true");
           formData.append(
@@ -606,8 +609,9 @@ const TaskTable = ({
         };
         if (editAssignedTo) payload.assignedTo = editAssignedTo;
         if (taskEndDateOffset) payload.taskEndDays = taskEndDateOffset;
-        if (editStartDate) payload.startDate = editStartDate;
-
+        if (editStartDate) {
+          payload.startDate = dayjs(editStartDate).format("YYYY-MM-DD");
+        }
         if (editingTask.taskType === "RecurringTask" || editingTask.frequency) {
           payload.isRecurrent = true;
           payload.frequency =
@@ -644,7 +648,7 @@ const TaskTable = ({
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to update task");
     } finally {
-      localSetLoading(false);
+      // localSetLoading(false);
     }
   };
   //**Global commit */
@@ -1083,7 +1087,8 @@ const TaskTable = ({
         // ✅ download link
         if (data.errorFile) {
           const apiBaseUrl =
-            import.meta.env.VITE_API_BASE_URL || "https://backend.v2.dothis2.com/api/v1";
+            import.meta.env.VITE_API_BASE_URL ||
+            "https://backend.v2.dothis2.com/api/v1";
 
           const fullUrl = `${apiBaseUrl}/tasks/download?filePath=${encodeURIComponent(
             data.errorFile,
@@ -1111,7 +1116,8 @@ const TaskTable = ({
         // ✅ even on error return downloadable file
         if (data.errorFile) {
           const apiBaseUrl =
-            import.meta.env.VITE_API_BASE_URL || "https://backend.v2.dothis2.com/api/v1";
+            import.meta.env.VITE_API_BASE_URL ||
+            "https://backend.v2.dothis2.com/api/v1";
 
           const fullUrl = `${apiBaseUrl}/tasks/download?filePath=${encodeURIComponent(
             data.errorFile,
@@ -1254,7 +1260,8 @@ const TaskTable = ({
 
   const handleDownloadAttachment = (attachmentFile) => {
     const apiBaseUrl =
-      import.meta.env.VITE_API_BASE_URL || "https://backend.v2.dothis2.com/api/v1";
+      import.meta.env.VITE_API_BASE_URL ||
+      "https://backend.v2.dothis2.com/api/v1";
     const serverBaseUrl = apiBaseUrl.replace("/api/v1", "");
     const attachmentUrl = `${serverBaseUrl}/download/${attachmentFile}`;
     const link = document.createElement("a");
@@ -1706,6 +1713,7 @@ const TaskTable = ({
       },
     });
   };
+
   return (
     <Card className="m-4 shadow-xl bg-white/80 border-0 group">
       <CardHeader className="border-b border-gray-200/50">
@@ -2052,14 +2060,22 @@ const TaskTable = ({
                             ?.visible && (
                             <TableCell className="whitespace-nowrap">
                               {task.startDate
-                                ? formatDate(task.startDate)
+                                ? format(
+                                    new Date(task.startDate),
+                                    "dd MMM yyyy, hh:mm a",
+                                  )
                                 : "-"}
                             </TableCell>
                           )}
                           {columns.find((c) => c.key === "dueDate")
                             ?.visible && (
                             <TableCell className="whitespace-nowrap">
-                              {task.dueDate ? formatDate(task.dueDate) : "-"}
+                              {task.dueDate
+                                ? format(
+                                    new Date(task.dueDate),
+                                    "dd MMM yyyy, hh:mm a",
+                                  )
+                                : "-"}
                             </TableCell>
                           )}
                           {columns.find((c) => c.key === "delay")?.visible && (
@@ -2219,8 +2235,11 @@ const TaskTable = ({
                                     <Button
                                       variant="ghost"
                                       disabled={
-                                        currentUser?.role?.name !== "Owner" &&
-                                        currentUser?.role?.name !== "Admin"
+                                        currentUser &&
+                                        currentUser.role &&
+                                        !["Owner", "Admin"].includes(
+                                          currentUser.role.name,
+                                        )
                                       }
                                       size="icon"
                                       className="h-8 w-8 text-red-600 hover:bg-red-50"
@@ -2397,14 +2416,22 @@ const TaskTable = ({
                               ?.visible && (
                               <TableCell className="whitespace-nowrap">
                                 {task.startDate
-                                  ? formatDate(task.startDate)
+                                  ? format(
+                                      new Date(task.startDate),
+                                      "dd MMM yyyy, hh:mm a",
+                                    )
                                   : "-"}
                               </TableCell>
                             )}
                             {recurringColumns.find((c) => c.key === "endDate")
                               ?.visible && (
                               <TableCell className="whitespace-nowrap">
-                                {task.endDate ? formatDate(task.endDate) : "-"}
+                                {task.endDate
+                                  ? format(
+                                      new Date(task.endDate),
+                                      "dd MMM yyyy, hh:mm a",
+                                    )
+                                  : "-"}
                               </TableCell>
                             )}
                             {recurringColumns.find(
@@ -2603,8 +2630,11 @@ const TaskTable = ({
                                         variant="ghost"
                                         size="icon"
                                         disabled={
-                                          currentUser?.role?.name !== "Owner" &&
-                                          currentUser?.role?.name !== "Admin"
+                                          currentUser &&
+                                          currentUser.role &&
+                                          !["Owner", "Admin"].includes(
+                                            currentUser.role.name,
+                                          )
                                         }
                                         className="h-8 w-8 text-red-600 hover:bg-red-50"
                                         onClick={() => handleDeleteClick(task)}
@@ -2730,7 +2760,6 @@ const TaskTable = ({
                           const selected = dayjs(date);
                           const selectedDate = selected.format("YYYY-MM-DD");
 
-                          // 🟡 1. Check Holiday
                           const holiday = holidays.find(
                             (h) =>
                               dayjs(h.date).format("YYYY-MM-DD") ===
@@ -2745,9 +2774,7 @@ const TaskTable = ({
                             return;
                           }
 
-                          // 🟡 2. Check Working Day
                           const dayName = selected.format("dddd").toLowerCase();
-                          // e.g. "monday"
 
                           if (!workingWeeks?.[dayName]) {
                             toast.error(

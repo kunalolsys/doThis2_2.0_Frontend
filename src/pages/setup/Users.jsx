@@ -582,7 +582,7 @@ const Users = () => {
                 {/* <TableHead>Sr. No.</TableHead> */}
                 <TableHead>EMPLOYEE CODE</TableHead>
                 <TableHead>NAME</TableHead>
-                <TableHead>EMAIL</TableHead>
+                <TableHead>PHONE</TableHead>
                 <TableHead>DEPARTMENT(S)</TableHead>
                 <TableHead>REPORTING MANAGER</TableHead>
                 <TableHead>PRIMARY ROLE</TableHead>
@@ -606,7 +606,7 @@ const Users = () => {
                         "-"}
                     </TableCell>
                     <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.phone}</TableCell>
                     <TableCell>
                       {user.department?.map((d) => d.name).join(", ")}
                     </TableCell>

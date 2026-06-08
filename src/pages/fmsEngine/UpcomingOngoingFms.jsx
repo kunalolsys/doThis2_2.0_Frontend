@@ -49,7 +49,7 @@ import { formatDate, formatLabel } from "../../lib/utilFunctions";
 import { cn } from "../../lib/utils";
 import { useDebounce } from "../../lib/debounce";
 import DataPagination from "../../components/ui/commonPagination";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Modal, Input as AntdInput } from "antd";
 const { TextArea } = AntdInput;
 
@@ -161,14 +161,20 @@ const FmsTableActions = ({ id, handleChangeAction, fms }) => (
 // --- Main Component ---
 const UpcomingOngoingFms = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const source = location.state?.source;
+
   const [searchTerm, setSearchTerm] = React.useState("");
   const debounceSearch = useDebounce(searchTerm);
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [activeTab, setActiveTab] = useState("upcoming");
-
   const [FMS, setFMS] = useState([]);
+   useEffect(() => {
+    if (!source) return;
+    setActiveTab(source);
+  }, [source]);
   const fetchFMS = async (search, activeTab, page, limit) => {
     try {
       const payload = { search, status: activeTab, page, limit };

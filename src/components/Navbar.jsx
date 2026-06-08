@@ -9,6 +9,7 @@ import {
   Menu,
   Maximize,
   Minimize,
+  Clock3,
 } from "lucide-react";
 import Cookies from "js-cookie";
 import { Link, useNavigate } from "react-router-dom";
@@ -71,6 +72,36 @@ const Navbar = () => {
     Manager: "bg-green-100 text-green-700",
     Member: "bg-gray-100 text-gray-700",
   };
+  const formatTime12Hour = (time) => {
+    if (!time) return "";
+
+    const [hours, minutes] = time.split(":");
+
+    return new Date(0, 0, 0, hours, minutes).toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  };
+  const isWithinShift = (startTime, endTime) => {
+    const now = new Date();
+
+    const [startH, startM] = startTime.split(":").map(Number);
+    const [endH, endM] = endTime.split(":").map(Number);
+
+    const start = new Date();
+    start.setHours(startH, startM, 0, 0);
+
+    const end = new Date();
+    end.setHours(endH, endM, 0, 0);
+
+    return now >= start && now <= end;
+  };
+
+  const shiftActive = user?.assignShift
+    ? isWithinShift(user.assignShift.startTime, user.assignShift.endTime)
+    : false;
+
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-2 shadow-sm sticky top-0 z-30">
       <div className="flex items-center justify-between">
@@ -88,6 +119,33 @@ const Navbar = () => {
             >
               👤 {role || "No Role"}
             </span>
+          )}
+          {user && (
+            <div className="flex items-center gap-2">
+              <span
+                className={`relative flex h-3 w-3 ${
+                  shiftActive ? "text-green-500" : "text-red-500"
+                }`}
+              >
+                <span
+                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                    shiftActive ? "bg-green-400" : "bg-red-400"
+                  }`}
+                />
+                <span
+                  className={`relative inline-flex rounded-full h-3 w-3 ${
+                    shiftActive ? "bg-green-500" : "bg-red-500"
+                  }`}
+                />
+              </span>
+
+              <span className="font-medium">{user.assignShift.name}</span>
+
+              <span className="text-gray-500">
+                {formatTime12Hour(user.assignShift.startTime)} -{" "}
+                {formatTime12Hour(user.assignShift.endTime)}
+              </span>
+            </div>
           )}
         </div>
 

@@ -67,6 +67,7 @@ const AddUser = () => {
     name: "",
     email: "",
     phone: "",
+    telegramUserName: "",
     role: "",
     reportingManager: "",
     assignShift: "",
@@ -79,6 +80,7 @@ const AddUser = () => {
       name: "",
       email: "",
       phone: "",
+      telegramUserName: "",
       role: "",
       department: [],
       reportingManager: "",
@@ -89,15 +91,21 @@ const AddUser = () => {
       secondaryEmail: "",
       mainEmailType: "email",
       isEmailNotificationEnabled: true,
+      telegramNotificationsEnabled: true,
     },
 
     validationSchema: Yup.object({
       name: Yup.string().required("Name is required"),
 
-      email: Yup.string().email("Invalid email").required("Email is required"),
+      // telegramUserName: Yup.string().required("Chat id is required"),
       secondaryEmail: Yup.string().when("mainEmailType", {
         is: "secondaryEmail", // 👉 condition
         then: (schema) => schema.required("Secondary email is required"),
+        otherwise: (schema) => schema.notRequired(),
+      }),
+      telegramUserName: Yup.string().when("telegramNotificationsEnabled", {
+        is: true, // 👉 condition
+        then: (schema) => schema.required("Chat id is required"),
         otherwise: (schema) => schema.notRequired(),
       }),
       phone: Yup.string()
@@ -135,6 +143,10 @@ const AddUser = () => {
       password: Yup.string()
         .min(6, "Minimum 6 characters")
         .required("Password is required"),
+
+      confirmPassword: Yup.string()
+        .required("Confirm Password is required")
+        .oneOf([Yup.ref("password")], "Passwords must match"),
     }),
 
     onSubmit: async (values) => {
@@ -273,7 +285,8 @@ const AddUser = () => {
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">
-                Email Address<span className="text-red-500">*</span>
+                Email Address
+                {/* <span className="text-red-500">*</span> */}
               </Label>
               <Input
                 id="email"
@@ -343,16 +356,35 @@ const AddUser = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer font-semibold">
-                Email Notification
-              </label>
-              <Switch
-                checked={formik.values.isEmailNotificationEnabled}
-                onCheckedChange={(value) =>
-                  formik.setFieldValue("isEmailNotificationEnabled", value)
-                }
-                className="data-[state=checked]:bg-blue-600"
-              />
+              <div className="flex items-center justify-between px-2">
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                    Email Notification
+                  </label>
+                  <Switch
+                    checked={formik.values.isEmailNotificationEnabled}
+                    onCheckedChange={(value) =>
+                      formik.setFieldValue("isEmailNotificationEnabled", value)
+                    }
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer font-semibold">
+                    Telegram Notification
+                  </label>
+                  <Switch
+                    checked={formik.values.telegramNotificationsEnabled}
+                    onCheckedChange={(value) =>
+                      formik.setFieldValue(
+                        "telegramNotificationsEnabled",
+                        value,
+                      )
+                    }
+                    className="data-[state=checked]:bg-blue-600"
+                  />
+                </div>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">
@@ -371,6 +403,31 @@ const AddUser = () => {
                   {formik.errors.phone}
                 </span>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="telegramUserName">
+                Telegram username
+                {formik.values.telegramNotificationsEnabled == false && (
+                  <span className="font-light text-sm">(optional)</span>
+                )}
+                {formik.values.telegramNotificationsEnabled == true && (
+                  <span className="text-red-500">*</span>
+                )}
+              </Label>
+              <Input
+                id="telegramUserName"
+                type="text"
+                placeholder="Enter username"
+                value={formik.values.telegramUserName}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+              />
+              {formik.touched.telegramUserName &&
+                formik.errors.telegramUserName && (
+                  <span className="text-red-500 text-xs">
+                    {formik.errors.telegramUserName}
+                  </span>
+                )}
             </div>
           </div>
           {/* --- Row 3 --- */}
@@ -622,7 +679,9 @@ const AddUser = () => {
                 )}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">
+                  Confirm Password<span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -630,12 +689,22 @@ const AddUser = () => {
                   value={formik.values.confirmPassword}
                   onChange={formik.handleChange}
                 />
+                {formik.touched.confirmPassword &&
+                  formik.errors.confirmPassword && (
+                    <span className="text-red-500 text-xs">
+                      {formik.errors.confirmPassword}
+                    </span>
+                  )}
               </div>
             </div>
           </div>
         </CardContent>
         <CardFooter className="flex justify-end gap-2 border-t pt-6">
-          <Button type="button" variant="outline">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate("/setup/users")}
+          >
             Cancel
           </Button>
           <Button type="submit" disabled={userStatus === "loading"}>

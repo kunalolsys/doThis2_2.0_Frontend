@@ -53,6 +53,7 @@ import {
 // Import the new sub-components
 import CreateTaskForm from "../components/CreateTaskForm";
 import TaskTable from "../components/TaskTable";
+import { fetchUsers } from "../redux/slices/user/userSlice.js";
 
 const TaskPage = () => {
   // Global States (shared or needed by wrapper)
@@ -117,6 +118,7 @@ const TaskPage = () => {
   // --- 2. Fetch Tasks via Redux ---
   useEffect(() => {
     dispatch(fetchTasks());
+    dispatch(fetchUsers());
   }, [dispatch]);
 
   // --- Debounce Search Term ---

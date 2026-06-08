@@ -84,7 +84,7 @@ import * as XLSX from "xlsx";
 import { formatDate, formatLabel } from "../../lib/utilFunctions";
 import ViewLink from "./attachmentViewer";
 import { useDebounce } from "../../lib/debounce";
-import { DatePicker, Popover } from "antd";
+import { DatePicker, Popover, Modal as AntdModal, Descriptions } from "antd";
 const { RangePicker } = DatePicker;
 import * as Yup from "yup";
 import { useFormik } from "formik";
@@ -92,6 +92,7 @@ import RaiseQueryModal from "../../components/RaiseQueryModal";
 import QueryDrawer from "../../components/QueryDrawer";
 import TaskChat from "../../components/TaskChat";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
+import { FileTextOutlined } from "@ant-design/icons";
 
 // --- Helper: Status Badge ---
 const getStatusBadge = (status) => {
@@ -188,7 +189,10 @@ const TaskActions = ({
   setUnreadMap,
   assignedByUser,
   assignedToUser,
+  setSubmissionModalOpen,
+  setSelectedSubmissionTask,
 }) => {
+  console.log(task);
   const isCompleted = task.status === "Completed";
   const upComing = task.status == "Upcoming";
   const onHold = task.status == "Onhold";
@@ -238,6 +242,25 @@ const TaskActions = ({
         </TooltipTrigger>
         <TooltipContent>
           <p>View Form</p>
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            disabled={!isFms || !task?.submissionData}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
+            onClick={() => {
+              setSelectedSubmissionTask(task);
+              setSubmissionModalOpen(true);
+            }}
+          >
+            <FileTextOutlined />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>View Submission's</p>
         </TooltipContent>
       </Tooltip>
       {/* Complete/Reopen Button */}
@@ -826,6 +849,8 @@ const TodayTasksTable = ({
   setRaiseQueryModalOpen,
   unreadMap,
   setUnreadMap,
+  setSubmissionModalOpen,
+  setSelectedSubmissionTask,
 }) => {
   const combinedTasks = [...(tasks || []), ...(upcomingRecurringTasks || [])];
   return (
@@ -1096,6 +1121,8 @@ const TodayTasksTable = ({
                           setUnreadMap={setUnreadMap}
                           assignedByUser={assignedByUser}
                           assignedToUser={assignedToUser}
+                          setSubmissionModalOpen={setSubmissionModalOpen}
+                          setSelectedSubmissionTask={setSelectedSubmissionTask}
                         />
                       </div>
                     </TableCell>
@@ -1125,7 +1152,7 @@ const MyTask = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const currentUser = useSelector((state) => state.users.currentUser);
-
+  const source = location.state?.source;
   // 🔴 AUTH CHECK
   // only save if NOT login page
   if (location.pathname !== "/") {
@@ -1201,8 +1228,13 @@ const MyTask = () => {
       socket.off("unread-count");
     };
   }, [socket]);
+
   // NOTE: selectedStatFilter can be: 'total', 'overdue', 'completed', 'dueToday', or null (no stat filter)
   const [selectedStatFilter, setSelectedStatFilter] = useState(null);
+  useEffect(() => {
+    if (!source) return;
+    setSelectedStatFilter(source);
+  }, [source]);
 
   // Filter States
   const [searchTerm, setSearchTerm] = useState("");
@@ -1241,6 +1273,8 @@ const MyTask = () => {
   const [raiseQueryModalOpen, setRaiseQueryModalOpen] = useState(false);
   const [refreshTaskAfterReopen, setRefreshTaskAfterReopen] = useState(false);
   const [refreshUI, setRefreshUI] = useState(false);
+  const [submissionModalOpen, setSubmissionModalOpen] = useState(false);
+  const [selectedSubmissionTask, setSelectedSubmissionTask] = useState(null);
   // --- Initial Data Load ---
   useEffect(() => {
     if (currentUser?._id) {
@@ -1337,7 +1371,7 @@ const MyTask = () => {
     debouncedSearch,
     dateRange,
     refetch,
-    refreshUI
+    refreshUI,
   ]);
 
   // --- Export Function ---
@@ -1530,33 +1564,37 @@ const MyTask = () => {
   };
 
   const handleToggleComplete = async (task) => {
-    const newStatus = task.status === "Completed" ? false : true;
-    const isFMSTask = task.taskType == "FmsInstanceTask";
+    const newStatus = task.status !== "Completed";
+    const isFMSTask = task.taskType === "FmsInstanceTask";
+
     try {
-      try {
-        if (!isFMSTask) {
-          await api.patch(`/tasks/${task._id || task.id}/completion`, {
-            completeStatus: newStatus,
-          });
-          setRefreshUI(true);
-        } else {
-          await dispatch(
-            completeFMSTask({
-              id: task.fmsInstanceId,
-              taskId: task.TaskId,
-              status: newStatus,
-            }),
-          ).unwrap();
-          setRefreshUI(true);
-        }
-        toast.success(newStatus ? "Task Completed" : "Task Reopened");
-      } catch (error) {
-        toast.error(error.response.data.message || "Failed");
+      if (!isFMSTask) {
+        await api.patch(`/tasks/${task._id || task.id}/completion`, {
+          completeStatus: newStatus,
+        });
+      } else {
+        await dispatch(
+          completeFMSTask({
+            id: task.fmsInstanceId,
+            taskId: task.TaskId,
+            status: newStatus,
+          }),
+        ).unwrap();
       }
-    } catch (err) {
+
+      setRefreshUI(true);
+      toast.success(newStatus ? "Task Completed" : "Task Reopened");
+    } catch (error) {
+      console.log("COMPLETE TASK ERROR:", error);
+
       toast.error(
-        err || err?.response?.data?.message || "Failed to update status",
+        error ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "Failed to update status",
       );
+    } finally {
+      setRefreshUI(false);
     }
   };
 
@@ -1878,6 +1916,8 @@ const MyTask = () => {
                         setRaiseQueryModalOpen={setRaiseQueryModalOpen}
                         unreadMap={unreadMap}
                         setUnreadMap={setUnreadMap}
+                        setSubmissionModalOpen={setSubmissionModalOpen}
+                        setSelectedSubmissionTask={setSelectedSubmissionTask}
                       />
                     </TooltipProvider>
 
@@ -2056,6 +2096,32 @@ const MyTask = () => {
           setRefreshTaskAfterReopen={setRefreshTaskAfterReopen}
         />
       )}
+      <AntdModal
+        title="Form Submission Details"
+        open={submissionModalOpen}
+        onCancel={() => {
+          setSubmissionModalOpen(false);
+          setSelectedSubmissionTask(null);
+        }}
+        footer={null}
+        width={800}
+      >
+        {selectedSubmissionTask?.submissionData && (
+          <Descriptions bordered column={1} size="small">
+            {Object.entries(selectedSubmissionTask.submissionData).map(
+              ([key, value]) => (
+                <Descriptions.Item key={key} label={formatLabel(key)}>
+                  {typeof value === "boolean"
+                    ? value
+                      ? "Yes"
+                      : "No"
+                    : String(value)}
+                </Descriptions.Item>
+              ),
+            )}
+          </Descriptions>
+        )}
+      </AntdModal>
     </div>
   );
 };

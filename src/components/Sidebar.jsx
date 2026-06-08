@@ -54,6 +54,8 @@ const Sidebar = ({ children }) => {
   const dispatch = useDispatch();
   const { currentUser } = useSelector((state) => state.users);
   const { company, loading, saving } = useSelector((state) => state.company);
+  const role = Cookies.get("role") || "";
+  const isSuper = role === "Super";
   useEffect(() => {
     const userFromCookie = {
       _id: Cookies.get("userId"),
@@ -177,7 +179,7 @@ const Sidebar = ({ children }) => {
   ];
 
   const managerViewLabel = getManagerViewLabel(user);
-  if (managerViewLabel) {
+  if (managerViewLabel && !isSuper) {
     myDayLinks.push({
       path: "/my-day/view",
       label: managerViewLabel,
@@ -213,8 +215,6 @@ const Sidebar = ({ children }) => {
     };
     fetch_();
   }, []);
-  const role = Cookies.get("role") || "";
-  const isSuper = role === "Super";
   const isModuleEnabled = (moduleKey) => {
     // ✅ Super user can access all modules
     if (isSuper) return true;
