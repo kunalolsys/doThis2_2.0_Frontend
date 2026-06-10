@@ -908,7 +908,7 @@ const CreateNewFmsTem = () => {
                               </TableCell>
                               <TableCell>
                                 <Select
-                                  disabled={!isEditable}
+                                  disabled={!isEditable || !task.dept}
                                   value={task.doer}
                                   onValueChange={(v) =>
                                     handleTaskChange(index, "doer", v)
@@ -1080,12 +1080,12 @@ const CreateNewFmsTem = () => {
                                         <SelectItem value="Task+X in hours">
                                           Task+X in hours
                                         </SelectItem>
-                                        <SelectItem value="Task-X in days">
+                                        {/* <SelectItem value="Task-X in days">
                                           Task-X in days
                                         </SelectItem>
                                         <SelectItem value="Task-X in hours">
                                           Task-X in hours
-                                        </SelectItem>
+                                        </SelectItem> */}
                                       </>
                                     )}
                                     {formik.values.fmsDuration ==
