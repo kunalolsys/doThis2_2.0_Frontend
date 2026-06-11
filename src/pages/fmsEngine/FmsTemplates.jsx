@@ -9,6 +9,7 @@ import {
   ListTodo,
   User,
   Building2,
+  Eye,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -525,12 +526,21 @@ const FmsTemplates = () => {
                         </TableCell>
                         <TableCell className="p-3">
                           <div className="flex gap-2">
-                            <Link
-                              to={`/fms-engine/edit-template/${template._id}`}
-                              className="h-8 w-8 bg-blue-100 text-blue-600 rounded-md flex items-center justify-center hover:bg-blue-200 transition-colors duration-200"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Link>
+                            {template.isLaunched ? (
+                              <Link
+                                to={`/fms-engine/edit-template/${template._id}`}
+                                className="h-8 w-8 bg-green-100 text-green-600 rounded-md flex items-center justify-center hover:bg-green-200 transition-colors duration-200"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            ) : (
+                              <Link
+                                to={`/fms-engine/edit-template/${template._id}`}
+                                className="h-8 w-8 bg-blue-100 text-blue-600 rounded-md flex items-center justify-center hover:bg-blue-200 transition-colors duration-200"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Link>
+                            )}
                             <Popconfirm
                               title="Delete Template"
                               description="Are you sure you want to delete this template?"

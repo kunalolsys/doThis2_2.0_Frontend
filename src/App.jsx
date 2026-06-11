@@ -59,6 +59,8 @@ import TaskAudienceMaster from "./components/RoleMaster/TargetRoleMaster";
 import BucketCreation from "./pages/task-distribution/BucketTaskCreation";
 import DistributionBuckets from "./pages/task-distribution/BucketTaskDist";
 import BucketListingPage from "./pages/task-distribution/BucketListingPage";
+import BucketReqOpenForm from "./pages/public-form/BucketReqOpenForm";
+import PendingBucketRequest from "./pages/task-distribution/PendingBucketReques";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -99,6 +101,7 @@ function App() {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/page-restrict-found" element={<AccessDenied />} />
               <Route path="/open-form/:slug" element={<PublicOpenForm />} />
+              <Route path="/open-bucket-form" element={<BucketReqOpenForm />} />
               <Route element={<ProtectedLayout />}>
                 {/* dashboard routes - assuming all logged-in users can see this */}
                 <Route path="/dashboard" element={<AdminDashboard />} />
@@ -127,6 +130,10 @@ function App() {
                   path="/delegate/task-buckets"
                   element={<BucketCreation />}
                 />{" "}
+                <Route
+                  path="/delegate/pending-buckets"
+                  element={<PendingBucketRequest />}
+                />
                 <Route
                   path="/delegate/task-buckets/edit/:bucketId"
                   element={<BucketCreation />}

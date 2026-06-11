@@ -23,7 +23,12 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../components/ui/index";
 import { Input, Select, Modal, Popconfirm } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 
@@ -431,6 +436,9 @@ export default function BucketListingPage() {
               </TableHead> */}
               <TableHead className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                 Created By
+              </TableHead>{" "}
+              <TableHead className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                Assigned To
               </TableHead>
               <TableHead className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                 Created At
@@ -476,23 +484,18 @@ export default function BucketListingPage() {
                   className="hover:bg-slate-50 transition-colors"
                 >
                   {/* BUCKET ID */}
-
                   <TableCell className="pl-6 py-4">
                     <span className="text-sm text-slate-700 font-medium">
                       {bucket.bucketId || "-"}
                     </span>
                   </TableCell>
-
                   {/* BUCKET NAME */}
-
                   <TableCell>
                     <div className="text-sm font-medium text-slate-800">
                       {bucket.title}
                     </div>
                   </TableCell>
-
                   {/* DESCRIPTION */}
-
                   <TableCell>
                     <div className="max-w-[260px]">
                       <p className="text-sm text-slate-600 line-clamp-2">
@@ -500,9 +503,7 @@ export default function BucketListingPage() {
                       </p>
                     </div>
                   </TableCell>
-
                   {/* ASSIGNED TARGET */}
-
                   {/* <TableCell>
                     {bucket.assignmentMode === "Role" ? (
                       <div>
@@ -533,9 +534,7 @@ export default function BucketListingPage() {
                       </div>
                     )}
                   </TableCell> */}
-
                   {/* CREATED BY */}
-
                   <TableCell>
                     <div>
                       <div className="text-sm font-medium text-slate-700">
@@ -546,10 +545,47 @@ export default function BucketListingPage() {
                         {bucket.createdBy?.email || "-"}
                       </div>
                     </div>
+                  </TableCell>{" "}
+                  <TableCell>
+                    <div className="flex flex-wrap items-center gap-1">
+                      {bucket.targetUsers?.slice(0, 3).map((user) => (
+                        <span
+                          key={user._id}
+                          className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full"
+                        >
+                          {user.name}
+                        </span>
+                      ))}
+
+                      {bucket.targetUsers?.length > 3 && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded-full cursor-pointer hover:bg-slate-200">
+                                +{bucket.targetUsers.length - 3} more
+                              </span>
+                            </TooltipTrigger>
+
+                            <TooltipContent side="top" className="max-w-xs p-3">
+                              <div className="space-y-2">
+                                {bucket.targetUsers.slice(3).map((user) => (
+                                  <div key={user._id}>
+                                    <div className="font-medium">
+                                      {user.name}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {user.email}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </div>
                   </TableCell>
-
                   {/* CREATED AT */}
-
                   <TableCell>
                     <div className="text-sm text-slate-700">
                       {new Date(bucket.createdAt).toLocaleDateString("en-IN", {
@@ -566,9 +602,7 @@ export default function BucketListingPage() {
                       })}
                     </div>
                   </TableCell>
-
                   {/* STATUS */}
-
                   <TableCell>
                     <div
                       className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-medium"

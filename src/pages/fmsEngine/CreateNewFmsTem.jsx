@@ -128,6 +128,7 @@ const CreateNewFmsTem = () => {
   const [doers, setDoers] = useState([]);
   const [managers, setManagers] = useState([]);
   const [srManagers, setSrManagers] = useState([]);
+  const [filteredUser, setFilteredUser] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [newRowIndex, setNewRowIndex] = useState(null);
@@ -144,7 +145,12 @@ const CreateNewFmsTem = () => {
         const managers = users.filter((u) => u.role?.name === "Manager");
 
         const srManagers = users.filter((u) => u.role?.name === "Sr. Manager");
+        const filteredUsers = users.filter((u) =>
+          ["Member", "Manager", "Sr. Manager"].includes(u.role?.name),
+        );
 
+        // single state
+        setFilteredUser(filteredUsers);
         // ✅ SET STATE
         setDoers(doers);
         setManagers(managers);
@@ -918,7 +924,7 @@ const CreateNewFmsTem = () => {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {doers
+                                    {filteredUser
                                       .filter((u) =>
                                         task.dept
                                           ? u.department?.some(

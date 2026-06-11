@@ -38,6 +38,7 @@ import {
   Briefcase,
   Send,
   GitBranch,
+  Clock,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { setCurrentUser } from "../redux/slices/user/userSlice";
@@ -764,6 +765,11 @@ const Sidebar = ({ children }) => {
                         path: "/delegate/task-buckets",
                         label: "Task Buckets",
                         icon: Briefcase,
+                      },
+                      {
+                        path: "/delegate/pending-buckets",
+                        label: "Pending Buckets Request",
+                        icon: Clock,
                       },
                       {
                         path: "/delegate/bucket-view",
