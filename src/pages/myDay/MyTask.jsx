@@ -1564,6 +1564,7 @@ const MyTask = () => {
   };
 
   const handleToggleComplete = async (task) => {
+    setRefreshUI(true);
     const newStatus = task.status !== "Completed";
     const isFMSTask = task.taskType === "FmsInstanceTask";
 
@@ -1582,7 +1583,6 @@ const MyTask = () => {
         ).unwrap();
       }
 
-      setRefreshUI(true);
       toast.success(newStatus ? "Task Completed" : "Task Reopened");
     } catch (error) {
       console.log("COMPLETE TASK ERROR:", error);
