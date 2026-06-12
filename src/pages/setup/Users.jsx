@@ -580,14 +580,16 @@ const Users = () => {
             <TableHeader>
               <TableRow>
                 {/* <TableHead>Sr. No.</TableHead> */}
-                <TableHead>EMPLOYEE CODE</TableHead>
-                <TableHead>NAME</TableHead>
-                <TableHead>PHONE</TableHead>
-                <TableHead>DEPARTMENT(S)</TableHead>
-                <TableHead>REPORTING MANAGER</TableHead>
-                <TableHead>PRIMARY ROLE</TableHead>
-                <TableHead>SHIFTS</TableHead>
-                <TableHead>ACTIONS</TableHead>
+                <TableHead>Employee Code</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Department(s)</TableHead>
+                <TableHead>Reporting Manager</TableHead>
+                <TableHead>Primary Role</TableHead>
+                <TableHead>Shifts</TableHead>
+                <TableHead>Telegram Notification</TableHead>
+                <TableHead>Telegram Chat ID</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -613,6 +615,20 @@ const Users = () => {
                     <TableCell>{user.reportingManager?.name || ""}</TableCell>
                     <TableCell>{user.role?.name}</TableCell>
                     <TableCell>{user.assignShift?.name}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                          user.telegramNotificationsEnabled
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {user.telegramNotificationsEnabled
+                          ? "Enabled"
+                          : "Disabled"}
+                      </span>
+                    </TableCell>{" "}
+                    <TableCell>{user.telegramChatId || "-"}</TableCell>
                     <TableCell className="flex gap-1">
                       <Link to={`/setup/edit-user/${user._id}`}>
                         <Button

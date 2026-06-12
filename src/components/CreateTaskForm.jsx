@@ -943,24 +943,29 @@ const CreateTaskForm = ({
                       </div>
                       <div className="">
                         {filteredParentTasks.length > 0 ? (
-                          filteredParentTasks.map((t) => (
-                            <SelectItem
-                              key={t._id || t.id}
-                              value={t._id || t.id}
-                            >
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-sm">
-                                  {t.TaskId} - {t.title}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  Due:{" "}
-                                  {t.dueDate
-                                    ? format(new Date(t.dueDate), "dd-MM-yyyy")
-                                    : "N/A"}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))
+                          filteredParentTasks
+                            .filter((item) => item.status !== "Completed")
+                            .map((t) => (
+                              <SelectItem
+                                key={t._id || t.id}
+                                value={t._id || t.id}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-semibold text-sm">
+                                    {t.TaskId} - {t.title}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    Due:{" "}
+                                    {t.dueDate
+                                      ? format(
+                                          new Date(t.dueDate),
+                                          "dd-MM-yyyy",
+                                        )
+                                      : "N/A"}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))
                         ) : (
                           <div className="p-4 text-sm text-center text-gray-500">
                             No tasks found.
@@ -1031,7 +1036,7 @@ const CreateTaskForm = ({
                     className="bg-white"
                   />
                 </div>
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label>
                     How many days Task Ended{" "}
                     <span className="text-red-500">*</span>
@@ -1050,7 +1055,7 @@ const CreateTaskForm = ({
                     placeholder="E.g., 1 for same day, 2 for next day"
                     className="hover:shadow-md transition-all duration-200 bg-white"
                   />
-                </div>
+                </div> */}
               </div>
             )}
 
