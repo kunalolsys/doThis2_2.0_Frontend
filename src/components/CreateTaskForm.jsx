@@ -70,7 +70,7 @@ const CreateTaskForm = ({
   const [recurrenceFrequency, setRecurrenceFrequency] = useState("daily");
   const [recurrenceEndDate, setRecurrenceEndDate] = useState();
   const [weeklyRecurrenceDays, setWeeklyRecurrenceDays] = useState([]);
-
+  const [weeklyTwiceRecurrenceDay, setWeeklyTwiceRecurrenceDay] = useState("");
   // Checklist State
   const [checklist, setChecklist] = useState([]);
   const [checklistItem, setChecklistItem] = useState("");
@@ -395,7 +395,9 @@ const CreateTaskForm = ({
           ) {
             formData.append("weekDays", JSON.stringify(weeklyRecurrenceDays));
           }
-
+          if (recurrenceFrequency === "twice_weekly") {
+            formData.append("weekStartDay", weeklyTwiceRecurrenceDay);
+          }
           if (recurrenceEndDate) {
             formData.append("recurrenceEndDate", recurrenceEndDate);
           }
@@ -1104,6 +1106,9 @@ const CreateTaskForm = ({
                       <SelectContent>
                         <SelectItem value="daily">Daily</SelectItem>
                         <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="twice_weekly">
+                          Twice in a week
+                        </SelectItem>
                         <SelectItem value="monthly">Monthly</SelectItem>
                         <SelectItem value="quarterly">Quarterly</SelectItem>
                         <SelectItem value="fortnightly">Fortnightly</SelectItem>
@@ -1198,6 +1203,49 @@ const CreateTaskForm = ({
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+                  {recurrenceFrequency === "twice_weekly" && (
+                    <div className="md:col-span-2 space-y-2">
+                      <Label>Select Day of the Week</Label>
+
+                      <RadioGroup
+                        value={weeklyTwiceRecurrenceDay}
+                        onValueChange={(value) => {
+                          if (!workingWeeks?.[value]) {
+                            toast.error(
+                              `${value.charAt(0).toUpperCase() + value.slice(1)} is not a working day`,
+                            );
+                            return;
+                          }
+
+                          setWeeklyTwiceRecurrenceDay(value);
+                        }}
+                        className="flex flex-wrap gap-4 pt-2"
+                      >
+                        {[
+                          "Sunday",
+                          "Monday",
+                          "Tuesday",
+                          "Wednesday",
+                          "Thursday",
+                          "Friday",
+                          "Saturday",
+                        ].map((day) => (
+                          <div key={day} className="flex items-center gap-2">
+                            <RadioGroupItem
+                              value={day.toLowerCase()}
+                              id={`day-${day}`}
+                            />
+                            <Label
+                              htmlFor={`day-${day}`}
+                              className="font-normal cursor-pointer"
+                            >
+                              {day}
+                            </Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
                     </div>
                   )}
                 </div>

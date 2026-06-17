@@ -1070,8 +1070,8 @@ const ManagerView = () => {
         <TableHead>Assigned To</TableHead>
         <TableHead>Type</TableHead>
         <TableHead>Attachment</TableHead>
-        <TableHead>Start Date</TableHead>
-        <TableHead>Due Date</TableHead>
+        <TableHead>Start Date & Time</TableHead>{" "}
+        <TableHead>Due Date & Time</TableHead>
         <TableHead>Delay</TableHead>
         <TableHead>Status</TableHead>
         {/* Keeping Actions for functionality, though not in the strict list */}

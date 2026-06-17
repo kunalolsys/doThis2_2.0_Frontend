@@ -394,7 +394,8 @@ const FmsLaunch = () => {
                     <CheckCircle2 className="h-4 w-4 text-blue-600" />
                     Included Tasks Preview
                   </h4>
-                  <ul className="space-y-3">
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {" "}
                     {Array.isArray(tasks) && tasks.length > 0 ? (
                       tasks.map((task, index) => (
                         <li
@@ -402,28 +403,51 @@ const FmsLaunch = () => {
                           className="flex items-start gap-4 p-3 rounded-lg border bg-white shadow-sm hover:shadow-md transition"
                         >
                           {/* Task ID Badge */}
-                          <div className="flex flex-col items-center justify-center min-w-[70px]">
-                            <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
-                              {task.taskId}
-                            </span>
-                          </div>
-
-                          {/* Content */}
                           <div className="flex-1">
                             <p className="text-sm font-medium text-gray-800 leading-snug">
                               {task.description}
                             </p>
 
                             {/* Extra Info Row */}
-                            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
-                              <span className="flex items-center gap-1">
+                            <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-gray-500">
+                              <span>
                                 🏢 {task.departmentOfAssignToUser?.name}
                               </span>
-                              <span className="flex items-center gap-1">
-                                👤 {task.assignedTo?.name}
-                              </span>
+
+                              <span>👤 {task.assignedTo?.name}</span>
+
+                              {task.taskDependent && (
+                                <span className="px-2 py-0.5 rounded bg-orange-100 text-orange-700">
+                                  Depends on: {task.taskDependent}
+                                </span>
+                              )}
+
+                              {task.startTimeSetting && (
+                                <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                                  {task.startTimeSetting ===
+                                  "planned-to-planned"
+                                    ? "Planned → Planned"
+                                    : task.startTimeSetting ===
+                                        "actual-to-planned"
+                                      ? "Actual → Planned"
+                                      : task.startTimeSetting ===
+                                          "actual-to-actual"
+                                        ? "Actual → Actual"
+                                        : task.startTimeSetting}
+                                </span>
+                              )}
                               <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-600">
                                 {task.frequency}
+                              </span>
+
+                              <span
+                                className={`px-2 py-0.5 rounded ${
+                                  task.isDependent
+                                    ? "bg-red-100 text-red-700"
+                                    : "bg-green-100 text-green-700"
+                                }`}
+                              >
+                                {task.isDependent ? "Dependent" : "Independent"}
                               </span>
                             </div>
                           </div>
@@ -436,7 +460,7 @@ const FmsLaunch = () => {
                 </div>
 
                 {/* --- Submit Button --- */}
-                <div className="pt-4">
+                <div className="sticky bottom-0 bg-white pt-4 pb-4 border-t z-10">
                   <Button
                     type="submit"
                     disabled={loading}

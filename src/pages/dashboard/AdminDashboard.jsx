@@ -60,6 +60,7 @@ import dayjs from "dayjs";
 import axios from "axios";
 import api from "../../lib/api";
 import { useNavigate } from "react-router-dom";
+import { formatDate } from "../../lib/utilFunctions";
 
 const AdminDashboard = () => {
   const dispatch = useDispatch();
@@ -467,7 +468,7 @@ const AdminDashboard = () => {
                         {/* Right */}
                         <div className="text-right shrink-0">
                           <p className="text-xs font-medium text-gray-600">
-                            {dayjs(task.dueDate).format("DD MMM")}
+                            {formatDate(task.dueDate)}
                           </p>
 
                           <p

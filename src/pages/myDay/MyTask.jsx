@@ -866,8 +866,8 @@ const TodayTasksTable = ({
             <TableHead>Description</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Attachment</TableHead>
-            <TableHead>Start Date</TableHead>
-            <TableHead>Due Date</TableHead>
+            <TableHead>Start Date & Time</TableHead>{" "}
+            <TableHead>Due Date & Time</TableHead>
             <TableHead>Frequency</TableHead>
             {/* <TableHead>Delay</TableHead> */}
             <TableHead>Status</TableHead>

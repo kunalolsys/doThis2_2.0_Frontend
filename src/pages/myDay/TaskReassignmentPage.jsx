@@ -45,6 +45,8 @@ export default function TaskReassignmentPage() {
   const [fromUserId, setFromUserId] = useState(null);
   const [toUserId, setToUserId] = useState(null);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+  const [selectedRowData, setSelectedRowData] = useState([]);
+  console.log(selectedRowData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [taskFrequency, setTaskFrequency] = useState("one-time");
   const fetchUsers = async () => {
@@ -123,8 +125,13 @@ export default function TaskReassignmentPage() {
 
     try {
       // 2. Fire concurrent API requests for all selected task IDs
-      const updatePromises = selectedRowKeys.map((taskId) =>
-        api.put(`/tasks/${taskId}`, payload),
+      const updatePromises = selectedRowData.map((task) =>
+        task.taskType == "FmsInstanceTask"
+          ? api.patch(
+              `/fms/instances/${task.fmsInstanceId}/tasks/${task.taskId}`,
+              payload,
+            )
+          : api.put(`/tasks/${task._id}`, payload),
       );
 
       // 3. Await for all network responses to finish successfully
@@ -152,7 +159,7 @@ export default function TaskReassignmentPage() {
       title: "Task Tracking ID",
       dataIndex: "TaskId",
       key: "TaskId",
-      width: "150px",
+      width: "180px",
       render: (text) => (
         <Text
           strong
@@ -208,7 +215,9 @@ export default function TaskReassignmentPage() {
       render: (_, record) => (
         <Space direction="vertical" size={2}>
           <Text style={{ fontWeight: 600, fontSize: "14px" }}>
-            {formatLabel(record.taskType)}
+            {record.taskType == "FmsInstanceTask"
+              ? "FMS"
+              : formatLabel(record.taskType)}
           </Text>
         </Space>
       ),
@@ -304,42 +313,42 @@ export default function TaskReassignmentPage() {
         );
       },
     },
-    {
-      title: "Subtask Checklist Met",
-      key: "checklist",
-      width: "200px",
-      render: (_, record) => {
-        const total = record.checklist?.length || 0;
-        const complete =
-          record.checklist?.filter((i) => i.isCompleted).length || 0;
-        const progressPercent =
-          total > 0 ? Math.round((complete / total) * 100) : 0;
-        return (
-          <div style={{ paddingRight: "16px" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "4px",
-                fontSize: "11px",
-              }}
-            >
-              <Text type="secondary">Progress</Text>
-              <Text type="secondary" strong>
-                {complete}/{total}
-              </Text>
-            </div>
-            <Progress
-              percent={progressPercent}
-              size="small"
-              showInfo={false}
-              strokeWidth={4}
-              strokeColor={token.colorInfo}
-            />
-          </div>
-        );
-      },
-    },
+    // {
+    //   title: "Subtask Checklist Met",
+    //   key: "checklist",
+    //   width: "200px",
+    //   render: (_, record) => {
+    //     const total = record.checklist?.length || 0;
+    //     const complete =
+    //       record.checklist?.filter((i) => i.isCompleted).length || 0;
+    //     const progressPercent =
+    //       total > 0 ? Math.round((complete / total) * 100) : 0;
+    //     return (
+    //       <div style={{ paddingRight: "16px" }}>
+    //         <div
+    //           style={{
+    //             display: "flex",
+    //             justifyContent: "space-between",
+    //             marginBottom: "4px",
+    //             fontSize: "11px",
+    //           }}
+    //         >
+    //           <Text type="secondary">Progress</Text>
+    //           <Text type="secondary" strong>
+    //             {complete}/{total}
+    //           </Text>
+    //         </div>
+    //         <Progress
+    //           percent={progressPercent}
+    //           size="small"
+    //           showInfo={false}
+    //           strokeWidth={4}
+    //           strokeColor={token.colorInfo}
+    //         />
+    //       </div>
+    //     );
+    //   },
+    // },
     {
       title: "Target Due Date",
       key: "dueDate",
@@ -872,7 +881,10 @@ export default function TaskReassignmentPage() {
           <Table
             rowSelection={{
               selectedRowKeys,
-              onChange: (k) => setSelectedRowKeys(k),
+              onChange: (k, record) => {
+                setSelectedRowData(record);
+                setSelectedRowKeys(k);
+              },
             }}
             columns={columns}
             dataSource={finalTasks}

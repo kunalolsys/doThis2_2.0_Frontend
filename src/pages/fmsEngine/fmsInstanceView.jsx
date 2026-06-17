@@ -585,22 +585,44 @@ export default function FmsPremiumView() {
 
                             {/* 🔹 Bottom Row */}
                             <div className="flex items-center justify-between pt-2 border-t border-slate-200/40 text-[11px] text-slate-800">
-                              <span className="font-mono">{task.taskId}</span>
+                              <div className="flex flex-col">
+                                <span className="font-mono">{task.taskId}</span>
 
-                              {/* Due Date */}
-                              <span>
-                                Due:{" "}
-                                {task.plannedDueDate
-                                  ? new Date(
-                                      task.plannedDueDate,
-                                    ).toLocaleString([], {
-                                      day: "2-digit",
-                                      month: "short",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })
-                                  : "--"}
-                              </span>
+                                {task.dependentOn && (
+                                  <span className="text-orange-600">
+                                    Depends on: {task.dependentOn}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex flex-col items-end">
+                                <span>
+                                  Start:{" "}
+                                  {task.plannedStartDate
+                                    ? new Date(
+                                        task.plannedStartDate,
+                                      ).toLocaleString([], {
+                                        day: "2-digit",
+                                        month: "short",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : "--"}
+                                </span>
+
+                                <span>
+                                  Due:{" "}
+                                  {task.plannedDueDate
+                                    ? new Date(
+                                        task.plannedDueDate,
+                                      ).toLocaleString([], {
+                                        day: "2-digit",
+                                        month: "short",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })
+                                    : "--"}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </motion.div>

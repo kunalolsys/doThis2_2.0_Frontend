@@ -2375,7 +2375,7 @@ const TaskTable = ({
                               <TableCell>
                                 <Badge
                                   variant="outline"
-                                  className="bg-blue-50 text-blue-700"
+                                  className="bg-blue-50 text-blue-700 whitespace-nowrap"
                                 >
                                   {task.frequency || "Custom"}
                                 </Badge>
@@ -2387,9 +2387,16 @@ const TaskTable = ({
                                 {(() => {
                                   const frequency =
                                     task.frequency?.toLowerCase();
-                                  if (frequency !== "weekly" || !task.weekDays)
+
+                                  let days;
+
+                                  if (frequency === "weekly") {
+                                    days = task.weekDays;
+                                  } else if (frequency === "twice in a week") {
+                                    days = task.weekStartDay;
+                                  } else {
                                     return "-";
-                                  let days = task.weekDays;
+                                  }
                                   if (typeof days === "string") {
                                     try {
                                       days = JSON.parse(days);
