@@ -583,6 +583,7 @@ const Users = () => {
                 <TableHead>Employee Code</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Department(s)</TableHead>
                 <TableHead>Reporting Manager</TableHead>
                 <TableHead>Primary Role</TableHead>
@@ -609,6 +610,7 @@ const Users = () => {
                     </TableCell>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.phone}</TableCell>
+                    <TableCell>{user.email}</TableCell>
                     <TableCell>
                       {user.department?.map((d) => d.name).join(", ")}
                     </TableCell>

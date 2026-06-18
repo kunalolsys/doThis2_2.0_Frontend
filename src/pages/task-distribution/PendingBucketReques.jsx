@@ -71,6 +71,7 @@ import { toast } from "sonner";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { Checkbox } from "../../components/ui/checkbox.jsx";
 import ViewLink from "../myDay/attachmentViewer.jsx";
+import { ExportOutlined } from "@ant-design/icons";
 
 const PendingBucketRequest = () => {
   const { bucketId } = useParams();
@@ -604,6 +605,35 @@ const PendingBucketRequest = () => {
       toast.error("Failed to download error report");
     }
   };
+  const handleExportBuckets = async () => {
+    try {
+      const response = await api.get("/task-buckets/bucket/export-pending", {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "task-buckets.xlsx");
+
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Bucket exported successfully");
+    } catch (err) {
+      console.error(err);
+
+      toast.error(err?.response?.data?.message || "Failed to export buckets.");
+    }
+  };
   return (
     <div className="min-h-screen bg-[#f4f7fb] p-6">
       <div className="mx-auto space-y-6">
@@ -640,12 +670,12 @@ const PendingBucketRequest = () => {
                     <Users className="w-5 h-5 text-blue-600" />
                     Assignment Configuration
                   </div>
-                  <Button
+                  {/* <Button
                     variant="outline"
                     onClick={() => setIsBucketBulkUploadOpen(true)}
                   >
                     <UploadCloud className="mr-2 h-4 w-4" /> Bulk Upload
-                  </Button>
+                  </Button> */}
                 </CardTitle>{" "}
               </CardHeader>
               <CardContent className="p-6 space-y-5">
@@ -731,9 +761,19 @@ const PendingBucketRequest = () => {
 
             <Card className="rounded-[30px] border-0 shadow-xl">
               <CardHeader className="border-b bg-slate-50 rounded-t-[30px]">
-                <CardTitle className="flex items-center gap-2">
-                  <Flag className="w-5 h-5 text-indigo-600" />
-                  Pending Task Bucket Requests
+                <CardTitle className="flex items-center gap-2 justify-between">
+                  <div className="flex items-center">
+                    <Flag className="w-5 h-5 text-indigo-600" />
+                    Pending Task Bucket Requests
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleExportBuckets}
+                    className="h-10 rounded-xl bg-white me-1 gap-1"
+                  >
+                    <ExportOutlined size={15} />
+                    Export
+                  </Button>
                 </CardTitle>
               </CardHeader>
 

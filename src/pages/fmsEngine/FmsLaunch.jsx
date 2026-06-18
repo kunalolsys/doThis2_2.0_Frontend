@@ -394,7 +394,9 @@ const FmsLaunch = () => {
                     <CheckCircle2 className="h-4 w-4 text-blue-600" />
                     Included Tasks Preview
                   </h4>
-                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <ul
+                    className={`grid grid-cols-1 ${Array.isArray(tasks) && tasks.length == 1 ? "md:grid-cols-1" : "md:grid-cols-2"} gap-3`}
+                  >
                     {" "}
                     {Array.isArray(tasks) && tasks.length > 0 ? (
                       tasks.map((task, index) => (

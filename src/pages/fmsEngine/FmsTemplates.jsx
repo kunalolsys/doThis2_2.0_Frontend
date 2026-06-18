@@ -41,6 +41,7 @@ const { TextArea } = Input;
 
 import api from "../../lib/api";
 import { cn } from "../../lib/utils";
+import { ExportOutlined } from "@ant-design/icons";
 
 // --- Helper for Badges ---
 const getDurationBadge = (duration) => {
@@ -408,6 +409,37 @@ const FmsTemplates = () => {
       },
     });
   };
+  const handleExportTemplates = async () => {
+    try {
+      const response = await api.get("/fms/templates/export", {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "templates.xlsx");
+
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Templates exported successfully");
+    } catch (err) {
+      console.error(err);
+
+      toast.error(
+        err?.response?.data?.message || "Failed to export templates.",
+      );
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 p-4">
       {/* Animated Background Elements */}
@@ -426,6 +458,14 @@ const FmsTemplates = () => {
               </CardTitle>
             </div>
             <div className="flex gap-2 w-full lg:w-auto justify-start lg:justify-end">
+              <Button
+                variant="outline"
+                onClick={handleExportTemplates}
+                className="flex items-center gap-2"
+              >
+                <ExportOutlined size={15} />
+                Export
+              </Button>
               <Button
                 onClick={handleDownloadSample}
                 variant="outline"

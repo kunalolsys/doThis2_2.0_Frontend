@@ -30,7 +30,7 @@ import {
   TooltipTrigger,
 } from "../../components/ui/index";
 import { Input, Select, Modal, Popconfirm } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import { ExportOutlined, SearchOutlined } from "@ant-design/icons";
 
 const { Option } = Select;
 
@@ -254,6 +254,35 @@ export default function BucketListingPage() {
       setDeleteLoading(false);
     }
   };
+  const handleExportBuckets = async () => {
+    try {
+      const response = await api.get("/task-buckets/bucket/export", {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "task-buckets.xlsx");
+
+      document.body.appendChild(link);
+      link.click();
+
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success("Bucket exported successfully");
+    } catch (err) {
+      console.error(err);
+
+      toast.error(err?.response?.data?.message || "Failed to export buckets.");
+    }
+  };
   /* ───────────────────────────────────── */
 
   const fetchBuckets = useCallback(async () => {
@@ -322,19 +351,28 @@ export default function BucketListingPage() {
               </p>
             </div>
           </div>
-
-          <Button
-            variant="outline"
-            onClick={fetchBuckets}
-            disabled={loading}
-            className="h-10 rounded-xl bg-white"
-          >
-            <RefreshCcw
-              size={15}
-              className={`mr-2 ${loading ? "animate-spin" : ""}`}
-            />
-            Refresh
-          </Button>
+          <div>
+            <Button
+              variant="outline"
+              onClick={handleExportBuckets}
+              className="h-10 rounded-xl bg-white me-1"
+            >
+              <ExportOutlined size={15} />
+              Export
+            </Button>
+            <Button
+              variant="outline"
+              onClick={fetchBuckets}
+              disabled={loading}
+              className="h-10 rounded-xl bg-white"
+            >
+              <RefreshCcw
+                size={15}
+                className={`mr-2 ${loading ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -478,33 +516,38 @@ export default function BucketListingPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              buckets.map((bucket) => (
-                <TableRow
-                  key={bucket._id}
-                  className="hover:bg-slate-50 transition-colors"
-                >
-                  {/* BUCKET ID */}
-                  <TableCell className="pl-6 py-4">
-                    <span className="text-sm text-slate-700 font-medium">
-                      {bucket.bucketId || "-"}
-                    </span>
-                  </TableCell>
-                  {/* BUCKET NAME */}
-                  <TableCell>
-                    <div className="text-sm font-medium text-slate-800">
-                      {bucket.title}
-                    </div>
-                  </TableCell>
-                  {/* DESCRIPTION */}
-                  <TableCell>
-                    <div className="max-w-[260px]">
-                      <p className="text-sm text-slate-600 line-clamp-2">
-                        {bucket.description || "No description"}
-                      </p>
-                    </div>
-                  </TableCell>
-                  {/* ASSIGNED TARGET */}
-                  {/* <TableCell>
+              buckets.map((bucket) => {
+                const users =
+                  bucket.targetUsers?.length > 0
+                    ? bucket.targetUsers
+                    : bucket.assignedTargetUsers || [];
+                return (
+                  <TableRow
+                    key={bucket._id}
+                    className="hover:bg-slate-50 transition-colors"
+                  >
+                    {/* BUCKET ID */}
+                    <TableCell className="pl-6 py-4">
+                      <span className="text-sm text-slate-700 font-medium">
+                        {bucket.bucketId || "-"}
+                      </span>
+                    </TableCell>
+                    {/* BUCKET NAME */}
+                    <TableCell>
+                      <div className="text-sm font-medium text-slate-800">
+                        {bucket.title}
+                      </div>
+                    </TableCell>
+                    {/* DESCRIPTION */}
+                    <TableCell>
+                      <div className="max-w-[260px]">
+                        <p className="text-sm text-slate-600 line-clamp-2">
+                          {bucket.description || "No description"}
+                        </p>
+                      </div>
+                    </TableCell>
+                    {/* ASSIGNED TARGET */}
+                    {/* <TableCell>
                     {bucket.assignmentMode === "Role" ? (
                       <div>
                         <div className="text-sm font-medium text-slate-700">
@@ -534,127 +577,154 @@ export default function BucketListingPage() {
                       </div>
                     )}
                   </TableCell> */}
-                  {/* CREATED BY */}
-                  <TableCell>
-                    <div>
-                      <div className="text-sm font-medium text-slate-700">
-                        {bucket.createdBy?.name || "-"}
-                      </div>
+                    {/* CREATED BY */}
+                    <TableCell>
+                      <div>
+                        <div className="text-sm font-medium text-slate-700">
+                          {bucket.createdBy?.name || "-"}
+                        </div>
 
-                      <div className="text-xs text-slate-500 mt-1">
-                        {bucket.createdBy?.email || "-"}
+                        <div className="text-xs text-slate-500 mt-1">
+                          {bucket.createdBy?.email || "-"}
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>{" "}
-                  <TableCell>
-                    <div className="flex flex-wrap items-center gap-1">
-                      {bucket.targetUsers?.slice(0, 3).map((user) => (
-                        <span
-                          key={user._id}
-                          className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full"
-                        >
-                          {user.name}
-                        </span>
-                      ))}
+                    </TableCell>{" "}
+                    <TableCell>
+                      {(() => {
+                        const users =
+                          bucket.targetUsers?.length > 0
+                            ? bucket.targetUsers
+                            : bucket.assignedTargetUsers || [];
 
-                      {bucket.targetUsers?.length > 3 && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded-full cursor-pointer hover:bg-slate-200">
-                                +{bucket.targetUsers.length - 3} more
+                        return (
+                          <div className="flex flex-wrap items-center gap-1">
+                            {users.slice(0, 3).map((user) => (
+                              <span
+                                key={user._id}
+                                className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full"
+                              >
+                                {user.name}
                               </span>
-                            </TooltipTrigger>
+                            ))}
 
-                            <TooltipContent side="top" className="max-w-xs p-3">
-                              <div className="space-y-2">
-                                {bucket.targetUsers.slice(3).map((user) => (
-                                  <div key={user._id}>
-                                    <div className="font-medium">
-                                      {user.name}
+                            {users.length > 3 && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="px-2 py-1 text-xs bg-slate-100 text-slate-600 rounded-full cursor-pointer hover:bg-slate-200">
+                                      +{users.length - 3} more
+                                    </span>
+                                  </TooltipTrigger>
+
+                                  <TooltipContent
+                                    side="top"
+                                    className="max-w-xs p-3"
+                                  >
+                                    <div className="space-y-2">
+                                      {users.slice(3).map((user) => (
+                                        <div key={user._id}>
+                                          <div className="font-medium">
+                                            {user.name}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {user.email}
+                                          </div>
+                                        </div>
+                                      ))}
                                     </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {user.email}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </div>
-                  </TableCell>
-                  {/* CREATED AT */}
-                  <TableCell>
-                    <div className="text-sm text-slate-700">
-                      {new Date(bucket.createdAt).toLocaleDateString("en-IN", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
+                    {/* CREATED AT */}
+                    <TableCell>
+                      <div className="text-sm text-slate-700">
+                        {new Date(bucket.createdAt).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          },
+                        )}
+                      </div>
 
-                    <div className="text-xs text-slate-400 mt-1">
-                      {new Date(bucket.createdAt).toLocaleTimeString("en-IN", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </div>
-                  </TableCell>
-                  {/* STATUS */}
-                  <TableCell>
-                    <div
-                      className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-medium"
-                      style={{
-                        color:
-                          bucket.status === "Completed" ? "#0D9488" : "#D97706",
-
-                        background:
-                          bucket.status === "Completed" ? "#F0FDFA" : "#FFFBEB",
-
-                        borderColor:
-                          bucket.status === "Completed" ? "#99F6E4" : "#FDE68A",
-                      }}
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full"
+                      <div className="text-xs text-slate-400 mt-1">
+                        {new Date(bucket.createdAt).toLocaleTimeString(
+                          "en-IN",
+                          {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
+                      </div>
+                    </TableCell>
+                    {/* STATUS */}
+                    <TableCell>
+                      <div
+                        className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-medium"
                         style={{
-                          background:
+                          color:
                             bucket.status === "Completed"
                               ? "#0D9488"
                               : "#D97706",
+
+                          background:
+                            bucket.status === "Completed"
+                              ? "#F0FDFA"
+                              : "#FFFBEB",
+
+                          borderColor:
+                            bucket.status === "Completed"
+                              ? "#99F6E4"
+                              : "#FDE68A",
                         }}
-                      />
-
-                      {bucket.status}
-                    </div>
-                  </TableCell>
-                  <TableCell className="">
-                    <div className="flex items-center gap-2">
-                      {/* EDIT */}
-
-                      <button
-                        onClick={() =>
-                          navigate(`/delegate/task-buckets/edit/${bucket._id}`)
-                        }
-                        className="h-9 w-9 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-200 flex items-center justify-center transition-all"
                       >
-                        <Edit size={16} className="text-blue-600" />
-                      </button>
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{
+                            background:
+                              bucket.status === "Completed"
+                                ? "#0D9488"
+                                : "#D97706",
+                          }}
+                        />
 
-                      {/* DELETE */}
+                        {bucket.status}
+                      </div>
+                    </TableCell>
+                    <TableCell className="">
+                      <div className="flex items-center gap-2">
+                        {/* EDIT */}
 
-                      <button
-                        onClick={() => openDeleteModal(bucket)}
-                        className="h-9 w-9 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 flex items-center justify-center transition-all"
-                      >
-                        <Trash2 size={16} className="text-red-600" />
-                      </button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                        <button
+                          onClick={() =>
+                            navigate(
+                              `/delegate/task-buckets/edit/${bucket._id}`,
+                            )
+                          }
+                          className="h-9 w-9 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-200 flex items-center justify-center transition-all"
+                        >
+                          <Edit size={16} className="text-blue-600" />
+                        </button>
+
+                        {/* DELETE */}
+
+                        <button
+                          onClick={() => openDeleteModal(bucket)}
+                          className="h-9 w-9 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 flex items-center justify-center transition-all"
+                        >
+                          <Trash2 size={16} className="text-red-600" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

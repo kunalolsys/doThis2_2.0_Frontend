@@ -82,7 +82,7 @@ import {
   Divider,
 } from "antd";
 import { SearchOutlined, SettingOutlined } from "@ant-design/icons";
-import { formatDate } from "../lib/utilFunctions.js";
+import { formatDate, getDueStatus } from "../lib/utilFunctions.js";
 import dayjs from "dayjs";
 import { DatePicker, Upload } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
@@ -1319,7 +1319,7 @@ const TaskTable = ({
     { key: "recurringId", label: "Recurring ID", visible: false },
     { key: "startDate", label: "Start Date", visible: true },
     { key: "dueDate", label: "Due Date", visible: true },
-    { key: "delay", label: "Delay", visible: true },
+    { key: "delay", label: "Time Left", visible: true },
     { key: "status", label: "Status", visible: true },
     { key: "action", label: "Action", visible: true },
   ];
@@ -2080,41 +2080,80 @@ const TaskTable = ({
                           )}
                           {columns.find((c) => c.key === "delay")?.visible && (
                             <TableCell className="whitespace-nowrap">
-                              {task.dueDate
-                                ? (() => {
-                                    const today = new Date();
-                                    const due = new Date(task.dueDate);
+                              {(() => {
+                                const dueStatus = getDueStatus(task.dueDate);
 
-                                    today.setHours(0, 0, 0, 0);
-                                    due.setHours(0, 0, 0, 0);
+                                if (!dueStatus) return "-";
 
-                                    const diffDays = Math.ceil(
-                                      (today - due) / (1000 * 60 * 60 * 24),
-                                    );
+                                return (
+                                  <div
+                                    className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm
+        transition-all duration-300 hover:-translate-y-1 hover:shadow-lg
+        ${
+          dueStatus.type === "overdue"
+            ? "border-l-4 border-l-red-500"
+            : dueStatus.type === "today"
+              ? "border-l-4 border-l-amber-500"
+              : "border-l-4 border-l-emerald-500"
+        }`}
+                                  >
+                                    {/* Animated Status Dot */}
+                                    <div className="mr-3 relative flex h-3 w-3 items-center justify-center">
+                                      {(dueStatus.type === "overdue" ||
+                                        dueStatus.type === "today") && (
+                                        <span
+                                          className={`absolute inline-flex h-full w-full rounded-full opacity-75
+                ${
+                  dueStatus.type === "overdue"
+                    ? "bg-red-500 animate-ping"
+                    : "bg-amber-500 animate-ping"
+                }`}
+                                        />
+                                      )}
 
-                                    if (diffDays > 0) {
-                                      return (
-                                        <span className="px-2 py-1 rounded-md text-xs font-semibold bg-red-50 text-red-600 border border-red-200">
-                                          {diffDays}d overdue
-                                        </span>
-                                      );
-                                    }
+                                      <span
+                                        className={`relative inline-flex h-3 w-3 rounded-full
+              ${
+                dueStatus.type === "overdue"
+                  ? "bg-red-500"
+                  : dueStatus.type === "today"
+                    ? "bg-amber-500"
+                    : "bg-emerald-500"
+              }`}
+                                      />
+                                    </div>
 
-                                    if (diffDays === 0) {
-                                      return (
-                                        <span className="px-2 py-1 rounded-md text-xs font-semibold bg-yellow-50 text-yellow-600 border border-yellow-200">
-                                          Due Today
-                                        </span>
-                                      );
-                                    }
+                                    {/* Content */}
+                                    <div>
+                                      <p
+                                        className={`text-xs font-semibold
+              ${
+                dueStatus.type === "overdue"
+                  ? "text-red-700"
+                  : dueStatus.type === "today"
+                    ? "text-amber-700"
+                    : "text-emerald-700"
+              }`}
+                                      >
+                                        {dueStatus.type === "overdue"
+                                          ? "Overdue"
+                                          : dueStatus.type === "today"
+                                            ? "Due Today"
+                                            : "Remaining"}
+                                      </p>
 
-                                    return (
-                                      <span className="px-2 py-1 rounded-md text-xs font-semibold bg-green-50 text-green-600 border border-green-200">
-                                        {Math.abs(diffDays)}d left
-                                      </span>
-                                    );
-                                  })()
-                                : "-"}
+                                      <p className="text-[11px] text-muted-foreground">
+                                        {dueStatus.text}
+                                      </p>
+                                    </div>
+
+                                    {/* Shine Effect */}
+                                    <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
+                                      <span className="absolute -left-full top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 hover:left-full" />
+                                    </span>
+                                  </div>
+                                );
+                              })()}
                             </TableCell>
                           )}{" "}
                           {/* <TableCell className="text-center">
@@ -2392,7 +2431,7 @@ const TaskTable = ({
 
                                   if (frequency === "weekly") {
                                     days = task.weekDays;
-                                  } else if (frequency === "twice in a week") {
+                                  } else if (frequency === "bi-weekly") {
                                     days = task.weekStartDay;
                                   } else {
                                     return "-";

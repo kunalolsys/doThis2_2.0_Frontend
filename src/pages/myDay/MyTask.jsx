@@ -81,7 +81,7 @@ import {
   TooltipTrigger,
 } from "../../components/ui/tooltip";
 import * as XLSX from "xlsx";
-import { formatDate, formatLabel } from "../../lib/utilFunctions";
+import { formatDate, formatLabel, getDueStatus } from "../../lib/utilFunctions";
 import ViewLink from "./attachmentViewer";
 import { useDebounce } from "../../lib/debounce";
 import { DatePicker, Popover, Modal as AntdModal, Descriptions } from "antd";
@@ -192,7 +192,6 @@ const TaskActions = ({
   setSubmissionModalOpen,
   setSelectedSubmissionTask,
 }) => {
-  console.log(task);
   const isCompleted = task.status === "Completed";
   const upComing = task.status == "Upcoming";
   const onHold = task.status == "Onhold";
@@ -869,7 +868,7 @@ const TodayTasksTable = ({
             <TableHead>Start Date & Time</TableHead>{" "}
             <TableHead>Due Date & Time</TableHead>
             <TableHead>Frequency</TableHead>
-            {/* <TableHead>Delay</TableHead> */}
+            <TableHead>Time Left</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -1103,6 +1102,85 @@ const TodayTasksTable = ({
                       {task.dueDate ? formatDate(task.dueDate) : "-"}
                     </TableCell>
                     <TableCell>{task.frequency ?? "-"}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {(() => {
+                        const dueStatus = getDueStatus(task.dueDate);
+
+                        if (!dueStatus) return "-";
+
+                        return (
+                          <div
+                            className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm
+                                    transition-all duration-300 hover:-translate-y-1 hover:shadow-lg
+                                    ${
+                                      dueStatus.type === "overdue"
+                                        ? "border-l-4 border-l-red-500"
+                                        : dueStatus.type === "today"
+                                          ? "border-l-4 border-l-amber-500"
+                                          : "border-l-4 border-l-emerald-500"
+                                    }`}
+                          >
+                            {/* Animated Status Dot */}
+                            <div className="mr-3 relative flex h-3 w-3 items-center justify-center">
+                              {(dueStatus.type === "overdue" ||
+                                dueStatus.type === "today" ||
+                                dueStatus.type === "upcoming") && (
+                                <span
+                                  className={`absolute inline-flex h-full w-full rounded-full opacity-75
+                                            ${
+                                              dueStatus.type === "overdue"
+                                                ? "bg-red-500 animate-ping"
+                                                : dueStatus.type === "today"
+                                                  ? "bg-amber-500 animate-ping"
+                                                  : "bg-emerald-500 animate-ping"
+                                            }`}
+                                />
+                              )}
+
+                              <span
+                                className={`relative inline-flex h-3 w-3 rounded-full
+                                          ${
+                                            dueStatus.type === "overdue"
+                                              ? "bg-red-500"
+                                              : dueStatus.type === "today"
+                                                ? "bg-amber-500"
+                                                : "bg-emerald-500"
+                                          }`}
+                              />
+                            </div>
+
+                            {/* Content */}
+                            <div>
+                              <p
+                                className={`text-xs font-semibold
+                                          ${
+                                            dueStatus.type === "overdue"
+                                              ? "text-red-700"
+                                              : dueStatus.type === "today"
+                                                ? "text-amber-700"
+                                                : "text-emerald-700"
+                                          }`}
+                              >
+                                {dueStatus.type === "overdue"
+                                  ? "Overdue"
+                                  : dueStatus.type === "today"
+                                    ? "Due Today"
+                                    : "Remaining"}
+                              </p>
+
+                              <p className="text-[11px] text-muted-foreground">
+                                {dueStatus.text}
+                              </p>
+                            </div>
+
+                            {/* Shine Effect */}
+                            <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
+                              <span className="absolute -left-full top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 hover:left-full" />
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </TableCell>
                     {/* <TableCell className={task.delay ? "text-red-600" : ""}>
                       {task.delay || "-"}
                     </TableCell> */}

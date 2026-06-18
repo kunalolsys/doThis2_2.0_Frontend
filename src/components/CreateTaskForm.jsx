@@ -71,6 +71,7 @@ const CreateTaskForm = ({
   const [recurrenceEndDate, setRecurrenceEndDate] = useState();
   const [weeklyRecurrenceDays, setWeeklyRecurrenceDays] = useState([]);
   const [weeklyTwiceRecurrenceDay, setWeeklyTwiceRecurrenceDay] = useState("");
+  const [repeatAfter, setRepeatAfter] = useState("2");
   // Checklist State
   const [checklist, setChecklist] = useState([]);
   const [checklistItem, setChecklistItem] = useState("");
@@ -316,7 +317,14 @@ const CreateTaskForm = ({
       toast.error("X Value is required for dependent tasks.");
       return;
     }
-
+    if (isRecurrent && repeatAfter.trim() == "") {
+      toast.error("Repeat after (days) value is required for Bi-weekly tasks.");
+      return;
+    }
+    if (isRecurrent && weeklyTwiceRecurrenceDay.trim() == "") {
+      toast.error("Select Day of the Week.");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -395,8 +403,9 @@ const CreateTaskForm = ({
           ) {
             formData.append("weekDays", JSON.stringify(weeklyRecurrenceDays));
           }
-          if (recurrenceFrequency === "twice_weekly") {
+          if (recurrenceFrequency === "bi-weekly") {
             formData.append("weekStartDay", weeklyTwiceRecurrenceDay);
+            formData.append("repeatAfter", repeatAfter);
           }
           if (recurrenceEndDate) {
             formData.append("recurrenceEndDate", recurrenceEndDate);
@@ -481,6 +490,7 @@ const CreateTaskForm = ({
       setRecurrenceEndDate(null);
 
       setWeeklyRecurrenceDays([]);
+      setWeeklyTwiceRecurrenceDay("");
 
       setDependentDueDate(null);
 
@@ -1098,6 +1108,9 @@ const CreateTaskForm = ({
                         if (value !== "weekly") {
                           setWeeklyRecurrenceDays([]);
                         }
+                        if (value !== "bi-weekly") {
+                          setWeeklyTwiceRecurrenceDay("");
+                        }
                       }}
                     >
                       <SelectTrigger>
@@ -1106,9 +1119,7 @@ const CreateTaskForm = ({
                       <SelectContent>
                         <SelectItem value="daily">Daily</SelectItem>
                         <SelectItem value="weekly">Weekly</SelectItem>
-                        <SelectItem value="twice_weekly">
-                          Twice in a week
-                        </SelectItem>
+                        <SelectItem value="bi-weekly">Bi-weekly</SelectItem>
                         <SelectItem value="monthly">Monthly</SelectItem>
                         <SelectItem value="quarterly">Quarterly</SelectItem>
                         <SelectItem value="fortnightly">Fortnightly</SelectItem>
@@ -1205,47 +1216,91 @@ const CreateTaskForm = ({
                       </div>
                     </div>
                   )}
-                  {recurrenceFrequency === "twice_weekly" && (
-                    <div className="md:col-span-2 space-y-2">
-                      <Label>Select Day of the Week</Label>
+                  {recurrenceFrequency === "bi-weekly" && (
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Select Day of the Week</Label>
 
-                      <RadioGroup
-                        value={weeklyTwiceRecurrenceDay}
-                        onValueChange={(value) => {
-                          if (!workingWeeks?.[value]) {
-                            toast.error(
-                              `${value.charAt(0).toUpperCase() + value.slice(1)} is not a working day`,
-                            );
-                            return;
-                          }
+                        <RadioGroup
+                          value={weeklyTwiceRecurrenceDay}
+                          onValueChange={(value) => {
+                            if (!workingWeeks?.[value]) {
+                              toast.error(
+                                `${value.charAt(0).toUpperCase() + value.slice(1)} is not a working day`,
+                              );
+                              return;
+                            }
 
-                          setWeeklyTwiceRecurrenceDay(value);
-                        }}
-                        className="flex flex-wrap gap-4 pt-2"
-                      >
-                        {[
-                          "Sunday",
-                          "Monday",
-                          "Tuesday",
-                          "Wednesday",
-                          "Thursday",
-                          "Friday",
-                          "Saturday",
-                        ].map((day) => (
-                          <div key={day} className="flex items-center gap-2">
-                            <RadioGroupItem
-                              value={day.toLowerCase()}
-                              id={`day-${day}`}
-                            />
-                            <Label
-                              htmlFor={`day-${day}`}
-                              className="font-normal cursor-pointer"
-                            >
-                              {day}
-                            </Label>
-                          </div>
-                        ))}
-                      </RadioGroup>
+                            setWeeklyTwiceRecurrenceDay(value);
+                          }}
+                          className="flex flex-wrap gap-4 pt-2"
+                        >
+                          {[
+                            "Sunday",
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday",
+                          ].map((day) => (
+                            <div key={day} className="flex items-center gap-2">
+                              <RadioGroupItem
+                                value={day.toLowerCase()}
+                                id={`day-${day}`}
+                              />
+                              <Label
+                                htmlFor={`day-${day}`}
+                                className="font-normal cursor-pointer"
+                              >
+                                {day}
+                              </Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>
+                          Repeat After (Days)
+                          <span className="text-red-500">*</span>
+                        </Label>
+
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={repeatAfter}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, "");
+
+                            if (value === "") {
+                              setRepeatAfter("");
+                              return;
+                            }
+
+                            const num = Number(value);
+
+                            if (num < 1 || num > 6) {
+                              toast.error(
+                                "Repeat After must be between 1 and 6 days.",
+                              );
+                              return;
+                            }
+
+                            setRepeatAfter(value);
+                          }}
+                          placeholder="Enter value"
+                          className="bg-white"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          <strong>Note:</strong> Specify a value between{" "}
+                          <strong>1</strong> and <strong>6</strong> to define
+                          the interval, in days, between the first and second
+                          occurrence. <strong>1</strong> the next day, and{" "}
+                          <strong>6</strong> six days after the selected
+                          weekday, within the same week.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

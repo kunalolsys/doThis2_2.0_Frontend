@@ -57,3 +57,55 @@ export const formatLabel = (text = "") => {
       .join(" ")
   );
 };
+export const getDueStatus = (dueDate) => {
+  if (!dueDate) return null;
+
+  const now = new Date();
+  const due = new Date(dueDate);
+
+  // Old day logic
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+
+  const dueDay = new Date(due);
+  dueDay.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.ceil((today - dueDay) / (1000 * 60 * 60 * 24));
+
+  // Time difference
+  const diffMs = Math.abs(now - due);
+
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (diffDays > 0) {
+    return {
+      type: "overdue",
+      text: `${diffDays}d ${hours}h ${minutes}m overdue`,
+      className: "bg-red-50 text-red-600 border border-red-200",
+    };
+  }
+
+  if (diffDays === 0) {
+    if (due < now) {
+      return {
+        type: "overdue-today",
+        text: `${hours}h ${minutes}m overdue`,
+        className: "bg-red-50 text-red-600 border border-red-200",
+      };
+    }
+
+    return {
+      type: "today",
+      text: `Due Today (${hours}h ${minutes}m left)`,
+      className: "bg-yellow-50 text-yellow-600 border border-yellow-200",
+    };
+  }
+
+  return {
+    type: "upcoming",
+    text: `${Math.abs(diffDays)}d ${hours}h ${minutes}m left`,
+    className: "bg-green-50 text-green-600 border border-green-200",
+  };
+};
