@@ -126,7 +126,7 @@ const DepartmentCalender = () => {
   const [holidayDescription, setHolidayDescription] = useState("");
   const [editingHoliday, setEditingHoliday] = useState(null); // null for add, object for edit
   const [loading, setLoading] = useState(false);
-  const [holidayAction, setHolidayAction] = useState("BEFORE");
+  const [holidayAction, setHolidayAction] = useState("AFTER");
 
   // Department bulk upload state
   const [isDeptBulkUploadOpen, setIsDeptBulkUploadOpen] = useState(false);

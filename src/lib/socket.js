@@ -2,9 +2,7 @@ import { io } from "socket.io-client";
 import api from "./api.js"; // Reuse axios config (baseURL, cookies)
 
 // Socket base URL (match backend server)
-const SOCKET_URL =
-  import.meta.env.VITE_API_BASE_URL?.replace("/api/v1", "") ||
-  "https://backend.v2.dothis2.com";
+const SOCKET_URL = import.meta.env.VITE_API_BASE_URL?.replace("/api/v1", "");
 
 let socket = null;
 
@@ -14,11 +12,11 @@ let socket = null;
 export const initSocket = () => {
   if (socket) return socket;
 
-  socket = io("https://backend.v2.dothis2.com", {
+  socket = io(SOCKET_URL, {
     withCredentials: true, // Send auth cookies
     autoConnect: false, // Manual connect
     transports: ["polling"],
-    upgrade: true             
+    upgrade: true,
   });
 
   return socket;

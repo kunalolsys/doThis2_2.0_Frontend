@@ -1086,9 +1086,7 @@ const TaskTable = ({
 
         // ✅ download link
         if (data.errorFile) {
-          const apiBaseUrl =
-            import.meta.env.VITE_API_BASE_URL ||
-            "https://backend.v2.dothis2.com/api/v1";
+          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
           const fullUrl = `${apiBaseUrl}/tasks/download?filePath=${encodeURIComponent(
             data.errorFile,
@@ -1115,9 +1113,7 @@ const TaskTable = ({
 
         // ✅ even on error return downloadable file
         if (data.errorFile) {
-          const apiBaseUrl =
-            import.meta.env.VITE_API_BASE_URL ||
-            "https://backend.v2.dothis2.com/api/v1";
+          const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
           const fullUrl = `${apiBaseUrl}/tasks/download?filePath=${encodeURIComponent(
             data.errorFile,
@@ -1259,9 +1255,7 @@ const TaskTable = ({
   };
 
   const handleDownloadAttachment = (attachmentFile) => {
-    const apiBaseUrl =
-      import.meta.env.VITE_API_BASE_URL ||
-      "https://backend.v2.dothis2.com/api/v1";
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
     const serverBaseUrl = apiBaseUrl.replace("/api/v1", "");
     const attachmentUrl = `${serverBaseUrl}/download/${attachmentFile}`;
     const link = document.createElement("a");
@@ -2084,7 +2078,7 @@ const TaskTable = ({
                                 const dueStatus = getDueStatus(task.dueDate);
 
                                 if (!dueStatus) return "-";
-
+                                if (task.status == "Completed") return;
                                 return (
                                   <div
                                     className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm

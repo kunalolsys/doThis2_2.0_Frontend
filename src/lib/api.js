@@ -4,8 +4,7 @@ import {
   setAccessToken,
   clearAccessToken,
 } from "./tokenManager";
-let API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://backend.v2.dothis2.com/api/v1";
+let API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Normalize base URL: remove trailing slash and ensure /v1 segment exists
 API_BASE_URL = API_BASE_URL.replace(/\/$/, "");
@@ -52,7 +51,6 @@ api.interceptors.response.use(
     }
     // ❌ DO NOT INTERCEPT REFRESH API
     if (originalRequest.url.includes("/auth/refresh")) {
-
       clearAccessToken();
       window.location.replace("/");
 
@@ -64,7 +62,6 @@ api.interceptors.response.use(
       (err.response?.status === 401 || err.response?.status === 403) &&
       !originalRequest._retry
     ) {
-
       originalRequest._retry = true;
 
       try {
@@ -84,7 +81,6 @@ api.interceptors.response.use(
           },
         });
       } catch (refreshErr) {
-
         clearAccessToken();
 
         window.location.replace("/");

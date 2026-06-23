@@ -84,7 +84,13 @@ import * as XLSX from "xlsx";
 import { formatDate, formatLabel, getDueStatus } from "../../lib/utilFunctions";
 import ViewLink from "./attachmentViewer";
 import { useDebounce } from "../../lib/debounce";
-import { DatePicker, Popover, Modal as AntdModal, Descriptions } from "antd";
+import {
+  DatePicker,
+  Popover,
+  Modal as AntdModal,
+  Descriptions,
+  Modal,
+} from "antd";
 const { RangePicker } = DatePicker;
 import * as Yup from "yup";
 import { useFormik } from "formik";
@@ -1107,7 +1113,7 @@ const TodayTasksTable = ({
                         const dueStatus = getDueStatus(task.dueDate);
 
                         if (!dueStatus) return "-";
-
+                        if (task.status == "Completed") return;
                         return (
                           <div
                             className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm
@@ -1640,41 +1646,86 @@ const MyTask = () => {
       }),
     );
   };
+  const handleToggleComplete = (task) => {
+    // Trigger Ant Design's confirmation modal
+    Modal.confirm({
+      title: `Confirm Action`,
+      content: `Are you sure you want to complete this task?`,
+      okText: "Yes",
+      cancelText: "No",
+      centered: true, // Centers the modal vertically on the screen
 
-  const handleToggleComplete = async (task) => {
-    setRefreshUI(true);
-    const newStatus = task.status !== "Completed";
-    const isFMSTask = task.taskType === "FmsInstanceTask";
+      // Everything in onOk runs when the user clicks 'Yes'
+      onOk: async () => {
+        setRefreshUI(true);
+        const newStatus = task.status !== "Completed";
+        const isFMSTask = task.taskType === "FmsInstanceTask";
 
-    try {
-      if (!isFMSTask) {
-        await api.patch(`/tasks/${task._id || task.id}/completion`, {
-          completeStatus: newStatus,
-        });
-      } else {
-        await dispatch(
-          completeFMSTask({
-            id: task.fmsInstanceId,
-            taskId: task.TaskId,
-            status: newStatus,
-          }),
-        ).unwrap();
-      }
+        try {
+          if (!isFMSTask) {
+            await api.patch(`/tasks/${task._id || task.id}/completion`, {
+              completeStatus: newStatus,
+            });
+          } else {
+            await dispatch(
+              completeFMSTask({
+                id: task.fmsInstanceId,
+                taskId: task.TaskId,
+                status: newStatus,
+              }),
+            ).unwrap();
+          }
 
-      toast.success(newStatus ? "Task Completed" : "Task Reopened");
-    } catch (error) {
-      console.log("COMPLETE TASK ERROR:", error);
+          toast.success(newStatus ? "Task Completed" : "Task Reopened");
+        } catch (error) {
+          console.log("COMPLETE TASK ERROR:", error);
 
-      toast.error(
-        error ||
-          error?.response?.data?.message ||
-          error?.message ||
-          "Failed to update status",
-      );
-    } finally {
-      setRefreshUI(false);
-    }
+          toast.error(
+            error ||
+              error?.response?.data?.message ||
+              error?.message ||
+              "Failed to update status",
+          );
+        } finally {
+          setRefreshUI(false);
+        }
+      },
+    });
   };
+  // const handleToggleComplete = async (task) => {
+  //   setRefreshUI(true);
+  //   const newStatus = task.status !== "Completed";
+  //   const isFMSTask = task.taskType === "FmsInstanceTask";
+
+  //   try {
+  //     if (!isFMSTask) {
+  //       await api.patch(`/tasks/${task._id || task.id}/completion`, {
+  //         completeStatus: newStatus,
+  //       });
+  //     } else {
+  //       await dispatch(
+  //         completeFMSTask({
+  //           id: task.fmsInstanceId,
+  //           taskId: task.TaskId,
+  //           status: newStatus,
+  //         }),
+  //       ).unwrap();
+  //     }
+
+  //     toast.success(newStatus ? "Task Completed" : "Task Reopened");
+  //   } catch (error) {
+  //     console.log("COMPLETE TASK ERROR:", error);
+
+  //     toast.error(
+  //       error ||
+  //         error?.response?.data?.message ||
+  //         error?.message ||
+  //         "Failed to update status",
+  //     );
+  //   } finally {
+  //     setRefreshUI(false);
+  //   }
+  // };
 
   const handleDeleteClick = (task) => {
     setTaskToDelete(task);
@@ -1807,11 +1858,13 @@ const MyTask = () => {
       //     taskId: selectedTask.taskId,
       //   })
       // );
-
+      toast.success("Task updated successfully!");
       setShowFormModal(false);
     } catch (err) {
       setRefetch(false);
-      console.error(err);
+      const errorMessage =
+        err?.message || "Failed to update task. Please try again.";
+      toast.error(errorMessage);
     }
   };
   const [modules, setModules] = useState([]);

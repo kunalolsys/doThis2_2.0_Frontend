@@ -1311,6 +1311,7 @@ const ManagerView = () => {
             const dueStatus = getDueStatus(task.dueDate);
 
             if (!dueStatus) return "-";
+            if (task.status == "Completed") return;
 
             return (
               <div
