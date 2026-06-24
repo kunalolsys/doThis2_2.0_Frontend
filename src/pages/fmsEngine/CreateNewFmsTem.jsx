@@ -166,7 +166,7 @@ const CreateNewFmsTem = () => {
   }, []);
   const fetchDepartments = async () => {
     try {
-      const response = await api.get("/setup/departments/allDepartments");
+      const response = await api.get("/setup/departments/allDepartmentsForFMS");
       setDepartments(response.data.data);
     } catch (error) {
       console.log(error);

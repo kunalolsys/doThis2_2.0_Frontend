@@ -215,8 +215,8 @@ const TaskActions = ({
             className="h-8 w-8 text-gray-600 hover:bg-gray-50"
             onClick={() => onChecklist(task)}
             disabled={
-              ((!task.checklist || task.checklist.length === 0) &&
-                !isCompleted) ||
+              !task.checklist ||
+              task.checklist.length === 0 ||
               onHold ||
               stopped
             }
@@ -236,8 +236,8 @@ const TaskActions = ({
             className="h-8 w-8 text-gray-600 hover:bg-gray-50"
             onClick={() => handleCompleteClick(task)}
             disabled={
-              ((!task.createdForm || task.createdForm.length === 0) &&
-                !isCompleted) ||
+              !task.createdForm ||
+              task.createdForm.length === 0 ||
               onHold ||
               stopped
             }
@@ -1673,19 +1673,21 @@ const MyTask = () => {
                 taskId: task.TaskId,
                 status: newStatus,
               }),
-            ).unwrap();
+            ).unwrap(); // .unwrap() throws a serializable rejection or error object
           }
 
           toast.success(newStatus ? "Task Completed" : "Task Reopened");
         } catch (error) {
-          console.log("COMPLETE TASK ERROR:", error);
+          console.error("COMPLETE TASK ERROR:", error);
 
-          toast.error(
-            error ||
-              error?.response?.data?.message ||
-              error?.message ||
-              "Failed to update status",
-          );
+          // 🔥 FIX: Safely extract a string message. Never pass the raw 'error' object directly to toast.
+          const errorMessage =
+            error?.response?.data?.message ||
+            error?.message ||
+            (typeof error === "string" ? error : null) ||
+            "Failed to update status";
+
+          toast.error(errorMessage);
         } finally {
           setRefreshUI(false);
         }

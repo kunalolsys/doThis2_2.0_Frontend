@@ -26,10 +26,11 @@ const initialState = fmsTemplatesAdapter.getInitialState({
 export const fetchTemplates = createAsyncThunk(
   "fms/fetchTemplates",
   async (params = {}, { rejectWithValue }) => {
-    const { page, limit } = params;
+    const { page, limit,role } = params;
     const payload = {
       page,
       limit,
+      role
     };
     try {
       const response = await api.post("/fms/templates-list", payload);

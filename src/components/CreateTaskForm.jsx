@@ -321,7 +321,11 @@ const CreateTaskForm = ({
       toast.error("Repeat after (days) value is required for Bi-weekly tasks.");
       return;
     }
-    if (isRecurrent && weeklyTwiceRecurrenceDay.trim() == "") {
+    if (
+      isRecurrent &&
+      recurrenceFrequency == "bi-weekly" &&
+      weeklyTwiceRecurrenceDay.trim() == ""
+    ) {
       toast.error("Select Day of the Week.");
       return;
     }

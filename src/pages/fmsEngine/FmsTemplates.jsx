@@ -31,7 +31,7 @@ import {
 } from "../../components/ui/table";
 import { Badge } from "../../components/ui/badge";
 import { Link } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { Download, Upload } from "lucide-react";
 import { fetchTemplates } from "../../redux/slices/fms/fmsSlice";
 import DataPagination from "../../components/ui/commonPagination";
@@ -75,7 +75,8 @@ const FmsTemplates = () => {
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-
+  const currentUser = useSelector((state) => state.users.currentUser);
+  const role = currentUser?.role?.name;
   // Import states
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState(null);
@@ -304,13 +305,13 @@ const FmsTemplates = () => {
     e.target.value = null;
   };
   const getTemplates = async () => {
-    const res = await dispatch(fetchTemplates({ page, limit })).unwrap();
+    const res = await dispatch(fetchTemplates({ page, limit, role })).unwrap();
     setFmsTemplates(res.data);
     setPagination(res.pagination);
   };
   useEffect(() => {
     getTemplates();
-  }, [page, limit]);
+  }, [page, limit, role]);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   // Note: selectedTemplateId unused but kept for future
   const [tasks, setTasks] = useState([]);
@@ -364,9 +365,11 @@ const FmsTemplates = () => {
             onChange={(e) => (reason = e.target.value)}
           />
 
-          <Checkbox onChange={(e) => (forceDelete = e.target.checked)}>
-            Force delete (remove even if instances exist)
-          </Checkbox>
+          {role == "Admin" && (
+            <Checkbox onChange={(e) => (forceDelete = e.target.checked)}>
+              Force delete (remove even if instances exist)
+            </Checkbox>
+          )}
         </div>
       ),
       okText: "Delete",
@@ -513,6 +516,9 @@ const FmsTemplates = () => {
                       TASKS
                     </TableHead>
                     <TableHead className="font-semibold text-sm p-3">
+                      CREATED BY
+                    </TableHead>
+                    <TableHead className="font-semibold text-sm p-3">
                       LAUNCHED
                     </TableHead>
                     <TableHead className="font-semibold text-sm p-3">
@@ -551,6 +557,9 @@ const FmsTemplates = () => {
                           </div>
                         </TableCell>{" "}
                         <TableCell className="p-3 text-sm">
+                          {template.user.name}
+                        </TableCell>
+                        <TableCell className="p-3 text-sm">
                           <div className="flex items-center gap-2">
                             <span
                               className={cn(
@@ -581,24 +590,26 @@ const FmsTemplates = () => {
                                 <Edit className="h-4 w-4" />
                               </Link>
                             )}
-                            <Popconfirm
-                              title="Delete Template"
-                              description="Are you sure you want to delete this template?"
-                              onConfirm={() =>
-                                handleDeleteTemplate(template._id)
-                              }
-                              okText="Yes"
-                              cancelText="No"
-                              okButtonProps={{ danger: true }}
-                            >
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors duration-200"
+                            {(role == "Sr. Manager" || role == "Admin") && (
+                              <Popconfirm
+                                title="Delete Template"
+                                description="Are you sure you want to delete this template?"
+                                onConfirm={() =>
+                                  handleDeleteTemplate(template._id)
+                                }
+                                okText="Yes"
+                                cancelText="No"
+                                okButtonProps={{ danger: true }}
                               >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </Popconfirm>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors duration-200"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </Popconfirm>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

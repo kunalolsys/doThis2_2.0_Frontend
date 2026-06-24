@@ -2,7 +2,9 @@ import { io } from "socket.io-client";
 import api from "./api.js"; // Reuse axios config (baseURL, cookies)
 
 // Socket base URL (match backend server)
-const SOCKET_URL = import.meta.env.VITE_API_BASE_URL?.replace("/api/v1", "");
+const SOCKET_URL =
+  import.meta.env.VITE_API_BASE_URL?.replace("/api/v1", "") ||
+  "https://backend.v2.dothis2.com";
 
 let socket = null;
 
