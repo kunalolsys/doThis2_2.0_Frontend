@@ -797,80 +797,84 @@ const PendingBucketRequest = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {requests?.map((row, index) => (
-                      <TableRow key={row._id}>
-                        <TableCell>
-                          <Checkbox
-                            disabled={row.status === "Converted"}
-                            checked={!!row.selected}
-                            onCheckedChange={(checked) =>
-                              toggleRow(index, checked)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            disabled={row.status === "Converted"}
-                            value={row.title}
-                            onChange={(e) =>
-                              updateRequest(index, "title", e.target.value)
-                            }
-                          />
-                        </TableCell>
-
-                        <TableCell>
-                          <Input
-                            disabled={row.status === "Converted"}
-                            value={row.description}
-                            onChange={(e) =>
-                              updateRequest(
-                                index,
-                                "description",
-                                e.target.value,
-                              )
-                            }
-                          />
-                        </TableCell>
-
-                        <TableCell>
-                          <Input
-                            disabled={row.status === "Converted"}
-                            value={row.location}
-                            onChange={(e) =>
-                              updateRequest(index, "location", e.target.value)
-                            }
-                          />
-                        </TableCell>
-
-                        <TableCell>
-                          <DatePicker
-                            disabled={row.status === "Converted"}
-                            className="w-full"
-                            format="DD MMM YYYY"
-                            value={row.startDate ? dayjs(row.startDate) : null}
-                            onChange={(date) =>
-                              updateRequest(index, "startDate", date)
-                            }
-                          />
-                        </TableCell>
-
-                        <TableCell>
-                          <Input
-                            disabled={row.status === "Converted"}
-                            type="text"
-                            inputMode="numeric"
-                            min={0}
-                            value={row.taskEndDays}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, "");
-
-                              if (value === "" || Number(value) >= 1) {
-                                updateRequest(index, "taskEndDays", value);
+                    {Array.isArray(requests) &&
+                      requests.length > 0 &&
+                      requests?.map((row, index) => (
+                        <TableRow key={row._id}>
+                          <TableCell>
+                            <Checkbox
+                              disabled={row.status === "Converted"}
+                              checked={!!row.selected}
+                              onCheckedChange={(checked) =>
+                                toggleRow(index, checked)
                               }
-                            }}
-                            placeholder="Enter days"
-                          />
-                          {/* <Input
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              disabled={row.status === "Converted"}
+                              value={row.title}
+                              onChange={(e) =>
+                                updateRequest(index, "title", e.target.value)
+                              }
+                            />
+                          </TableCell>
+
+                          <TableCell>
+                            <Input
+                              disabled={row.status === "Converted"}
+                              value={row.description}
+                              onChange={(e) =>
+                                updateRequest(
+                                  index,
+                                  "description",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                          </TableCell>
+
+                          <TableCell>
+                            <Input
+                              disabled={row.status === "Converted"}
+                              value={row.location}
+                              onChange={(e) =>
+                                updateRequest(index, "location", e.target.value)
+                              }
+                            />
+                          </TableCell>
+
+                          <TableCell>
+                            <DatePicker
+                              disabled={row.status === "Converted"}
+                              className="w-full"
+                              format="DD MMM YYYY"
+                              value={
+                                row.startDate ? dayjs(row.startDate) : null
+                              }
+                              onChange={(date) =>
+                                updateRequest(index, "startDate", date)
+                              }
+                            />
+                          </TableCell>
+
+                          <TableCell>
+                            <Input
+                              disabled={row.status === "Converted"}
+                              type="text"
+                              inputMode="numeric"
+                              min={0}
+                              value={row.taskEndDays}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/\D/g, "");
+
+                                if (value === "" || Number(value) >= 1) {
+                                  updateRequest(index, "taskEndDays", value);
+                                }
+                              }}
+                              placeholder="Enter days"
+                            />
+                            {/* <Input
                             disabled={row.status === "Converted"}
                             type="number"
                             value={row.taskEndDays}
@@ -882,46 +886,51 @@ const PendingBucketRequest = () => {
                               )
                             }
                           /> */}
-                        </TableCell>
+                          </TableCell>
 
-                        <TableCell>
-                          {row.status === "Converted" ? (
-                            Array.isArray(row?.attachmentFile) &&
-                            row.attachmentFile.length > 0 ? (
-                              <ViewLink file={row.attachmentFile} />
+                          <TableCell>
+                            {row.status === "Converted" ? (
+                              Array.isArray(row?.attachmentFile) &&
+                              row.attachmentFile.length > 0 ? (
+                                <ViewLink file={row.attachmentFile} />
+                              ) : (
+                                "NA"
+                              )
                             ) : (
-                              "NA"
-                            )
-                          ) : (
-                            <AttachmentUpload
-                              // disabled={row.status === "Converted"}
-                              fileList={row.fileList || []}
-                              setFileList={(files) =>
-                                updateRequest(index, "fileList", files)
+                              <AttachmentUpload
+                                // disabled={row.status === "Converted"}
+                                fileList={row.fileList || []}
+                                setFileList={(files) =>
+                                  updateRequest(index, "fileList", files)
+                                }
+                                setFiles={(files) =>
+                                  updateRequest(index, "attachmentFile", files)
+                                }
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Tag
+                              color={
+                                row.status === "Converted"
+                                  ? "success"
+                                  : row.status === "Rejected"
+                                    ? "error"
+                                    : "warning"
                               }
-                              setFiles={(files) =>
-                                updateRequest(index, "attachmentFile", files)
-                              }
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Tag
-                            color={
-                              row.status === "Converted"
-                                ? "success"
-                                : row.status === "Rejected"
-                                  ? "error"
-                                  : "warning"
-                            }
-                          >
-                            {row.status}
-                          </Tag>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                            >
+                              {row.status}
+                            </Tag>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                   </TableBody>
                 </Table>
+                {Array.isArray(requests) && requests.length == 0 && (
+                  <div className="w-full flex flex-col items-center justify-center text-sm text-slate-400 mt-2">
+                    No record found
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

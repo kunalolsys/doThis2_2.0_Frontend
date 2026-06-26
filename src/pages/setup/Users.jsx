@@ -204,7 +204,6 @@ const Users = () => {
 
   const handleDownloadTemplate = () => {
     const headers = [
-      "Sr. No.",
       "Employee Code",
       "Name",
       "Email",
@@ -741,8 +740,8 @@ const Users = () => {
                 </h4>
                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                   <li>
-                    <code className="bg-gray-200 px-1 rounded">Sr. No.</code>{" "}
-                    (Number)
+                    <code className="bg-gray-200 px-1 rounded">Employee Code</code>{" "}
+                    (Text or Number)
                   </li>
                   <li>
                     <code className="bg-gray-200 px-1 rounded">Name</code>{" "}
