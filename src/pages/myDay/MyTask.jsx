@@ -388,6 +388,8 @@ const TaskActions = ({
     </div>
   );
 };
+const getFieldKey = (fieldName) =>
+  fieldName.replace(/[.[\]]/g, "_").replace(/\s+/g, "_");
 const buildValidationSchema = (fields) => {
   const shape = {};
 
@@ -421,36 +423,64 @@ const buildValidationSchema = (fields) => {
       );
     }
 
-    shape[field.fieldName] = validator;
+    shape[getFieldKey(field.fieldName)] = validator;
   });
 
   return Yup.object().shape(shape);
 };
 
 /* ------------------ ✅ Component ------------------ */
-const FmsFormModal = ({ open, onClose, task, onSubmit }) => {
+const FmsFormModal = ({
+  open,
+  onClose,
+  task,
+  onSubmit,
+  initialValues,
+  setRefreshUI,
+}) => {
   const formatLabel = (text) => {
     if (!text) return "";
     return text.charAt(0).toUpperCase() + text.slice(1);
   };
-
+  useEffect(() => {
+    if (open) {
+      formik.resetForm({
+        values: initialValues,
+      });
+    }
+  }, [task, open]);
   const formik = useFormik({
     enableReinitialize: true,
 
     /* ✅ Dynamic Initial Values */
-    initialValues:
-      task?.createdForm?.reduce((acc, field) => {
-        acc[field.fieldName] =
-          task?.formData?.[field.fieldName] ??
-          (field.fieldType === "checkbox" ? false : "");
-        return acc;
-      }, {}) || {},
+    initialValues,
+    // initialValues:
+    //   task?.createdForm?.reduce((acc, field) => {
+    //     const key = getFieldKey(field.fieldName);
+
+    //     acc[key] =
+    //       task?.formData?.[field.fieldName] ??
+    //       (field.fieldType === "checkbox" ? false : "");
+
+    //     return acc;
+    //   }, {}) || {},
 
     /* ✅ Dynamic Validation */
     validationSchema: buildValidationSchema(task?.createdForm || []),
 
     onSubmit: (values) => {
-      onSubmit(values);
+      const finalValues = {};
+
+      task.createdForm.forEach((field) => {
+        const key = getFieldKey(field.fieldName);
+        finalValues[field.fieldName] = values[key];
+      });
+
+      onSubmit(finalValues);
+      formik.resetForm({
+        values: formik.values,
+      });
+      setRefreshUI((prev) => !prev);
     },
   });
 
@@ -468,97 +498,98 @@ const FmsFormModal = ({ open, onClose, task, onSubmit }) => {
 
         {/* Body */}
         <div className="p-5 space-y-4">
-          {task.createdForm.map((field, index) => (
-            <div key={index}>
-              <label className="block text-sm text-gray-700 mb-1">
-                {formatLabel(field.fieldName)}
-                {field.isMandatory && (
-                  <span className="text-red-500 ml-1">*</span>
-                )}
-              </label>
+          {task.createdForm.map((field, index) => {
+            const key = getFieldKey(field.fieldName);
 
-              {/* TEXT / EMAIL */}
-              {["text", "email"].includes(field.fieldType) && (
-                <input
-                  type={field.fieldType}
-                  className="w-full border rounded-md px-3 py-2 text-sm"
-                  {...formik.getFieldProps(field.fieldName)}
-                />
-              )}
+            return (
+              <div key={index}>
+                <label className="block text-sm text-gray-700 mb-1">
+                  {formatLabel(field.fieldName)}
+                  {field.isMandatory && (
+                    <span className="text-red-500 ml-1">*</span>
+                  )}
+                </label>
 
-              {/* NUMBER */}
-              {field.fieldType === "number" && (
-                <input
-                  type="number"
-                  className="w-full border rounded-md px-3 py-2 text-sm"
-                  {...formik.getFieldProps(field.fieldName)}
-                />
-              )}
-
-              {/* TEXTAREA */}
-              {field.fieldType === "textarea" && (
-                <textarea
-                  rows={3}
-                  className="w-full border rounded-md px-3 py-2 text-sm"
-                  {...formik.getFieldProps(field.fieldName)}
-                />
-              )}
-
-              {/* DROPDOWN */}
-              {field.fieldType === "dropdown" && (
-                <Select
-                  value={formik.values[field.fieldName] || ""}
-                  onValueChange={(value) =>
-                    formik.setFieldValue(field.fieldName, value)
-                  }
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue
-                      placeholder={`Select ${formatLabel(field.fieldName)}`}
-                    />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {field.options?.map((opt, i) => (
-                      <SelectItem key={i} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-
-              {/* CHECKBOX */}
-              {field.fieldType === "checkbox" && (
-                <div className="flex items-center mt-2">
+                {/* TEXT / EMAIL */}
+                {["text", "email"].includes(field.fieldType) && (
                   <input
-                    type="checkbox"
-                    checked={formik.values[field.fieldName] || false}
-                    onChange={(e) =>
-                      formik.setFieldValue(field.fieldName, e.target.checked)
-                    }
+                    type={field.fieldType}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    {...formik.getFieldProps(key)}
                   />
-                </div>
-              )}
+                )}
 
-              {/* DATE */}
-              {field.fieldType === "date" && (
-                <input
-                  type="date"
-                  className="w-full border rounded-md px-3 py-2 text-sm"
-                  {...formik.getFieldProps(field.fieldName)}
-                />
-              )}
+                {/* NUMBER */}
+                {field.fieldType === "number" && (
+                  <input
+                    type="number"
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    {...formik.getFieldProps(key)}
+                  />
+                )}
 
-              {/* ERROR MESSAGE */}
-              {formik.touched[field.fieldName] &&
-                formik.errors[field.fieldName] && (
+                {/* TEXTAREA */}
+                {field.fieldType === "textarea" && (
+                  <textarea
+                    rows={3}
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    {...formik.getFieldProps(key)}
+                  />
+                )}
+
+                {/* DROPDOWN */}
+                {field.fieldType === "dropdown" && (
+                  <Select
+                    value={formik.values[key] || ""}
+                    onValueChange={(value) => formik.setFieldValue(key, value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue
+                        placeholder={`Select ${formatLabel(field.fieldName)}`}
+                      />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {field.options?.map((opt, i) => (
+                        <SelectItem key={i} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {/* CHECKBOX */}
+                {field.fieldType === "checkbox" && (
+                  <div className="flex items-center mt-2">
+                    <input
+                      type="checkbox"
+                      checked={formik.values[key] || false}
+                      onChange={(e) =>
+                        formik.setFieldValue(key, e.target.checked)
+                      }
+                    />
+                  </div>
+                )}
+
+                {/* DATE */}
+                {field.fieldType === "date" && (
+                  <input
+                    type="date"
+                    className="w-full border rounded-md px-3 py-2 text-sm"
+                    {...formik.getFieldProps(field.fieldName)}
+                  />
+                )}
+
+                {/* ERROR MESSAGE */}
+                {formik.touched[key] && formik.errors[key] && (
                   <p className="text-red-500 text-xs mt-1">
-                    {formik.errors[field.fieldName]}
+                    {formik.errors[key]}
                   </p>
                 )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
         {/* Footer */}
@@ -573,7 +604,7 @@ const FmsFormModal = ({ open, onClose, task, onSubmit }) => {
           {task.status != "Completed" && (
             <button
               onClick={formik.handleSubmit}
-              disabled={!formik.isValid}
+              // disabled={!formik.dirty || !formik.isValid || formik.isSubmitting}
               className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md disabled:opacity-50"
             >
               Submit
@@ -1892,7 +1923,19 @@ const MyTask = () => {
   };
   const isDoThisEnable = isModuleEnabled("DO_THIS2");
   const isFMSEnable = isModuleEnabled("FMS_ENGINE");
+  const initialValues = useMemo(() => {
+    return (
+      selectedTask?.createdForm?.reduce((acc, field) => {
+        const key = getFieldKey(field.fieldName);
 
+        acc[key] =
+          selectedTask?.formData?.[field.fieldName] ??
+          (field.fieldType === "checkbox" ? false : "");
+
+        return acc;
+      }, {}) || {}
+    );
+  }, [selectedTask]);
   if (status === "failed")
     return <div className="p-6 text-red-500">Error: {error}</div>;
 
@@ -2189,10 +2232,13 @@ const MyTask = () => {
       </Dialog>
       {/* Form Modal */}
       <FmsFormModal
+        key={`${selectedTask?._id}-${JSON.stringify(selectedTask?.formData || {})}`}
         open={showFormModal}
         task={selectedTask}
         onClose={() => setShowFormModal(false)}
         onSubmit={handleFormSubmit}
+        initialValues={initialValues}
+        setRefreshUI={setRefreshUI}
       />
       <RaiseQueryModal
         task={selectedQueryTask}
