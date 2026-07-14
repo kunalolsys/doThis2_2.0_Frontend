@@ -8,6 +8,7 @@ import {
   Zap,
   Upload,
   X,
+  LogOut,
 } from "lucide-react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
@@ -71,16 +72,16 @@ export default function PublicOpenForm() {
   };
 
   // VERIFY EMPLOYEE
-  const verifyEmployee = async () => {
+  const verifyEmployee = async (code = employeeCode) => {
     try {
       setVerifying(true);
 
       const res = await axios.post(`${API}/open-forms/verify-user`, {
-        employeeCode,
+        employeeCode: code,
       });
 
       setVerifiedUser(res.data.data);
-
+      localStorage.setItem(`verifiedEmployee_${slug}`, code);
       toast.success("Employee verified successfully");
     } catch (err) {
       toast.error(err?.response?.data?.message || "Invalid employee code");
@@ -88,7 +89,14 @@ export default function PublicOpenForm() {
       setVerifying(false);
     }
   };
+  useEffect(() => {
+    const savedCode = localStorage.getItem(`verifiedEmployee_${slug}`);
 
+    if (savedCode) {
+      setEmployeeCode(savedCode);
+      verifyEmployee(savedCode);
+    }
+  }, [slug]);
   // VALIDATION
   const validateField = (field, value) => {
     // REQUIRED
@@ -278,7 +286,7 @@ export default function PublicOpenForm() {
                 setSubmitSuccess(
                   res?.data?.data?.triggeredInstance?.instanceId || "Submitted",
                 );
-
+                setSubmissionData({});
                 toast.success("Form submitted successfully");
               } catch (err) {
                 toast.error(
@@ -694,7 +702,7 @@ export default function PublicOpenForm() {
         }}
       >
         {/* SUCCESS */}
-        {submitSuccess ? (
+        {/* {submitSuccess ? (
           <div
             style={{
               background: T.card,
@@ -740,359 +748,370 @@ export default function PublicOpenForm() {
             >
               Linked workflow triggered successfully
             </p>
-
-            {/* <div
-              style={{
-                display: "inline-block",
-                padding: "12px 18px",
-                borderRadius: 14,
-                background: T.accentL,
-                border: `1px solid ${T.accentB}`,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 11,
-                  color: T.accent,
-                  fontWeight: 700,
-                  marginBottom: 4,
-                  textTransform: "uppercase",
-                }}
-              >
-                Instance ID
-              </div>
-
-              <div
-                style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  fontFamily: "monospace",
-                }}
-              >
-                {submitSuccess}
-              </div>
-            </div> */}
           </div>
         ) : (
+          <></>
+        )} */}
+        <div
+          style={{
+            background: T.card,
+            border: `1px solid ${T.border}`,
+            borderRadius: 24,
+            overflow: "hidden",
+            boxShadow: "0 10px 30px rgba(15,23,42,0.05)",
+          }}
+        >
+          {/* HEADER */}
           <div
             style={{
-              background: T.card,
-              border: `1px solid ${T.border}`,
-              borderRadius: 24,
-              overflow: "hidden",
-              boxShadow: "0 10px 30px rgba(15,23,42,0.05)",
+              background: "linear-gradient(135deg,#2563eb,#4f46e5)",
+              padding: "36px",
             }}
           >
-            {/* HEADER */}
             <div
               style={{
-                background: "linear-gradient(135deg,#2563eb,#4f46e5)",
-                padding: "36px",
+                position: "relative",
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  gap: 16,
-                  alignItems: "center",
-                }}
-              >
-                <div
+              {/* Logout Button */}
+              {verifiedUser && (
+                <button
+                  onClick={() => {
+                    localStorage.removeItem(`verifiedEmployee_${slug}`);
+                    setVerifiedUser(null);
+                    setEmployeeCode("");
+                    setSubmissionData({});
+                    setErrors({});
+                    toast.success("Logged out successfully");
+                  }}
+                  title="Change Employee"
                   style={{
-                    width: 58,
-                    height: 58,
-                    borderRadius: 16,
-                    background: "rgba(255,255,255,0.18)",
+                    position: "absolute",
+                    top: 0,
+                    right: 0,
+                    width: 42,
+                    height: 42,
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.25)",
+                    background: "rgba(255,255,255,0.12)",
+                    color: "#fff",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    cursor: "pointer",
+                    transition: "all .2s ease",
+                    backdropFilter: "blur(8px)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.22)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.12)";
                   }}
                 >
-                  <FileText size={26} color="#fff" />
-                </div>
+                  <LogOut size={18} />
+                </button>
+              )}
 
-                <div>
-                  <h1
-                    style={{
-                      color: "#fff",
-                      fontSize: 24,
-                      fontWeight: 800,
-                      margin: 0,
-                    }}
-                  >
-                    {form.formName}
-                  </h1>
+              <div
+                style={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: 16,
+                  background: "rgba(255,255,255,0.18)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <FileText size={26} color="#fff" />
+              </div>
 
-                  <p
-                    style={{
-                      color: "rgba(255,255,255,0.8)",
-                      marginTop: 4,
-                      fontSize: 13,
-                    }}
-                  >
-                    {form.description}
-                  </p>
-                </div>
+              <div style={{ flex: 1, paddingRight: 60 }}>
+                <h1
+                  style={{
+                    color: "#fff",
+                    fontSize: 24,
+                    fontWeight: 800,
+                    margin: 0,
+                  }}
+                >
+                  {form.formName}
+                </h1>
+
+                <p
+                  style={{
+                    color: "rgba(255,255,255,0.8)",
+                    marginTop: 4,
+                    fontSize: 13,
+                  }}
+                >
+                  {form.description}
+                </p>
               </div>
             </div>
+          </div>
 
-            {/* BODY */}
-            <div
-              style={{
-                padding: "32px",
-              }}
-            >
-              {!verifiedUser ? (
+          {/* BODY */}
+          <div
+            style={{
+              padding: "32px",
+            }}
+          >
+            {!verifiedUser ? (
+              <div
+                style={{
+                  maxWidth: 420,
+                  margin: "0 auto",
+                }}
+              >
                 <div
                   style={{
-                    maxWidth: 420,
-                    margin: "0 auto",
+                    width: 64,
+                    height: 64,
+                    borderRadius: 18,
+                    background: T.accentL,
+                    border: `1px solid ${T.accentB}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    margin: "0 auto 20px",
+                  }}
+                >
+                  <ShieldCheck size={30} color={T.accent} />
+                </div>
+
+                <h2
+                  style={{
+                    textAlign: "center",
+                    fontSize: 22,
+                    fontWeight: 800,
+                    marginBottom: 8,
+                    color: T.text,
+                  }}
+                >
+                  Employee Verification
+                </h2>
+
+                <p
+                  style={{
+                    textAlign: "center",
+                    color: T.muted,
+                    fontSize: 13,
+                    marginBottom: 24,
+                  }}
+                >
+                  Enter your employee code to continue
+                </p>
+
+                <input
+                  placeholder="Enter employee code"
+                  value={employeeCode}
+                  onChange={(e) => setEmployeeCode(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "14px 16px",
+                    borderRadius: 14,
+                    border: `1px solid ${T.border}`,
+                    outline: "none",
+                    fontSize: 14,
+                    marginBottom: 18,
+                  }}
+                />
+
+                <button
+                  onClick={() => verifyEmployee(employeeCode)}
+                  disabled={verifying}
+                  style={{
+                    width: "100%",
+                    border: "none",
+                    background: T.accent,
+                    color: "#fff",
+                    padding: "14px 16px",
+                    borderRadius: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  {verifying ? "Verifying..." : "Verify & Continue"}
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* VERIFIED USER */}
+                <div
+                  style={{
+                    padding: 20,
+                    borderRadius: 22,
+                    background:
+                      "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(59,130,246,0.06))",
+                    border: `1px solid ${T.greenB}`,
+                    marginBottom: 30,
                   }}
                 >
                   <div
                     style={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: 18,
-                      background: T.accentL,
-                      border: `1px solid ${T.accentB}`,
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      margin: "0 auto 20px",
+                      gap: 14,
                     }}
                   >
-                    <ShieldCheck size={30} color={T.accent} />
+                    <div
+                      style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 16,
+                        background: T.green,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
+                        fontWeight: 800,
+                        fontSize: 18,
+                      }}
+                    >
+                      {verifiedUser?.name?.charAt(0)?.toUpperCase()}
+                    </div>
+
+                    <div>
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: T.green,
+                          textTransform: "uppercase",
+                          marginBottom: 4,
+                        }}
+                      >
+                        Verified Employee
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: 18,
+                          fontWeight: 800,
+                          color: T.text,
+                        }}
+                      >
+                        {verifiedUser?.name}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: T.muted,
+                          marginTop: 4,
+                        }}
+                      >
+                        EMP: {verifiedUser?.employeeCode}
+                      </div>
+                    </div>
                   </div>
+                </div>
 
-                  <h2
-                    style={{
-                      textAlign: "center",
-                      fontSize: 22,
-                      fontWeight: 800,
-                      marginBottom: 8,
-                      color: T.text,
-                    }}
-                  >
-                    Employee Verification
-                  </h2>
+                {/* FORM FIELDS */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 22,
+                  }}
+                >
+                  {form.fields.map((field) => (
+                    <div key={field.fieldId}>
+                      <label
+                        style={{
+                          display: "block",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          color: T.text,
+                          marginBottom: 8,
+                        }}
+                      >
+                        {field.label}
 
-                  <p
-                    style={{
-                      textAlign: "center",
-                      color: T.muted,
-                      fontSize: 13,
-                      marginBottom: 24,
-                    }}
-                  >
-                    Enter your employee code to continue
-                  </p>
+                        {field.isRequired && (
+                          <span
+                            style={{
+                              color: T.red,
+                              marginLeft: 4,
+                            }}
+                          >
+                            *
+                          </span>
+                        )}
+                      </label>
 
-                  <input
-                    placeholder="Enter employee code"
-                    value={employeeCode}
-                    onChange={(e) => setEmployeeCode(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "14px 16px",
-                      borderRadius: 14,
-                      border: `1px solid ${T.border}`,
-                      outline: "none",
-                      fontSize: 14,
-                      marginBottom: 18,
-                    }}
-                  />
+                      {renderField(field)}
 
+                      {errors[field.fieldId] && (
+                        <div
+                          style={{
+                            color: T.red,
+                            fontSize: 12,
+                            marginTop: 6,
+                          }}
+                        >
+                          {errors[field.fieldId]}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* SUBMIT */}
+                <div
+                  style={{
+                    marginTop: 36,
+                    paddingTop: 24,
+                    borderTop: `1px solid ${T.border}`,
+                  }}
+                >
                   <button
-                    onClick={verifyEmployee}
-                    disabled={verifying}
+                    onClick={handleSubmit}
+                    disabled={submitting}
                     style={{
                       width: "100%",
                       border: "none",
                       background: T.accent,
                       color: "#fff",
-                      padding: "14px 16px",
-                      borderRadius: 14,
+                      padding: "16px",
+                      borderRadius: 16,
                       fontWeight: 700,
                       cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      fontSize: 14,
                     }}
                   >
-                    {verifying ? "Verifying..." : "Verify & Continue"}
+                    {submitting ? (
+                      <>
+                        <Loader2
+                          size={17}
+                          style={{
+                            animation: "spin 1s linear infinite",
+                          }}
+                        />
+                        Triggering Workflow...
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={16} />
+                        Submit & Trigger Workflow
+                      </>
+                    )}
                   </button>
                 </div>
-              ) : (
-                <>
-                  {/* VERIFIED USER */}
-                  <div
-                    style={{
-                      padding: 20,
-                      borderRadius: 22,
-                      background:
-                        "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(59,130,246,0.06))",
-                      border: `1px solid ${T.greenB}`,
-                      marginBottom: 30,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 14,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 52,
-                          height: 52,
-                          borderRadius: 16,
-                          background: T.green,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "#fff",
-                          fontWeight: 800,
-                          fontSize: 18,
-                        }}
-                      >
-                        {verifiedUser?.name?.charAt(0)?.toUpperCase()}
-                      </div>
-
-                      <div>
-                        <div
-                          style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            color: T.green,
-                            textTransform: "uppercase",
-                            marginBottom: 4,
-                          }}
-                        >
-                          Verified Employee
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize: 18,
-                            fontWeight: 800,
-                            color: T.text,
-                          }}
-                        >
-                          {verifiedUser?.name}
-                        </div>
-
-                        <div
-                          style={{
-                            fontSize: 13,
-                            color: T.muted,
-                            marginTop: 4,
-                          }}
-                        >
-                          EMP: {verifiedUser?.employeeCode}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* FORM FIELDS */}
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 22,
-                    }}
-                  >
-                    {form.fields.map((field) => (
-                      <div key={field.fieldId}>
-                        <label
-                          style={{
-                            display: "block",
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: T.text,
-                            marginBottom: 8,
-                          }}
-                        >
-                          {field.label}
-
-                          {field.isRequired && (
-                            <span
-                              style={{
-                                color: T.red,
-                                marginLeft: 4,
-                              }}
-                            >
-                              *
-                            </span>
-                          )}
-                        </label>
-
-                        {renderField(field)}
-
-                        {errors[field.fieldId] && (
-                          <div
-                            style={{
-                              color: T.red,
-                              fontSize: 12,
-                              marginTop: 6,
-                            }}
-                          >
-                            {errors[field.fieldId]}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* SUBMIT */}
-                  <div
-                    style={{
-                      marginTop: 36,
-                      paddingTop: 24,
-                      borderTop: `1px solid ${T.border}`,
-                    }}
-                  >
-                    <button
-                      onClick={handleSubmit}
-                      disabled={submitting}
-                      style={{
-                        width: "100%",
-                        border: "none",
-                        background: T.accent,
-                        color: "#fff",
-                        padding: "16px",
-                        borderRadius: 16,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 8,
-                        fontSize: 14,
-                      }}
-                    >
-                      {submitting ? (
-                        <>
-                          <Loader2
-                            size={17}
-                            style={{
-                              animation: "spin 1s linear infinite",
-                            }}
-                          />
-                          Triggering Workflow...
-                        </>
-                      ) : (
-                        <>
-                          <Zap size={16} />
-                          Submit & Trigger Workflow
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <style>{`

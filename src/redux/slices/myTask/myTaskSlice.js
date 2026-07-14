@@ -119,12 +119,120 @@ export const getFilterTasks = createAsyncThunk(
     }
   },
 );
+export const getFilterFMSTasks = createAsyncThunk(
+  "myTasks/fetchFilterTasks",
+  async (params, { rejectWithValue }) => {
+    try {
+      const url = "/tasks/filter-fms";
+
+      const {
+        userId,
+        page = 1,
+        limit = 10,
+        dateRange,
+        search,
+        filters = {},
+        creatorOrAssignorId,
+      } = params;
+
+      const payload = {
+        userId,
+        page,
+        limit,
+        creatorOrAssignorId,
+
+        ...(search && { search }),
+        ...(dateRange && {
+          startDate: dateRange?.[0]
+            ? dayjs(dateRange[0]).format("YYYY-MM-DD")
+            : null,
+          endDate: dateRange?.[1]
+            ? dayjs(dateRange[1]).format("YYYY-MM-DD")
+            : null,
+        }),
+
+        filters: {
+          // ✅ STAT (overdue, dueToday, completed, total)
+          ...(filters.stat && { stat: filters.stat }),
+
+          // ✅ TAB CATEGORY (today_backlog, upcoming, completed)
+          ...(filters.taskCategory && {
+            taskCategory: filters.taskCategory,
+          }),
+
+          // ✅ STATUS (Pending, Completed, etc.)
+          ...(filters.status && { status: filters.status }),
+
+          // ✅ TASK TYPE (DelegationTask, RecurringTask)
+          ...(filters.taskType && { taskType: filters.taskType }),
+        },
+      };
+
+      const response = await api.post(url, payload);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
 //**Export my task */
 export const exportMyTasks = createAsyncThunk(
   "myTasks/exportMyTasks",
   async (params, { rejectWithValue }) => {
     try {
       const url = "/tasks/my-task/export";
+
+      const {
+        userId,
+        dateRange,
+        search,
+        filters = {},
+        creatorOrAssignorId,
+      } = params;
+
+      const payload = {
+        userId,
+        creatorOrAssignorId,
+
+        ...(search && { search }),
+        ...(dateRange && {
+          startDate: dateRange?.[0]
+            ? dayjs(dateRange[0]).format("YYYY-MM-DD")
+            : null,
+          endDate: dateRange?.[1]
+            ? dayjs(dateRange[1]).format("YYYY-MM-DD")
+            : null,
+        }),
+
+        filters: {
+          // ✅ STAT (overdue, dueToday, completed, total)
+          ...(filters.stat && { stat: filters.stat }),
+
+          // ✅ TAB CATEGORY (today_backlog, upcoming, completed)
+          ...(filters.taskCategory && {
+            taskCategory: filters.taskCategory,
+          }),
+
+          // ✅ STATUS (Pending, Completed, etc.)
+          ...(filters.status && { status: filters.status }),
+
+          // ✅ TASK TYPE (DelegationTask, RecurringTask)
+          ...(filters.taskType && { taskType: filters.taskType }),
+        },
+      };
+
+      const response = await api.post(url, payload);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
+export const exportMyFMSTasks = createAsyncThunk(
+  "myTasks/exportMyTasks",
+  async (params, { rejectWithValue }) => {
+    try {
+      const url = "/tasks/my-task/export-fms";
 
       const {
         userId,
@@ -193,7 +301,26 @@ export const getMyTaskStats = createAsyncThunk(
     }
   },
 );
+export const getMyFMSTaskStats = createAsyncThunk(
+  "myTasks/fetchMyTasksStats",
+  async (params, { rejectWithValue }) => {
+    try {
+      const url = "/tasks/myFMSTask-stats";
 
+      const { userId, creatorOrAssignorId } = params;
+
+      const payload = {
+        userId,
+        creatorOrAssignorId,
+      };
+
+      const response = await api.post(url, payload);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
 //**role based task filter for manager/admin/owner/sr.manager view */
 export const getRoleBasedTasks = createAsyncThunk(
   "myTasks/fetchRoleBasedTasks",
@@ -471,7 +598,7 @@ const myTaskSlice = createSlice({
         state.tasks = state.tasks.filter(
           (task) => task._id !== action.payload && task.id !== action.payload,
         );
-      })
+      });
   },
 });
 

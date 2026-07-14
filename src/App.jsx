@@ -61,6 +61,7 @@ import DistributionBuckets from "./pages/task-distribution/BucketTaskDist";
 import BucketListingPage from "./pages/task-distribution/BucketListingPage";
 import BucketReqOpenForm from "./pages/public-form/BucketReqOpenForm";
 import PendingBucketRequest from "./pages/task-distribution/PendingBucketReques";
+import FmsTasks from "./pages/myDay/FmsTask";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -115,6 +116,7 @@ function App() {
                 {/* My Day Routes */}
                 {/* <Route path="/my-day/launchpad" element={<Launchpad />} /> */}
                 <Route path="/my-day/mytasks" element={<MyTask />} />
+                <Route path="/my-day/my-fms-tasks" element={<FmsTasks />} />
                 <Route path="/my-day/view" element={<ManagerView />} />
                 <Route path="/user/:userId" element={<UserTaskHistory />} />
                 <Route path="/form-builder" element={<OpenFormBuilder />} />

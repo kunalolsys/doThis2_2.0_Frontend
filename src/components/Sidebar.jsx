@@ -175,7 +175,8 @@ const Sidebar = ({ children }) => {
 
   // Filter My Day items based on user roles
   const myDayLinks = [
-    { path: "/my-day/mytasks", label: "My Tasks", icon: ClipboardCheck },
+    { path: "/my-day/mytasks", label: "Delegated & Recurring", icon: ClipboardCheck },
+    { path: "/my-day/my-fms-tasks", label: "FMS Tasks", icon: ClipboardCheck },
     // { path: "/my-day/launchpad", label: "Launchpad", icon: Rocket },
   ];
 

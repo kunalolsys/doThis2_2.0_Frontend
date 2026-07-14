@@ -519,6 +519,25 @@ const FieldCard = ({
           style={{ display: "flex", alignItems: "center", gap: 6 }}
           onClick={(e) => e.stopPropagation()}
         >
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 12,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={field.isTableColumn}
+              onChange={(e) =>
+                onChange(index, "isTableColumn", e.target.checked)
+              }
+            />
+           Show in Table
+          </label>
           <Btn
             variant="ghost"
             size="sm"
@@ -861,6 +880,7 @@ export default function OpenFormBuilder() {
       fieldType: "text",
       placeholder: "Enter your full name",
       isRequired: true,
+      isTableColumn: true,
       options: [],
       order: 1,
     },

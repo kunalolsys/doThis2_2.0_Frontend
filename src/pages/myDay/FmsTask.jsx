@@ -3,11 +3,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { useSocket } from "../../context/SocketContext";
 import {
   completeFMSTask,
-  exportMyTasks,
+  exportMyFMSTasks,
   fetchMyTasks,
   fetchTaskCounts,
-  getFilterTasks,
-  getMyTaskStats,
+  getFilterFMSTasks,
+  getMyFMSTaskStats,
   updateFMSTaskChecklistItems,
   updateMyTaskChecklistItems,
   updateMyTaskFormData,
@@ -803,7 +803,7 @@ const FilterBar = ({
     </div>
 
     <div className="flex flex-col sm:flex-row gap-2 flex-1">
-      {(isDoThisEnable || isFMSEnable) && !(!isDoThisEnable && isFMSEnable) && (
+      {/* {(isDoThisEnable || isFMSEnable) && !(!isDoThisEnable && isFMSEnable) && (
         <Select
           value={selectedFilterTaskType}
           onValueChange={setSelectedFilterTaskType}
@@ -822,12 +822,12 @@ const FilterBar = ({
               </>
             )}
 
-            {/* {isFMSEnable && (
+            {isFMSEnable && (
               <SelectItem value="FmsInstanceTask">FMS</SelectItem>
-            )} */}
+            )}
           </SelectContent>
         </Select>
-      )}
+      )} */}
       {(selectedStatFilter == "total" || !selectedStatFilter) && (
         <Select
           value={selectedFilterStatus}
@@ -889,20 +889,30 @@ const TodayTasksTable = ({
   setSelectedSubmissionTask,
 }) => {
   const combinedTasks = [...(tasks || []), ...(upcomingRecurringTasks || [])];
+  const tableColumns =
+    combinedTasks.length > 0
+      ? Object.entries(combinedTasks[0]?.submissionData || {}).filter(
+          ([_, field]) => field.isTableColumn,
+        )
+      : [];
+  console.log(tableColumns);
   return (
     <div className="overflow-x-auto border rounded-lg bg-white">
       <Table>
         <TableHeader className="bg-gray-50">
           <TableRow>
             <TableHead>Sr. No.</TableHead>
-            <TableHead>Task Id</TableHead>
+            {/* <TableHead>Task Id</TableHead> */}
             <TableHead>Task Title</TableHead>
-            <TableHead>Assigned By</TableHead>
-            <TableHead>Assigned To</TableHead>
+            {tableColumns.map(([key, field]) => (
+              <TableHead key={key}>{field.label}</TableHead>
+            ))}
+            {/* <TableHead>Assigned By</TableHead> */}
+            {/* <TableHead>Assigned To</TableHead> */}
             <TableHead>Description</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Attachment</TableHead>
-            <TableHead>Start Date & Time</TableHead>{" "}
+            {/* <TableHead>Type</TableHead> */}
+            {/* <TableHead>Attachment</TableHead> */}
+            {/* <TableHead>Start Date & Time</TableHead>{" "} */}
             <TableHead>Due Date & Time</TableHead>
             <TableHead>Frequency</TableHead>
             <TableHead>Time Left</TableHead>
@@ -932,7 +942,8 @@ const TodayTasksTable = ({
                     <TableCell>
                       {(currentPage - 1) * itemsPerPage + index + 1}
                     </TableCell>
-                    <TableCell>{task.TaskId || "-"}</TableCell>
+
+                    {/* <TableCell>{task.TaskId || "-"}</TableCell> */}
                     <TableCell className="font-medium">
                       <div className="flex flex-col gap-1">
                         {/* TITLE + BADGE */}
@@ -1038,7 +1049,12 @@ const TodayTasksTable = ({
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    {tableColumns.map(([key]) => (
+                      <TableCell key={key}>
+                        {task.submissionData?.[key]?.value ?? "-"}
+                      </TableCell>
+                    ))}
+                    {/* <TableCell>
                       <div className="flex flex-row gap-1">
                         <span className="text-sm font-medium text-gray-900">
                           {task.assignedBy?.name || "-"}
@@ -1090,7 +1106,7 @@ const TodayTasksTable = ({
                           </span>
                         )}
                       </div>
-                    </TableCell>
+                    </TableCell> */}
 
                     <TableCell>
                       <Button
@@ -1102,7 +1118,7 @@ const TodayTasksTable = ({
                         View
                       </Button>
                     </TableCell>
-                    <TableCell>
+                    {/* <TableCell>
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded-full ${
                           task.taskType === "FmsInstanceTask"
@@ -1122,19 +1138,19 @@ const TodayTasksTable = ({
                                 ? "Recurring"
                                 : "Delegation"}
                       </span>
-                    </TableCell>
+                    </TableCell> */}
                     {/* <TableCell>{task.assignedBy?.name || "Self"}</TableCell> */}
-                    <TableCell>
+                    {/* <TableCell>
                       {Array.isArray(task?.attachmentFile) &&
                       task.attachmentFile.length > 0 ? (
                         <ViewLink file={task.attachmentFile} />
                       ) : (
                         "NA"
                       )}
-                    </TableCell>
-                    <TableCell>
+                    </TableCell> */}
+                    {/* <TableCell>
                       {task.startDate ? formatDate(task.startDate) : "-"}
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell>
                       {task.dueDate ? formatDate(task.dueDate) : "-"}
                     </TableCell>
@@ -1144,7 +1160,7 @@ const TodayTasksTable = ({
                         const dueStatus = getDueStatus(task.dueDate);
 
                         if (!dueStatus) return "-";
-                        if (task.status == "Completed") return;
+                        if (task.status == "Completed") return "-";
                         return (
                           <div
                             className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm
@@ -1262,7 +1278,7 @@ const TodayTasksTable = ({
 };
 
 // --- MAIN COMPONENT ---
-const MyTask = () => {
+const FmsTasks = () => {
   const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -1431,9 +1447,9 @@ const MyTask = () => {
     let mounted = true;
     if (currentUser?._id) {
       setIsFetching(true);
-      dispatch(getMyTaskStats({ userId: currentUser._id }));
+      dispatch(getMyFMSTaskStats({ userId: currentUser._id }));
       dispatch(
-        getFilterTasks({
+        getFilterFMSTasks({
           userId: currentUser._id,
           page: localCurrentPage,
           limit: localItemsPerPage,
@@ -1495,7 +1511,7 @@ const MyTask = () => {
       setIsExporting(true);
 
       const response = await dispatch(
-        exportMyTasks({
+        exportMyFMSTasks({
           userId: currentUser._id,
           dateRange,
           search: debouncedSearch || undefined,
@@ -1644,7 +1660,7 @@ const MyTask = () => {
     toast.success("Task updated");
     // dispatch(fetchMyTasks(getFetchParams()));
     dispatch(
-      getFilterTasks({
+      getFilterFMSTasks({
         userId: currentUser._id,
         page: localCurrentPage,
         limit: localItemsPerPage,
@@ -1772,7 +1788,7 @@ const MyTask = () => {
       toast.success("Deleted");
       // dispatch(fetchMyTasks(getFetchParams()));
       dispatch(
-        getFilterTasks({
+        getFilterFMSTasks({
           userId: currentUser._id,
           page: localCurrentPage,
           limit: localItemsPerPage,
@@ -1944,7 +1960,7 @@ const MyTask = () => {
       <div className="mx-auto">
         <Card className="shadow-xl border-0 overflow-hidden">
           <div className="flex justify-between items-center px-6">
-            <h1 className="text-2xl font-bold">Delegated & Recurring Task</h1>
+            <h1 className="text-2xl font-bold">FMS Task</h1>
             <Button
               variant="outline"
               size="sm"
@@ -1953,7 +1969,7 @@ const MyTask = () => {
                 // Refresh tasks with current params
                 // dispatch(fetchMyTasks(getFetchParams()));
                 dispatch(
-                  getFilterTasks({
+                  getFilterFMSTasks({
                     userId: currentUser._id,
                     page: localCurrentPage,
                     limit: localItemsPerPage,
@@ -2288,13 +2304,13 @@ const MyTask = () => {
         {selectedSubmissionTask?.submissionData && (
           <Descriptions bordered column={1} size="small">
             {Object.entries(selectedSubmissionTask.submissionData).map(
-              ([key, value]) => (
-                <Descriptions.Item key={key} label={formatLabel(key)}>
+              ([key, { label, value }]) => (
+                <Descriptions.Item key={key} label={label || formatLabel(key)}>
                   {typeof value === "boolean"
                     ? value
                       ? "Yes"
                       : "No"
-                    : String(value)}
+                    : value || "-"}
                 </Descriptions.Item>
               ),
             )}
@@ -2305,4 +2321,4 @@ const MyTask = () => {
   );
 };
 
-export default MyTask;
+export default FmsTasks;

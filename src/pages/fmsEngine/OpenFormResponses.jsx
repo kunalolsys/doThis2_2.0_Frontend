@@ -112,22 +112,22 @@ export default function OpenFormResponses() {
 
           {/* REGISTRY FILTER DROPDOWN COMPONENT */}
           {/* <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 pl-3 pr-1 py-1 rounded-lg text-xs font-medium text-neutral-600 hover:bg-neutral-100/60 transition-colors cursor-pointer relative"> */}
-            {/* <Filter size={12} className="text-neutral-400 shrink-0" /> */}
+          {/* <Filter size={12} className="text-neutral-400 shrink-0" /> */}
 
-            <Select
-              value={selectedFormId}
-              onChange={(value) => setSelectedFormId(value)}
+          <Select
+            value={selectedFormId}
+            onChange={(value) => setSelectedFormId(value)}
             //   variant="borderless"
-              popupMatchSelectWidth={false}
-              className="text-neutral-800 font-medium text-xs ant-custom-select"
-              options={[
-                { value: "all", label: "All Registries Combined" },
-                ...forms.map((f) => ({
-                  value: f._id,
-                  label: f.formName,
-                })),
-              ]}
-            />
+            popupMatchSelectWidth={false}
+            className="text-neutral-800 font-medium text-xs ant-custom-select"
+            options={[
+              { value: "all", label: "All Registries Combined" },
+              ...forms.map((f) => ({
+                value: f._id,
+                label: f.formName,
+              })),
+            ]}
+          />
           {/* </div> */}
         </div>
 
@@ -341,24 +341,30 @@ export default function OpenFormResponses() {
                   </div>
 
                   {Object.entries(selectedSubmission.submissionData || {}).map(
-                    ([key, value]) => (
-                      <div key={key} className="flex flex-col gap-1.5">
-                        <label className="text-xs font-semibold tracking-tight text-neutral-500">
-                          {key
-                            .replace(/([A-Z])/g, " $1")
-                            .replace(/^./, (str) => str.toUpperCase())}
-                        </label>
-                        <div className="text-sm font-normal text-neutral-800 bg-white border border-neutral-200/70 px-4 py-3 rounded-xl whitespace-pre-wrap leading-relaxed shadow-3xs font-sans">
-                          {value !== null && value !== undefined ? (
-                            String(value)
-                          ) : (
-                            <span className="text-neutral-300 italic font-mono text-xs">
-                              VOID_OBJECT_REF_NULL
-                            </span>
-                          )}
+                    ([key, field]) => {
+                      return (
+                        <div key={key} className="flex flex-col gap-1.5">
+                          <label className="text-xs font-semibold tracking-tight text-neutral-500">
+                            {key
+                              .replace(/([A-Z])/g, " $1")
+                              .replace(/^./, (str) => str.toUpperCase())}
+                          </label>
+                          <div className="text-sm font-normal text-neutral-800 bg-white border border-neutral-200/70 px-4 py-3 rounded-xl whitespace-pre-wrap leading-relaxed shadow-3xs font-sans">
+                            {field.value !== null &&
+                            field.value !== undefined &&
+                            field.value !== "" ? (
+                              String(field.value)
+                            ) : (
+                              <span
+                                className={`${field ? "font-normal text-neutral-800" : "text-neutral-300 italic"} text-sm`}
+                              >
+                                {field || ""}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ),
+                      );
+                    },
                   )}
                 </div>
               </div>
