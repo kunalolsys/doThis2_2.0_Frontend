@@ -21,6 +21,8 @@ import {
   Folder,
   FileSpreadsheet,
   CheckSquare,
+  Hash,
+  Repeat,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -28,7 +30,7 @@ import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../lib/api";
-import { Button as AntButton, Modal } from "antd";
+import { Button as AntButton, Modal, TimePicker } from "antd";
 import { cn, frequencyMap } from "./utils";
 import {
   Card,
@@ -275,13 +277,13 @@ const TaskTable = ({
   const [editDueDate, setEditDueDate] = useState(null);
   const [editChecklist, setEditChecklist] = useState([]);
   const [taskEndDateOffset, setTaskEndDateOffset] = useState(""); // New state for task end date offset
+  const [taskEndTime, setTaskEndTime] = useState(null);
 
   const [editChecklistItem, setEditChecklistItem] = useState("");
   const [editRecurrenceFrequency, setEditRecurrenceFrequency] =
     useState("daily");
   const [editRecurrenceEndDate, setEditRecurrenceEndDate] = useState();
   const [editWeeklyRecurrenceDays, setEditWeeklyRecurrenceDays] = useState([]);
-
   // Import Dialog States
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [importTaskType, setImportTaskType] = useState(null); // 'delegation', 'recurring', 'dependent'
@@ -469,58 +471,58 @@ const TaskTable = ({
   const handleEditClick = async (task) => {
     const res = await api.get(`/tasks/${task._id || task.id}`);
     const data = res.data.data;
+
     setEditingTask(data);
     setEditTitle(data.title);
     setEditDescription(data.description || "");
-    // For single task edit, we assume assignedTo is an object with _id, or just an ID
+
     setEditAssignedTo(data.assignedTo?._id || data.assignedTo || "");
+
     setEditStartDate(data.startDate ? new Date(data.startDate) : null);
     setEditDueDate(data.dueDate ? new Date(data.dueDate) : null);
-    setEditChecklist(data.checklist || []);
-    setTaskEndDateOffset(data.taskEndDays);
 
-    if (data.taskType === "RecurringTask" || data.frequency) {
+    setEditChecklist(data.checklist || []);
+
+    setTaskEndDateOffset(data.taskEndDays);
+    setTaskEndTime(data.taskEndTime);
+
+    if (data.taskType === "RecurringTask") {
       setEditRecurrenceFrequency(data.frequency?.toLowerCase() || "daily");
       setEditRecurrenceEndDate(data.endDate ? new Date(data.endDate) : null);
+
       if (data.frequency?.toLowerCase() === "weekly") {
-        let weekDaysAsStrings = []; // The final array of strings
+        let weekDaysAsStrings = [];
+
         if (data.weekDays) {
           let parsedDays = [];
+
           if (typeof data.weekDays === "string") {
             try {
               parsedDays = JSON.parse(data.weekDays);
-            } catch (e) {
+            } catch {
               parsedDays = data.weekDays.split(",").map((d) => d.trim());
             }
           } else if (Array.isArray(data.weekDays)) {
             parsedDays = data.weekDays;
           }
 
-          if (Array.isArray(parsedDays)) {
-            if (
-              parsedDays.length > 0 &&
-              typeof parsedDays[0] === "object" &&
-              parsedDays[0] !== null
-            ) {
-              // Handle array of objects
-              weekDaysAsStrings = parsedDays
-                .map((d) => (d.day || d.label || d.value || "").toLowerCase())
-                .filter(Boolean);
-            } else {
-              // Handle array of strings
-              weekDaysAsStrings = parsedDays.map((d) =>
-                String(d).toLowerCase(),
-              );
-            }
+          if (parsedDays.length > 0 && typeof parsedDays[0] === "object") {
+            weekDaysAsStrings = parsedDays
+              .map((d) => (d.day || d.label || d.value || "").toLowerCase())
+              .filter(Boolean);
+          } else {
+            weekDaysAsStrings = parsedDays.map((d) => String(d).toLowerCase());
           }
         }
+
         setEditWeeklyRecurrenceDays(weekDaysAsStrings);
       } else {
         setEditWeeklyRecurrenceDays([]);
       }
     } else {
+      // Delegation/Normal task
       setEditRecurrenceFrequency("daily");
-      setEditRecurrenceEndDate(null);
+      setEditRecurrenceEndDate(data.dueDate ? new Date(data.dueDate) : null);
       setEditWeeklyRecurrenceDays([]);
     }
 
@@ -609,6 +611,7 @@ const TaskTable = ({
         };
         if (editAssignedTo) payload.assignedTo = editAssignedTo;
         if (taskEndDateOffset) payload.taskEndDays = taskEndDateOffset;
+        if (taskEndTime) payload.taskEndTime = taskEndTime;
         if (editStartDate) {
           payload.startDate = dayjs(editStartDate).format("YYYY-MM-DD");
         }
@@ -617,8 +620,7 @@ const TaskTable = ({
           payload.frequency =
             frequencyMap[editRecurrenceFrequency] || editRecurrenceFrequency;
           if (editRecurrenceEndDate)
-            payload.endDate = format(editRecurrenceEndDate, "yyyy-MM-dd");
-          // Always include weekDays when weekly (may be empty array)
+            payload.endDate = new Date(editRecurrenceEndDate).toISOString(); // Always include weekDays when weekly (may be empty array)
           if (
             editRecurrenceFrequency === "weekly" ||
             (payload.frequency && payload.frequency.toLowerCase() === "weekly")
@@ -2181,7 +2183,7 @@ const TaskTable = ({
                                       size="icon"
                                       className="h-8 w-8 text-blue-600 hover:bg-blue-50"
                                       onClick={() => handleEditClick(task)}
-                                      disabled={task.status == "Completed"}
+                                      disabled={task.status == "Completed" ||task?.recurringRefId}
                                     >
                                       <FilePenLine className="h-4 w-4" />
                                     </Button>
@@ -2737,11 +2739,38 @@ const TaskTable = ({
         className="sm:max-w-4xl px-8"
       >
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="space-y-2">
             <DialogTitle>Edit Task</DialogTitle>
+
             <DialogDescription>
               Update the task details below.
             </DialogDescription>
+
+            {editingTask?.recurringRefId && (
+              <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                    <Repeat className="h-5 w-5 text-blue-600" />
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      Generated from Recurring Task
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      This task is linked to a recurring schedule.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 rounded-md border bg-white px-3 py-1.5">
+                  <Hash className="h-4 w-4 text-slate-500" />
+                  <span className="text-sm font-semibold text-slate-700">
+                    {editingTask.recurringRefId}
+                  </span>
+                </div>
+              </div>
+            )}
           </DialogHeader>
           <AntdTabs activeKey={activeTab} onChange={setActiveTab}>
             <AntdTabs.TabPane tab="Task Info" key="basic">
@@ -2866,14 +2895,25 @@ const TaskTable = ({
                     <div className="space-y-2">
                       <Label>End Date</Label>
                       <DatePicker
-                        format="DD MMM YYYY"
+                        format="DD MMM YYYY hh:mm A"
+                        showTime={{
+                          format: "hh:mm A",
+                          use12Hours: true,
+                        }}
                         value={
                           editRecurrenceEndDate
                             ? dayjs(editRecurrenceEndDate)
                             : null
                         }
+                        disabledDate={(current) => {
+                          if (!current || !editStartDate) return false;
+
+                          return current.isBefore(dayjs(editStartDate), "day");
+                        }}
                         onChange={(date) =>
-                          setEditRecurrenceEndDate(date ? date.toDate() : null)
+                          setEditRecurrenceEndDate(
+                            date ? date.toISOString() : null,
+                          )
                         }
                         style={{ width: "100%", height: "40px" }}
                       />
@@ -2986,17 +3026,84 @@ const TaskTable = ({
                     onChange={(e) => dateChangeHandler(e, setEditStartDate)}
                   /> */}
                     </div>
-                    <div className="space-y-2">
-                      <Label>How many days Task Ended</Label>
-                      <Input
-                        type="number"
-                        // Removed taskEndDateOffset from here - check original
-                        value={taskEndDateOffset}
-                        onChange={(e) => setTaskEndDateOffset(e.target.value)}
-                        placeholder="E.g., 1 for same day, 2 for next day"
-                        min="1"
-                      />
-                    </div>
+                    {editingTask && editingTask.recurringRefId == null ? (
+                      <>
+                        <div className="space-y-2">
+                          <Label>How many days Task Ended</Label>
+                          <Input
+                            type="number"
+                            // Removed taskEndDateOffset from here - check original
+                            value={taskEndDateOffset}
+                            onChange={(e) =>
+                              setTaskEndDateOffset(e.target.value)
+                            }
+                            placeholder="E.g., 1 for same day, 2 for next day"
+                            min="1"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>
+                            Task End Time{" "}
+                            {/* {!isRecurrent && <span className="text-red-500">*</span>} */}
+                          </Label>
+
+                          <TimePicker
+                            className="w-full h-10"
+                            // disabled={isRecurrent}
+                            format="hh:mm A"
+                            use12Hours
+                            value={
+                              taskEndTime ? dayjs(taskEndTime, "HH:mm") : null
+                            }
+                            onChange={(time) =>
+                              setTaskEndTime(time ? time.format("HH:mm") : null)
+                            }
+                            placeholder="Select end time"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="space-y-2">
+                        <Label>End Date</Label>
+                        <DatePicker
+                          format="DD MMM YYYY hh:mm A"
+                          showTime={{
+                            format: "hh:mm A",
+                            use12Hours: true,
+                          }}
+                          value={
+                            editRecurrenceEndDate
+                              ? dayjs(editRecurrenceEndDate)
+                              : null
+                          }
+                          onChange={(date) =>
+                            setEditRecurrenceEndDate(
+                              date ? date.toISOString() : null,
+                            )
+                          }
+                          disabledDate={(current) => {
+                            if (!current || !editStartDate) return false;
+
+                            return current.isBefore(
+                              dayjs(editStartDate),
+                              "day",
+                            );
+                          }}
+                          style={{ width: "100%", height: "40px" }}
+                        />
+                        {/* <Input
+                    type="date"
+                    value={
+                      editRecurrenceEndDate
+                        ? format(editRecurrenceEndDate, "yyyy-MM-dd")
+                        : ""
+                    }
+                    onChange={(e) =>
+                      dateChangeHandler(e, setEditRecurrenceEndDate)
+                    }
+                  /> */}
+                      </div>
+                    )}
                     <div className="space-y-2">
                       {/* <Label>Attachment</Label>
                       <Upload

@@ -892,10 +892,11 @@ const TodayTasksTable = ({
   const tableColumns =
     combinedTasks.length > 0
       ? Object.entries(combinedTasks[0]?.submissionData || {}).filter(
-          ([_, field]) => field.isTableColumn,
+          ([_, field]) =>
+            typeof field === "object" ? field?.isTableColumn : true, // old format doesn't have isTableColumn
         )
       : [];
-  console.log(tableColumns);
+  // console.log(tableColumns);
   return (
     <div className="overflow-x-auto border rounded-lg bg-white">
       <Table>
@@ -905,7 +906,13 @@ const TodayTasksTable = ({
             {/* <TableHead>Task Id</TableHead> */}
             <TableHead>Task Title</TableHead>
             {tableColumns.map(([key, field]) => (
-              <TableHead key={key}>{field.label}</TableHead>
+              <TableHead key={key}>
+                {typeof field === "object" && field?.label
+                  ? field.label
+                  : key
+                      .replace(/([A-Z])/g, " $1")
+                      .replace(/^./, (str) => str.toUpperCase())}
+              </TableHead>
             ))}
             {/* <TableHead>Assigned By</TableHead> */}
             {/* <TableHead>Assigned To</TableHead> */}
@@ -1051,7 +1058,9 @@ const TodayTasksTable = ({
                     </TableCell>
                     {tableColumns.map(([key]) => (
                       <TableCell key={key}>
-                        {task.submissionData?.[key]?.value ?? "-"}
+                        {task.submissionData?.[key]?.value ??
+                          task.submissionData?.[key] ??
+                          "-"}
                       </TableCell>
                     ))}
                     {/* <TableCell>

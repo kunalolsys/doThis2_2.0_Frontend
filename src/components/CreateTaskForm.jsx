@@ -39,7 +39,7 @@ import {
   RadioGroupItem,
 } from "./ui/index.jsx"; // Import specific UI components needed
 import dayjs from "dayjs";
-import { DatePicker, Select as AntdSelect } from "antd";
+import { DatePicker, Select as AntdSelect, TimePicker } from "antd";
 import AttachmentUpload from "./attachmentsUpload.jsx";
 import Cookies from "js-cookie";
 
@@ -72,6 +72,8 @@ const CreateTaskForm = ({
   const [weeklyRecurrenceDays, setWeeklyRecurrenceDays] = useState([]);
   const [weeklyTwiceRecurrenceDay, setWeeklyTwiceRecurrenceDay] = useState("");
   const [repeatAfter, setRepeatAfter] = useState("2");
+
+  const [taskEndTime, setTaskEndTime] = useState(null);
   // Checklist State
   const [checklist, setChecklist] = useState([]);
   const [checklistItem, setChecklistItem] = useState("");
@@ -297,6 +299,10 @@ const CreateTaskForm = ({
       toast.error("Task end day is required");
       return;
     }
+    // if (!isDependent && !isRecurrent && !taskEndTime) {
+    //   toast.error("Task end time is required");
+    //   return;
+    // }
 
     if (!description.trim()) {
       toast.error("Description is required");
@@ -370,6 +376,9 @@ const CreateTaskForm = ({
         // ─────────────────────────────────────────────
         if (!isRecurrent && taskEndDateOffset) {
           formData.append("taskEndDays", taskEndDateOffset);
+        }
+        if (!isRecurrent && taskEndTime) {
+          formData.append("taskEndTime", taskEndTime);
         }
 
         // ─────────────────────────────────────────────
@@ -499,6 +508,7 @@ const CreateTaskForm = ({
       setDependentDueDate(null);
 
       setTaskEndDateOffset("1");
+      setTaskEndTime(null);
 
       onTaskCreated();
 
@@ -872,22 +882,43 @@ const CreateTaskForm = ({
                 </div>
 
                 {/* How many days Task Ended */}
-                <div className="space-y-2">
-                  <Label className={isRecurrent ? "text-gray-400" : ""}>
-                    How many days Task Ended{" "}
-                    {!isRecurrent && <span className="text-red-500">*</span>}
-                  </Label>
-                  <Input
-                    type="number"
-                    disabled={isRecurrent}
-                    value={taskEndDateOffset}
-                    onChange={(e) => setTaskEndDateOffset(e.target.value)}
-                    placeholder="E.g., 1 for same day, 2 for next day"
-                    className="hover:shadow-md transition-all duration-200"
-                    min="1"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className={isRecurrent ? "text-gray-400" : ""}>
+                      Task End After (Days){" "}
+                      {!isRecurrent && <span className="text-red-500">*</span>}
+                    </Label>
 
+                    <Input
+                      type="number"
+                      disabled={isRecurrent}
+                      value={taskEndDateOffset}
+                      onChange={(e) => setTaskEndDateOffset(e.target.value)}
+                      placeholder="e.g. 1"
+                      className="hover:shadow-md transition-all duration-200"
+                      min="1"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className={isRecurrent ? "text-gray-400" : ""}>
+                      Task End Time{" "}
+                      {/* {!isRecurrent && <span className="text-red-500">*</span>} */}
+                    </Label>
+
+                    <TimePicker
+                      className="w-full h-10"
+                      disabled={isRecurrent}
+                      format="hh:mm A"
+                      use12Hours
+                      value={taskEndTime ? dayjs(taskEndTime, "HH:mm") : null}
+                      onChange={(time) =>
+                        setTaskEndTime(time ? time.format("HH:mm") : null)
+                      }
+                      placeholder="Select end time"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label>Attachment (Optional)</Label>
                   {/* <Input
@@ -1136,23 +1167,24 @@ const CreateTaskForm = ({
                     <Label>End Date</Label>
                     <DatePicker
                       className="w-full h-10 hover:shadow-md transition-all duration-200"
-                      format="DD MMM YYYY"
+                      format="DD MMM YYYY hh:mm A"
+                      showTime={{
+                        format: "hh:mm A",
+                        use12Hours: true,
+                      }}
                       value={
                         recurrenceEndDate ? dayjs(recurrenceEndDate) : null
                       }
                       disabledDate={(current) => {
-                        // ❌ disable past dates OR before startDate
                         if (!current) return false;
 
-                        const today = dayjs().startOf("day");
+                        const now = dayjs();
 
                         if (startDate) {
-                          return current.isBefore(
-                            dayjs(startDate).startOf("day"),
-                          );
+                          return current.isBefore(dayjs(startDate), "day");
                         }
 
-                        return current.isBefore(today);
+                        return current.isBefore(now, "day");
                       }}
                       onChange={(date) => {
                         if (!date) {
@@ -1160,22 +1192,16 @@ const CreateTaskForm = ({
                           return;
                         }
 
-                        const selectedDate = date.startOf("day");
-
-                        // 🔥 Validation: endDate >= startDate
-                        if (
-                          startDate &&
-                          selectedDate.isBefore(dayjs(startDate).startOf("day"))
-                        ) {
+                        if (startDate && date.isBefore(dayjs(startDate))) {
                           toast.error("End Date cannot be before Start Date");
                           setRecurrenceEndDate(undefined);
                           return;
                         }
 
-                        // ✅ store in backend format
-                        setRecurrenceEndDate(
-                          selectedDate.format("DD MMM YYYY"),
-                        );
+                        // Store date + time
+                        setRecurrenceEndDate(date.toISOString()); // Recommended for backend
+                        // OR
+                        // setRecurrenceEndDate(date.format("DD MMM YYYY hh:mm A"));
                       }}
                     />
                   </div>
