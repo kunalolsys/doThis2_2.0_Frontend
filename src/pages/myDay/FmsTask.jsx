@@ -38,6 +38,8 @@ import {
   XCircle,
   MessageCircle,
   MessageSquarePlus,
+  Eye,
+  Lock,
 } from "lucide-react";
 import {
   Dialog,
@@ -99,6 +101,7 @@ import QueryDrawer from "../../components/QueryDrawer";
 import TaskChat from "../../components/TaskChat";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { FileTextOutlined } from "@ant-design/icons";
+import { Textarea } from "../../components/ui";
 
 // --- Helper: Status Badge ---
 const getStatusBadge = (status) => {
@@ -176,7 +179,13 @@ const getStatusBadge = (status) => {
           Cancelled
         </Badge>
       );
-
+    case "Not Done":
+      return (
+        <Badge className="flex items-center gap-1 text-rose-600 border-rose-300 bg-rose-50">
+          <XCircle className="h-3 w-3" />
+          Not Done
+        </Badge>
+      );
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
@@ -197,8 +206,11 @@ const TaskActions = ({
   assignedToUser,
   setSubmissionModalOpen,
   setSelectedSubmissionTask,
+  setSelectedTask,
+  setNotDoneModalOpen,
 }) => {
   const isCompleted = task.status === "Completed";
+  const notDone = task.status === "Not Done";
   const upComing = task.status == "Upcoming";
   const onHold = task.status == "Onhold";
   const stopped = task.status == "Stopped";
@@ -272,7 +284,7 @@ const TaskActions = ({
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            disabled={upComing || onHold || stopped || isCompleted}
+            disabled={upComing || onHold || stopped || isCompleted || notDone}
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-green-600 hover:bg-green-50"
@@ -283,6 +295,25 @@ const TaskActions = ({
         </TooltipTrigger>
         <TooltipContent>
           <p>Mark as Done</p>
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            disabled={upComing || onHold || stopped || isCompleted || notDone}
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-red-600 hover:bg-red-50"
+            onClick={() => {
+              setSelectedTask(task);
+              setNotDoneModalOpen(true);
+            }}
+          >
+            <XCircle className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Mark as Not Done</p>
         </TooltipContent>
       </Tooltip>
       {/* {!isCompleted ? (
@@ -326,7 +357,7 @@ const TaskActions = ({
         <TooltipTrigger asChild>
           <div className="relative">
             <Button
-              disabled={assignedByUser?._id === assignedToUser?._id}
+              disabled={assignedByUser?._id === assignedToUser?._id || notDone}
               size="icon"
               variant="ghost"
               className="h-8 w-8 rounded-full 
@@ -366,7 +397,7 @@ const TaskActions = ({
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            disabled={assignedByUser?._id === assignedToUser?._id}
+            disabled={assignedByUser?._id === assignedToUser?._id || notDone}
             size="icon"
             variant="ghost"
             className="h-8 w-8 rounded-full 
@@ -840,6 +871,7 @@ const FilterBar = ({
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="Pending">Pending</SelectItem>
             <SelectItem value="Completed">Completed</SelectItem>
+            <SelectItem value="Not Done">Not Done</SelectItem>
             <SelectItem value="Overdue">Overdue</SelectItem>
             <SelectItem value="Delayed">Delayed</SelectItem>
             {isFMSEnable && <SelectItem value="Stopped">Stopped</SelectItem>}
@@ -887,6 +919,8 @@ const TodayTasksTable = ({
   setUnreadMap,
   setSubmissionModalOpen,
   setSelectedSubmissionTask,
+  setSelectedTask,
+  setNotDoneModalOpen,
 }) => {
   const combinedTasks = [...(tasks || []), ...(upcomingRecurringTasks || [])];
   const tableColumns =
@@ -1166,10 +1200,27 @@ const TodayTasksTable = ({
                     <TableCell>{task.frequency ?? "-"}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       {(() => {
+                        if (task.status === "Completed") return "-";
+
+                        if (task.status === "Not Done") {
+                          return (
+                            <div className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-100 px-3 py-2">
+                              <Lock className="h-4 w-4 text-slate-500" />
+                              <div>
+                                <p className="text-xs font-semibold text-slate-700">
+                                  Tracking Closed
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                  Marked as Not Done
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+
                         const dueStatus = getDueStatus(task.dueDate);
 
                         if (!dueStatus) return "-";
-                        if (task.status == "Completed") return "-";
                         return (
                           <div
                             className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm
@@ -1246,7 +1297,57 @@ const TodayTasksTable = ({
                     {/* <TableCell className={task.delay ? "text-red-600" : ""}>
                       {task.delay || "-"}
                     </TableCell> */}
-                    <TableCell>{getStatusBadge(task.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        {getStatusBadge(task.status)}{" "}
+                        {task.status === "Not Done" && task.notDoneRemark && (
+                          <div>
+                            <Popover
+                              trigger="click"
+                              placement="topLeft"
+                              content={
+                                <div className="w-[300px] space-y-3">
+                                  <div className="flex items-center gap-2 border-b pb-2">
+                                    <div className="p-2 rounded-full bg-rose-100">
+                                      <XCircle className="h-4 w-4 text-rose-600" />
+                                    </div>
+
+                                    <div>
+                                      <h4 className="font-semibold text-sm">
+                                        Task Marked as Not Done
+                                      </h4>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 mb-1">
+                                      Remark
+                                    </p>
+
+                                    <div className="rounded-lg border bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap">
+                                      {task.notDoneRemark}
+                                    </div>
+                                  </div>
+
+                                  {task.notDoneBy?.name && (
+                                    <div className="border-t pt-2 text-xs text-gray-500">
+                                      Marked by{" "}
+                                      <span className="font-semibold text-gray-800">
+                                        {task.notDoneBy.name}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              }
+                            >
+                              <button className="text-[11px] text-rose-600 hover:text-rose-700 hover:underline">
+                                <Eye className="h-5 w-5 cursor-pointer" />
+                              </button>
+                            </Popover>
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center">
                         <TaskActions
@@ -1263,6 +1364,8 @@ const TodayTasksTable = ({
                           assignedToUser={assignedToUser}
                           setSubmissionModalOpen={setSubmissionModalOpen}
                           setSelectedSubmissionTask={setSelectedSubmissionTask}
+                          setSelectedTask={setSelectedTask}
+                          setNotDoneModalOpen={setNotDoneModalOpen}
                         />
                       </div>
                     </TableCell>
@@ -1408,6 +1511,8 @@ const FmsTasks = () => {
   const [refetch, setRefetch] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [notDoneModalOpen, setNotDoneModalOpen] = useState(false);
+  const [remark, setRemark] = useState("");
   const [queryDrawerOpen, setQueryDrawerOpen] = useState(false);
   const [selectedQueryTask, setSelectedQueryTask] = useState(null);
   const [raiseQueryModalOpen, setRaiseQueryModalOpen] = useState(false);
@@ -1961,6 +2066,36 @@ const FmsTasks = () => {
       }, {}) || {}
     );
   }, [selectedTask]);
+
+  const handleMarkNotDone = async (task, remark) => {
+    if (!remark.trim()) {
+      toast.error("Please enter a remark.");
+      return;
+    }
+
+    try {
+      await api.patch(
+        `/fms/instances/${task.fmsInstanceId}/tasks/${task.taskId}`,
+        {
+          status: "Not Done",
+          notDoneRemark: remark.trim(),
+        },
+      );
+
+      toast.success("Task marked as Not Done.");
+
+      setNotDoneModalOpen(false);
+      setRemark("");
+      setSelectedTask(null);
+
+      // Refresh tasks
+      // fetchTasks();
+    } catch (err) {
+      toast.error(
+        err?.response?.data?.error || "Failed to mark task as Not Done.",
+      );
+    }
+  };
   if (status === "failed")
     return <div className="p-6 text-red-500">Error: {error}</div>;
 
@@ -2119,6 +2254,8 @@ const FmsTasks = () => {
                         setUnreadMap={setUnreadMap}
                         setSubmissionModalOpen={setSubmissionModalOpen}
                         setSelectedSubmissionTask={setSelectedSubmissionTask}
+                        setSelectedTask={setSelectedTask}
+                        setNotDoneModalOpen={setNotDoneModalOpen}
                       />
                     </TooltipProvider>
 
@@ -2326,6 +2463,39 @@ const FmsTasks = () => {
           </Descriptions>
         )}
       </AntdModal>
+      <Dialog open={notDoneModalOpen} onOpenChange={setNotDoneModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mark as Not Done</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for not completing this task.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Textarea
+            placeholder="Enter your remarks..."
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
+            rows={4}
+          />
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setNotDoneModalOpen(false)}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={() => handleMarkNotDone(selectedTask, remark)}
+              disabled={!remark.trim()}
+            >
+              Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
