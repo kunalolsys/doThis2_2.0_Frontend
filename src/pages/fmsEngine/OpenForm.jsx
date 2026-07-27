@@ -8,11 +8,8 @@ import {
   Zap,
   CheckCircle2,
   AlertCircle,
-  ChevronDown,
   Copy,
   ExternalLink,
-  ToggleLeft,
-  ToggleRight,
   FileText,
   Type,
   Hash,
@@ -23,7 +20,6 @@ import {
   List,
   CheckSquare,
   AlignLeft,
-  Upload,
   RadioIcon,
   Loader2,
   RefreshCw,
@@ -38,7 +34,7 @@ import { fetchTemplates } from "../../redux/slices/fms/fmsSlice";
 import { useDispatch } from "react-redux";
 import api from "../../lib/api";
 
-/* ─── Design tokens — matches established project theme ──────────────────── */
+/* ─── Design tokens ──────────────────────────────────────────────────────── */
 const T = {
   bg: "#F1F5F9",
   card: "#FFFFFF",
@@ -77,11 +73,8 @@ const FIELD_TYPES = [
   { type: "select", label: "Dropdown", icon: List, color: T.accent },
   { type: "radio", label: "Radio", icon: RadioIcon, color: T.amber },
   { type: "checkbox", label: "Checkbox", icon: CheckSquare, color: T.green },
-  // { type: "file", label: "File Upload", icon: Upload, color: T.muted },
 ];
 const typeInfo = (t) => FIELD_TYPES.find((f) => f.type === t) || FIELD_TYPES[0];
-
-/* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
 const fmtDate = (iso) =>
   iso
@@ -240,36 +233,6 @@ const Btn = ({
     >
       {children}
     </button>
-  );
-};
-
-const SelectField = ({ value, onChange, children, placeholder }) => {
-  const [f, setF] = useState(false);
-  return (
-    <select
-      value={value}
-      onChange={onChange}
-      onFocus={() => setF(true)}
-      onBlur={() => setF(false)}
-      style={{
-        width: "100%",
-        border: `1px solid ${f ? T.accent : T.border2}`,
-        borderRadius: 10,
-        padding: "9px 12px",
-        fontSize: 13,
-        color: T.text,
-        fontFamily: "inherit",
-        outline: "none",
-        background: T.card,
-        boxShadow: f ? `0 0 0 3px ${T.accentB}55` : "none",
-        transition: "all 0.15s",
-        appearance: "none",
-        cursor: "pointer",
-      }}
-    >
-      {placeholder && <option value="">{placeholder}</option>}
-      {children}
-    </select>
   );
 };
 
@@ -457,14 +420,12 @@ const FieldCard = ({
         }}
         onClick={() => setExpanded((e) => !e)}
       >
-        {/* Drag handle */}
         <GripVertical
           size={15}
           color={T.muted2}
           style={{ flexShrink: 0, cursor: "grab" }}
         />
 
-        {/* Type icon */}
         <div
           style={{
             width: 28,
@@ -507,6 +468,11 @@ const FieldCard = ({
             }}
           >
             <span>{info.label}</span>
+            {field.optionType === "MASTER" && (
+              <Pill color={T.purple} bg={T.purpleL} border="#DDD6FE">
+                Master: {field.masterSource}
+              </Pill>
+            )}
             {field.isRequired && (
               <Pill color={T.red} bg={T.redL} border={T.redB}>
                 Required
@@ -536,7 +502,7 @@ const FieldCard = ({
                 onChange(index, "isTableColumn", e.target.checked)
               }
             />
-           Show in Table
+            Show in Table
           </label>
           <Btn
             variant="ghost"
@@ -603,8 +569,123 @@ const FieldCard = ({
             </div>
           </div>
 
-          {/* Options for select / radio */}
-          {(field.fieldType === "select" || field.fieldType === "radio") && (
+          {/* Options logic for Select field */}
+          {field.fieldType === "select" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 14,
+                }}
+              >
+                <div>
+                  <Label>Option Source Type</Label>
+                  <Select
+                    value={field.optionType || "STATIC"}
+                    onChange={(val) => {
+                      onChange(index, "optionType", val);
+                      if (val === "MASTER" && !field.masterSource) {
+                        onChange(index, "masterSource", "VENDOR");
+                      }
+                    }}
+                    style={{ width: "100%" }}
+                  >
+                    <Option value="STATIC">Static Manual Options</Option>
+                    <Option value="MASTER">Fetch From Master API</Option>
+                  </Select>
+                </div>
+
+                {field.optionType === "MASTER" && (
+                  <div>
+                    <Label>Select Master Source</Label>
+                    <Select
+                      value={field.masterSource || "VENDOR"}
+                      onChange={(val) => onChange(index, "masterSource", val)}
+                      style={{ width: "100%" }}
+                    >
+                      <Option value="VENDOR">Vendor Master</Option>
+                      {/* <Option value="EMPLOYEE">Employee / User Master</Option> */}
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {/* Render manual options list if STATIC */}
+              {(field.optionType === "STATIC" || !field.optionType) && (
+                <div>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <Label>Manual Options</Label>
+                    <Btn
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const opts = [...(field.options || []), ""];
+                        onChange(index, "options", opts);
+                      }}
+                    >
+                      <Plus size={12} /> Add option
+                    </Btn>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {(field.options || []).map((opt, oi) => (
+                      <div
+                        key={oi}
+                        style={{ display: "flex", gap: 6, alignItems: "center" }}
+                      >
+                        <div
+                          style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: "5px",
+                            border: `2px solid ${T.border2}`,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <FocusField
+                          value={opt}
+                          onChange={(e) => {
+                            const opts = [...(field.options || [])];
+                            opts[oi] = e.target.value;
+                            onChange(index, "options", opts);
+                          }}
+                          placeholder={`Option ${oi + 1}`}
+                        />
+                        <button
+                          onClick={() => {
+                            const opts = (field.options || []).filter(
+                              (_, i) => i !== oi
+                            );
+                            onChange(index, "options", opts);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: T.muted2,
+                            padding: 4,
+                            display: "flex",
+                          }}
+                        >
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Options logic for Radio field */}
+          {field.fieldType === "radio" && (
             <div>
               <div
                 style={{
@@ -636,8 +717,7 @@ const FieldCard = ({
                       style={{
                         width: 20,
                         height: 20,
-                        borderRadius:
-                          field.fieldType === "radio" ? "50%" : "5px",
+                        borderRadius: "50%",
                         border: `2px solid ${T.border2}`,
                         flexShrink: 0,
                       }}
@@ -654,7 +734,7 @@ const FieldCard = ({
                     <button
                       onClick={() => {
                         const opts = (field.options || []).filter(
-                          (_, i) => i !== oi,
+                          (_, i) => i !== oi
                         );
                         onChange(index, "options", opts);
                       }}
@@ -691,6 +771,9 @@ const FieldCard = ({
 /* ─── Public form preview renderer ────────────────────────────────────────── */
 const PublicFormField = ({ field, value, onChange }) => {
   const [f, setF] = useState(false);
+  const [masterOptions, setMasterOptions] = useState([]);
+  const [loadingMaster, setLoadingMaster] = useState(false);
+
   const info = typeInfo(field.fieldType);
   const Icon = info.icon;
   const inputStyle = {
@@ -707,6 +790,19 @@ const PublicFormField = ({ field, value, onChange }) => {
     transition: "all 0.15s",
     boxSizing: "border-box",
   };
+
+  useEffect(() => {
+    if (field.fieldType === "select" && field.optionType === "MASTER" && field.masterSource) {
+      setLoadingMaster(true);
+      api
+        .get(`/open-forms/master-options/${field.masterSource}`)
+        .then((res) => {
+          setMasterOptions(res.data?.data || []);
+        })
+        .catch((err) => console.error("Failed to fetch master options", err))
+        .finally(() => setLoadingMaster(false));
+    }
+  }, [field.fieldType, field.optionType, field.masterSource]);
 
   const inner = () => {
     switch (field.fieldType) {
@@ -730,13 +826,25 @@ const PublicFormField = ({ field, value, onChange }) => {
             style={{ ...inputStyle, appearance: "none", cursor: "pointer" }}
             onFocus={() => setF(true)}
             onBlur={() => setF(false)}
+            disabled={loadingMaster}
           >
-            <option value="">— Select an option —</option>
-            {(field.options || []).map((o, i) => (
-              <option key={i} value={o}>
-                {o}
-              </option>
-            ))}
+            <option value="">
+              {loadingMaster
+                ? `Loading ${field.masterSource}s...`
+                : "— Select an option —"}
+            </option>
+
+            {field.optionType === "MASTER"
+              ? masterOptions.map((opt, i) => (
+                  <option key={opt.value || i} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))
+              : (field.options || []).map((o, i) => (
+                  <option key={i} value={o}>
+                    {o}
+                  </option>
+                ))}
           </select>
         );
       case "radio":
@@ -855,14 +963,14 @@ const PublicFormField = ({ field, value, onChange }) => {
 ═══════════════════════════════════════════════════════════════════════════ */
 export default function OpenFormBuilder() {
   const dispatch = useDispatch();
-  const [tab, setTab] = useState("builder"); // builder | preview | forms
+  const [tab, setTab] = useState("builder");
   const [templates, setTemplates] = useState([]);
   const [forms, setForms] = useState([]);
   const [loadingTpl, setLoadingTpl] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(null); // { msg, type }
+  const [toast, setToast] = useState(null);
   const [editingFormId, setEditingFormId] = useState(null);
-  // Form config
+
   const [config, setConfig] = useState({
     formName: "",
     description: "",
@@ -872,21 +980,23 @@ export default function OpenFormBuilder() {
   });
   const setConf = (k, v) => setConfig((p) => ({ ...p, [k]: v }));
 
-  // Fields
+  // Fixed: Give stable unique internal 'id' property so React doesn't lose input focus
   const [fields, setFields] = useState([
     {
+      id: "field_init_fullName",
       fieldId: "fullName",
       label: "Full Name",
       fieldType: "text",
       placeholder: "Enter your full name",
       isRequired: true,
       isTableColumn: true,
+      optionType: "STATIC",
+      masterSource: null,
       options: [],
       order: 1,
     },
   ]);
 
-  // Public form
   const [selectedForm, setSelectedForm] = useState(null);
   const [submissionData, setSubmissionData] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -905,7 +1015,7 @@ export default function OpenFormBuilder() {
     try {
       setLoadingTpl(true);
       const res = await dispatch(
-        fetchTemplates({ page: 1, limit: 100000 }),
+        fetchTemplates({ page: 1, limit: 100000 })
       ).unwrap();
       setTemplates(res.data || []);
     } catch {
@@ -924,32 +1034,36 @@ export default function OpenFormBuilder() {
     }
   };
 
-  // ── Field operations ──────────────────────────────────────────────────────
   const addField = (type) =>
     setFields((prev) => [
       ...prev,
       {
+        id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         fieldId: "",
         label: "",
         fieldType: type,
         placeholder: "",
         isRequired: false,
+        optionType: "STATIC",
+        masterSource: type === "select" ? "VENDOR" : null,
         options: type === "select" || type === "radio" ? [""] : [],
         order: prev.length + 1,
       },
     ]);
+
   const generateFieldId = (label = "") => {
     return label
       .trim()
-      .replace(/[^\w\s]/g, "") // remove special chars
+      .replace(/[^\w\s]/g, "")
       .split(/\s+/)
       .map((word, index) =>
         index === 0
           ? word.toLowerCase()
-          : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+          : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
       )
       .join("");
   };
+
   const updateField = (idx, key, val) => {
     setFields((prev) => {
       const updated = [...prev];
@@ -959,7 +1073,6 @@ export default function OpenFormBuilder() {
         [key]: val,
       };
 
-      // Auto-generate fieldId from label
       if (key === "label") {
         updated[idx].fieldId = generateFieldId(val);
       }
@@ -981,7 +1094,6 @@ export default function OpenFormBuilder() {
     });
   };
 
-  // ── Save form ─────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!config.formName.trim()) {
       showToast("Form name is required", "error");
@@ -1014,11 +1126,14 @@ export default function OpenFormBuilder() {
         });
         setFields([
           {
+            id: `field_fullName_${Date.now()}`,
             fieldId: "fullName",
             label: "Full Name",
             fieldType: "text",
             placeholder: "Enter your full name",
             isRequired: true,
+            optionType: "STATIC",
+            masterSource: null,
             options: [],
             order: 1,
           },
@@ -1040,11 +1155,14 @@ export default function OpenFormBuilder() {
         });
         setFields([
           {
+            id: `field_fullName_${Date.now()}`,
             fieldId: "fullName",
             label: "Full Name",
             fieldType: "text",
             placeholder: "Enter your full name",
             isRequired: true,
+            optionType: "STATIC",
+            masterSource: null,
             options: [],
             order: 1,
           },
@@ -1055,23 +1173,22 @@ export default function OpenFormBuilder() {
     } catch (e) {
       showToast(
         e?.response?.data?.message || "Failed to publish form",
-        "error",
+        "error"
       );
     } finally {
       setSaving(false);
     }
   };
 
-  // ── Submit public form ────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!selectedForm) return;
     const missing = selectedForm.fields.filter(
-      (f) => f.isRequired && !submissionData[f.fieldId],
+      (f) => f.isRequired && !submissionData[f.fieldId]
     );
     if (missing.length) {
       showToast(
         `Please fill: ${missing.map((f) => f.label).join(", ")}`,
-        "error",
+        "error"
       );
       return;
     }
@@ -1079,7 +1196,7 @@ export default function OpenFormBuilder() {
       setSubmitting(true);
       const res = await api.post(
         `/open-forms/${selectedForm.slug}/submit`,
-        submissionData,
+        submissionData
       );
       setSubmitSuccess(res.data?.instance?.instanceId || "triggered");
       setSubmissionData({});
@@ -1089,9 +1206,10 @@ export default function OpenFormBuilder() {
       setSubmitting(false);
     }
   };
+
   const selectedTemplate = useMemo(
     () => templates.find((t) => t._id === config.linkedTemplate),
-    [templates, config.linkedTemplate],
+    [templates, config.linkedTemplate]
   );
 
   const TABS = [
@@ -1104,14 +1222,13 @@ export default function OpenFormBuilder() {
       badge: forms.length,
     },
   ];
+
   const [copiedId, setCopiedId] = useState(null);
 
   const handleCopy = async (url, id) => {
     try {
       await navigator.clipboard.writeText(url);
-
       setCopiedId(id);
-
       setTimeout(() => {
         setCopiedId(null);
       }, 2000);
@@ -1119,21 +1236,26 @@ export default function OpenFormBuilder() {
       console.error("Copy failed", err);
     }
   };
+
   const handleEditForm = (form) => {
     setConfig({
       formName: form.formName,
       description: form.description || "",
-      linkedTemplate: form.linkedTemplate.id || form.linkedTemplate._id,
+      linkedTemplate: form.linkedTemplate?.id || form.linkedTemplate?._id || form.linkedTemplate,
       isActive: form.isActive,
       allowMultipleSubmissions: form.allowMultipleSubmissions,
     });
 
-    setFields(form.fields || []);
-
+    setFields(
+      (form.fields || []).map((f, i) => ({
+        ...f,
+        id: f.id || f._id || `field_edit_${i}_${Date.now()}`,
+      }))
+    );
     setEditingFormId(form._id);
-
     setTab("builder");
   };
+
   const handleDeleteForm = (id) => {
     Modal.confirm({
       title: "Delete Form",
@@ -1155,11 +1277,14 @@ export default function OpenFormBuilder() {
           });
           setFields([
             {
+              id: `field_fullName_${Date.now()}`,
               fieldId: "fullName",
               label: "Full Name",
               fieldType: "text",
               placeholder: "Enter your full name",
               isRequired: true,
+              optionType: "STATIC",
+              masterSource: null,
               options: [],
               order: 1,
             },
@@ -1171,17 +1296,16 @@ export default function OpenFormBuilder() {
 
           showToast("Form deleted successfully");
         } catch (error) {
-          toast.error(error.response?.data?.message || "Failed to delete form");
+          showToast(error.response?.data?.message || "Failed to delete form", "error");
         }
       },
     });
   };
-  /* ── Render ─────────────────────────────────────────────────────────────── */
+
   return (
     <div
       style={{
         minHeight: "100vh",
-        // background: T.bg,
         fontFamily: "'DM Sans','Segoe UI',sans-serif",
         padding: "28px 24px",
       }}
@@ -1201,7 +1325,7 @@ export default function OpenFormBuilder() {
       `}</style>
 
       <div style={{ margin: "0 auto" }}>
-        {/* ── Toast ───────────────────────────────────────────────────────── */}
+        {/* Toast */}
         {toast && (
           <div
             style={{
@@ -1232,7 +1356,7 @@ export default function OpenFormBuilder() {
           </div>
         )}
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
+        {/* Header */}
         <div style={{ marginBottom: 24 }}>
           <div
             style={{
@@ -1286,8 +1410,7 @@ export default function OpenFormBuilder() {
                       marginTop: 2,
                     }}
                   >
-                    Build dynamic public forms that auto-launch FMS workflows on
-                    submission
+                    Build dynamic public forms that auto-launch FMS workflows on submission
                   </p>
                 </div>
               </div>
@@ -1359,9 +1482,7 @@ export default function OpenFormBuilder() {
           </div>
         </div>
 
-        {/* ══════════════════════════════════════════════════════════════════
-            TAB: BUILDER
-        ══════════════════════════════════════════════════════════════════ */}
+        {/* TAB: BUILDER */}
         {tab === "builder" && (
           <div
             style={{
@@ -1371,7 +1492,7 @@ export default function OpenFormBuilder() {
               animation: "fadeUp 0.3s ease",
             }}
           >
-            {/* ── Left: Config panel ───────────────────────────────────── */}
+            {/* Left Config Panel */}
             <div>
               <SectionCard
                 title="Form Settings"
@@ -1400,7 +1521,6 @@ export default function OpenFormBuilder() {
                   </div>
                   <div>
                     <Label required>Link FMS Template</Label>
-
                     <Select
                       value={config.linkedTemplate || undefined}
                       onChange={(value) => setConf("linkedTemplate", value)}
@@ -1412,9 +1532,7 @@ export default function OpenFormBuilder() {
                       loading={loadingTpl}
                       showSearch
                       optionFilterProp="children"
-                      style={{
-                        width: "100%",
-                      }}
+                      style={{ width: "100%" }}
                       size="large"
                     >
                       {templates.map((t) => (
@@ -1469,21 +1587,13 @@ export default function OpenFormBuilder() {
                     )}
                   </div>
 
-                  <div
-                    style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                  >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <Toggle
                       checked={config.isActive}
                       onChange={(v) => setConf("isActive", v)}
                       label="Form Active"
                       sub="Makes this form publicly accessible"
                     />
-                    {/* <Toggle
-                      checked={config.allowMultipleSubmissions}
-                      onChange={(v) => setConf("allowMultipleSubmissions", v)}
-                      label="Multiple Submissions"
-                      sub="Each submission triggers a new FMS instance"
-                    /> */}
                   </div>
 
                   <Btn
@@ -1517,7 +1627,7 @@ export default function OpenFormBuilder() {
                 </div>
               </SectionCard>
 
-              {/* Field type palette */}
+              {/* Field Type Palette */}
               <SectionCard
                 title="Add Fields"
                 subtitle="Click to add to your form"
@@ -1581,7 +1691,7 @@ export default function OpenFormBuilder() {
               </SectionCard>
             </div>
 
-            {/* ── Right: Field builder ─────────────────────────────────── */}
+            {/* Right Field Builder */}
             <div>
               <SectionCard
                 title="Form Fields"
@@ -1637,10 +1747,8 @@ export default function OpenFormBuilder() {
                     }}
                   >
                     {fields.map((field, idx) => (
-                      <div
-                        kkey={field.fieldId || idx}
-                        className="field-card-enter"
-                      >
+                      /* FIXED KEY: Use field.id instead of field.fieldId */
+                      <div key={field.id || idx} className="field-card-enter">
                         <FieldCard
                           field={field}
                           index={idx}
@@ -1659,9 +1767,7 @@ export default function OpenFormBuilder() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════════
-            TAB: PREVIEW
-        ══════════════════════════════════════════════════════════════════ */}
+        {/* TAB: PREVIEW */}
         {tab === "preview" && (
           <div
             style={{
@@ -1790,7 +1896,6 @@ export default function OpenFormBuilder() {
                   boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
                 }}
               >
-                {/* Form header */}
                 <div
                   style={{
                     background: `linear-gradient(135deg,${T.accent},#4F46E5)`,
@@ -1839,7 +1944,6 @@ export default function OpenFormBuilder() {
                   </div>
                 </div>
 
-                {/* Form fields */}
                 <div
                   style={{
                     padding: "28px 36px",
@@ -1903,9 +2007,7 @@ export default function OpenFormBuilder() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════════════════════════
-            TAB: PUBLISHED FORMS
-        ══════════════════════════════════════════════════════════════════ */}
+        {/* TAB: PUBLISHED FORMS */}
         {tab === "forms" && (
           <div style={{ animation: "fadeUp 0.3s ease" }}>
             {forms.length === 0 ? (
@@ -1951,7 +2053,7 @@ export default function OpenFormBuilder() {
               >
                 {forms.map((form) => {
                   const tpl = templates.find(
-                    (t) => t._id === form.linkedTemplate,
+                    (t) => t._id === (form.linkedTemplate?._id || form.linkedTemplate)
                   );
                   return (
                     <div
@@ -1973,7 +2075,6 @@ export default function OpenFormBuilder() {
                           "0 1px 4px rgba(0,0,0,0.05)")
                       }
                     >
-                      {/* Color bar */}
                       <div
                         style={{
                           height: 4,
@@ -2029,7 +2130,6 @@ export default function OpenFormBuilder() {
                           </Pill>
                         </div>
 
-                        {/* Meta chips */}
                         <div
                           style={{
                             display: "flex",
@@ -2050,21 +2150,11 @@ export default function OpenFormBuilder() {
                               ⚡ {tpl.templateName}
                             </Pill>
                           )}
-                          {/* {form.allowMultipleSubmissions && (
-                            <Pill
-                              color={T.purple}
-                              bg={T.purpleL}
-                              border="#DDD6FE"
-                            >
-                              Multi-submit
-                            </Pill>
-                          )} */}
                           <Pill color={T.muted} bg={T.surf} border={T.border}>
                             {fmtDate(form.createdAt)}
                           </Pill>
                         </div>
 
-                        {/* Public URL */}
                         <div
                           style={{
                             background: T.surf,
@@ -2130,7 +2220,6 @@ export default function OpenFormBuilder() {
                           </button>
                         </div>
 
-                        {/* Actions */}
                         <div style={{ display: "flex", gap: 8 }}>
                           <Btn
                             size="sm"
@@ -2158,10 +2247,8 @@ export default function OpenFormBuilder() {
                             size="sm"
                             onClick={() => {
                               navigator.clipboard.writeText(form.formUrl);
-
                               window.open(form.formUrl, "_blank");
-
-                              toast.success("Form URL copied");
+                              showToast("Form URL copied");
                             }}
                           >
                             <ExternalLink size={13} />

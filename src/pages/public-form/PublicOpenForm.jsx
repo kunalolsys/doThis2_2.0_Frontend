@@ -4,10 +4,7 @@ import {
   FileText,
   Loader2,
   ShieldCheck,
-  User,
   Zap,
-  Upload,
-  X,
   LogOut,
 } from "lucide-react";
 import axios from "axios";
@@ -35,6 +32,87 @@ const T = {
   input: "#ffffff",
 };
 
+// Component to handle individual dynamic select/dropdown fields
+const DynamicSelectField = ({ field, value, onChange, error, commonStyle }) => {
+  const [masterOptions, setMasterOptions] = useState([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+
+  useEffect(() => {
+    if (field.optionType === "MASTER" && field.masterSource) {
+      setLoadingOptions(true);
+
+      // Load API token from environment variable
+      const token = import.meta.env.VITE_SUVIDHA_API_TOKEN;
+
+      axios
+        .get(`https://mis.suvidhastores.com/api/load-dtenData`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, // or use "token": token / "x-api-key": token depending on your server spec
+          },
+        })
+        .then((res) => {
+          // Normalize response structure (support array or res.data.data)
+          const optionsList = Array.isArray(res.data)
+            ? res.data
+            : res.data || res.data?.options || [];
+
+          setMasterOptions(optionsList);
+        })
+        .catch((err) => {
+          console.error(`Failed to load options for ${field.label}:`, err);
+          toast.error(`Failed to load ${field.label} options`);
+        })
+        .finally(() => setLoadingOptions(false));
+    }
+  }, [field.optionType, field.masterSource, field.label]);
+
+  return (
+    <select
+      value={value || ""}
+      onChange={(e) => onChange(e.target.value)}
+      style={{
+        ...commonStyle,
+        appearance: "none",
+        cursor: loadingOptions ? "wait" : "pointer",
+      }}
+      disabled={loadingOptions}
+    >
+      <option value="">
+        {loadingOptions
+          ? `Loading ${field.label}...`
+          : field.placeholder || `Select ${field.label}`}
+      </option>
+
+      {field.optionType === "MASTER"
+        ? masterOptions.map((opt, i) => {
+            // Handles string options, object options { label, value }, or { name, _id }
+            const optLabel =
+              typeof opt === "string"
+                ? opt
+                : opt.label || opt.name || opt.vendorName || opt.vendor_name;
+            const optVal =
+              typeof opt === "string"
+                ? opt
+                : opt.vendor_name || opt._id || opt.id || optLabel;
+
+            return (
+              <option key={optVal || i} value={optVal}>
+                {optLabel}
+              </option>
+            );
+          })
+        : (field.options || [])
+            .filter((opt) => opt !== "") // Filter out empty options strings
+            .map((opt, i) => (
+              <option key={i} value={opt}>
+                {opt}
+              </option>
+            ))}
+    </select>
+  );
+};
+
 export default function PublicOpenForm() {
   const { slug } = useParams();
 
@@ -49,7 +127,6 @@ export default function PublicOpenForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const [submitSuccess, setSubmitSuccess] = useState(null);
-
   const [errors, setErrors] = useState({});
 
   // FETCH FORM
@@ -89,6 +166,7 @@ export default function PublicOpenForm() {
       setVerifying(false);
     }
   };
+
   useEffect(() => {
     const savedCode = localStorage.getItem(`verifiedEmployee_${slug}`);
 
@@ -97,9 +175,9 @@ export default function PublicOpenForm() {
       verifyEmployee(savedCode);
     }
   }, [slug]);
+
   // VALIDATION
   const validateField = (field, value) => {
-    // REQUIRED
     if (field.isRequired) {
       if (
         value === undefined ||
@@ -111,25 +189,16 @@ export default function PublicOpenForm() {
       }
     }
 
-    // EMAIL
     if (field.fieldType === "email" && value) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-      if (!emailRegex.test(value)) {
-        return "Invalid email address";
-      }
+      if (!emailRegex.test(value)) return "Invalid email address";
     }
 
-    // PHONE
     if (field.fieldType === "phone" && value) {
       const phoneRegex = /^[6-9]\d{9}$/;
-
-      if (!phoneRegex.test(value)) {
-        return "Invalid mobile number";
-      }
+      if (!phoneRegex.test(value)) return "Invalid mobile number";
     }
 
-    // URL
     if (field.fieldType === "url" && value) {
       try {
         new URL(value);
@@ -138,45 +207,18 @@ export default function PublicOpenForm() {
       }
     }
 
-    // NUMBER
     if (field.fieldType === "number" && value) {
-      if (isNaN(value)) {
-        return `${field.label} must be a number`;
-      }
+      if (isNaN(value)) return `${field.label} must be a number`;
     }
 
     return null;
   };
 
-  // HANDLE FILE UPLOAD
-  const handleFileUpload = async (file, fieldId) => {
-    try {
-      const formData = new FormData();
-
-      formData.append("file", file);
-
-      const res = await axios.post(`${API}/upload`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      setSubmissionData((prev) => ({
-        ...prev,
-        [fieldId]: res.data.url,
-      }));
-    } catch (err) {
-      toast.error("File upload failed");
-    }
-  };
-
-  // VALIDATE FORM
   const validateForm = () => {
     const newErrors = {};
 
     form.fields.forEach((field) => {
       const value = submissionData[field.fieldId];
-
       const error = validateField(field, value);
 
       if (error) {
@@ -185,31 +227,9 @@ export default function PublicOpenForm() {
     });
 
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
   };
 
-  // SUBMIT
-  //   const handleSubmit = async () => {
-  //     try {
-  //       if (!validateForm()) return;
-
-  //       setSubmitting(true);
-
-  //       const res = await axios.post(`${API}/open-forms/${slug}/submit`, {
-  //         employeeCode,
-  //         submissionData,
-  //       });
-
-  //       setSubmitSuccess(
-  //         res?.data?.data?.triggeredInstance?.instanceId || "Submitted",
-  //       );
-  //     } catch (err) {
-  //       alert(err?.response?.data?.message || "Failed to submit form");
-  //     } finally {
-  //       setSubmitting(false);
-  //     }
-  //   };
   const handleSubmit = async () => {
     toast.custom((t) => (
       <div
@@ -312,6 +332,7 @@ export default function PublicOpenForm() {
       </div>
     ));
   };
+
   // FIELD RENDERER
   const renderField = (field) => {
     const commonStyle = {
@@ -344,24 +365,18 @@ export default function PublicOpenForm() {
 
       case "select":
         return (
-          <select
-            value={submissionData[field.fieldId] || ""}
-            onChange={(e) =>
+          <DynamicSelectField
+            field={field}
+            value={submissionData[field.fieldId]}
+            onChange={(val) =>
               setSubmissionData((p) => ({
                 ...p,
-                [field.fieldId]: e.target.value,
+                [field.fieldId]: val,
               }))
             }
-            style={commonStyle}
-          >
-            <option value="">Select option</option>
-
-            {field.options?.map((opt, i) => (
-              <option key={i} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
+            error={errors[field.fieldId]}
+            commonStyle={commonStyle}
+          />
         );
 
       case "radio":
@@ -419,109 +434,6 @@ export default function PublicOpenForm() {
             {field.label}
           </label>
         );
-
-      //   case "file":
-      //     return (
-      //       <div>
-      //         {!submissionData[field.fieldId] ? (
-      //           <label
-      //             style={{
-      //               border: `1px dashed ${T.border}`,
-      //               borderRadius: 16,
-      //               padding: 22,
-      //               display: "flex",
-      //               flexDirection: "column",
-      //               alignItems: "center",
-      //               justifyContent: "center",
-      //               gap: 10,
-      //               cursor: "pointer",
-      //               background: "#fafafa",
-      //             }}
-      //           >
-      //             <Upload size={22} color={T.accent} />
-
-      //             <div
-      //               style={{
-      //                 fontSize: 13,
-      //                 color: T.text,
-      //                 fontWeight: 600,
-      //               }}
-      //             >
-      //               Upload File
-      //             </div>
-
-      //             <div
-      //               style={{
-      //                 fontSize: 11,
-      //                 color: T.muted2,
-      //               }}
-      //             >
-      //               Click to browse
-      //             </div>
-
-      //             <input
-      //               type="file"
-      //               hidden
-      //               onChange={(e) => {
-      //                 const file = e.target.files[0];
-
-      //                 // if (file) {
-      //                 //   handleFileUpload(file, field.fieldId);
-      //                 // }
-      //               }}
-      //             />
-      //           </label>
-      //         ) : (
-      //           <div
-      //             style={{
-      //               padding: 14,
-      //               borderRadius: 14,
-      //               border: `1px solid ${T.greenB}`,
-      //               background: T.greenL,
-      //               display: "flex",
-      //               alignItems: "center",
-      //               justifyContent: "space-between",
-      //             }}
-      //           >
-      //             <div
-      //               style={{
-      //                 display: "flex",
-      //                 alignItems: "center",
-      //                 gap: 10,
-      //               }}
-      //             >
-      //               <CheckCircle2 size={18} color={T.green} />
-
-      //               <span
-      //                 style={{
-      //                   fontSize: 13,
-      //                   fontWeight: 600,
-      //                   color: T.text,
-      //                 }}
-      //               >
-      //                 File uploaded
-      //               </span>
-      //             </div>
-
-      //             <button
-      //               onClick={() =>
-      //                 setSubmissionData((p) => ({
-      //                   ...p,
-      //                   [field.fieldId]: "",
-      //                 }))
-      //               }
-      //               style={{
-      //                 border: "none",
-      //                 background: "transparent",
-      //                 cursor: "pointer",
-      //               }}
-      //             >
-      //               <X size={16} color={T.red} />
-      //             </button>
-      //           </div>
-      //         )}
-      //       </div>
-      //     );
 
       case "date":
         return (
@@ -635,9 +547,7 @@ export default function PublicOpenForm() {
         <Loader2
           size={34}
           color={T.accent}
-          style={{
-            animation: "spin 1s linear infinite",
-          }}
+          style={{ animation: "spin 1s linear infinite" }}
         />
       </div>
     );
@@ -674,12 +584,7 @@ export default function PublicOpenForm() {
             Form Not Found
           </h2>
 
-          <p
-            style={{
-              color: T.muted,
-              marginTop: 8,
-            }}
-          >
+          <p style={{ color: T.muted, marginTop: 8 }}>
             This form may be inactive or removed.
           </p>
         </div>
@@ -695,63 +600,7 @@ export default function PublicOpenForm() {
         padding: "40px 16px",
       }}
     >
-      <div
-        style={{
-          maxWidth: 760,
-          margin: "0 auto",
-        }}
-      >
-        {/* SUCCESS */}
-        {/* {submitSuccess ? (
-          <div
-            style={{
-              background: T.card,
-              border: `1px solid ${T.border}`,
-              borderRadius: 24,
-              padding: "60px 40px",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                width: 74,
-                height: 74,
-                borderRadius: 20,
-                background: T.greenL,
-                border: `1px solid ${T.greenB}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 24px",
-              }}
-            >
-              <CheckCircle2 size={34} color={T.green} />
-            </div>
-
-            <h1
-              style={{
-                fontSize: 28,
-                fontWeight: 800,
-                color: T.text,
-                marginBottom: 10,
-              }}
-            >
-              Form Submitted Successfully
-            </h1>
-
-            <p
-              style={{
-                color: T.muted,
-                fontSize: 14,
-                marginBottom: 24,
-              }}
-            >
-              Linked workflow triggered successfully
-            </p>
-          </div>
-        ) : (
-          <></>
-        )} */}
+      <div style={{ maxWidth: 760, margin: "0 auto" }}>
         <div
           style={{
             background: T.card,
@@ -776,7 +625,6 @@ export default function PublicOpenForm() {
                 gap: 16,
               }}
             >
-              {/* Logout Button */}
               {verifiedUser && (
                 <button
                   onClick={() => {
@@ -857,18 +705,9 @@ export default function PublicOpenForm() {
           </div>
 
           {/* BODY */}
-          <div
-            style={{
-              padding: "32px",
-            }}
-          >
+          <div style={{ padding: "32px" }}>
             {!verifiedUser ? (
-              <div
-                style={{
-                  maxWidth: 420,
-                  margin: "0 auto",
-                }}
-              >
+              <div style={{ maxWidth: 420, margin: "0 auto" }}>
                 <div
                   style={{
                     width: 64,
@@ -1063,7 +902,7 @@ export default function PublicOpenForm() {
                   ))}
                 </div>
 
-                {/* SUBMIT */}
+                {/* SUBMIT BUTTON */}
                 <div
                   style={{
                     marginTop: 36,
