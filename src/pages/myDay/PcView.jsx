@@ -6,7 +6,7 @@ import {
   getFilterTasks,
   getRoleBasedTasks,
 } from "../../redux/slices/myTask/myTaskSlice.js";
-import api from "../../lib/api";
+import api from "../../lib/api.js";
 import { toast } from "sonner";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -35,22 +35,22 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from "../../components/ui/card";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
+} from "../../components/ui/card.jsx";
+import { Button } from "../../components/ui/button.jsx";
+import { Input } from "../../components/ui/input.jsx";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/select";
+} from "../../components/ui/select.jsx";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "../../components/ui/tabs";
+} from "../../components/ui/tabs.jsx";
 import {
   Table,
   TableBody,
@@ -58,15 +58,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../../components/ui/table";
-import { Badge } from "../../components/ui/badge";
+} from "../../components/ui/table.jsx";
+import { Badge } from "../../components/ui/badge.jsx";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "../../components/ui/tooltip";
-import { Progress } from "../../components/ui/progress";
+} from "../../components/ui/tooltip.jsx";
+import { Progress } from "../../components/ui/progress.jsx";
 import {
   Dialog,
   DialogContent,
@@ -74,8 +74,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../components/ui/dialog";
-import { Checkbox } from "../../components/ui/checkbox";
+} from "../../components/ui/dialog.jsx";
+import { Checkbox } from "../../components/ui/checkbox.jsx";
 import { useDebounce } from "../../lib/debounce.js";
 import ViewLink from "./attachmentViewer.jsx";
 import {
@@ -648,7 +648,7 @@ const Pagination = ({
 };
 
 // --- Main Component ---
-const ManagerView = () => {
+const PCView = () => {
   const dispatch = useDispatch();
   const {
     tasks: fetchedTasks,
@@ -657,9 +657,8 @@ const ManagerView = () => {
     totalTasks,
   } = useSelector((state) => state.myTasks);
   const { currentUser } = useSelector((state) => state.users);
-  const { isConnected, socket, events } = useSocket();
+  const { socket } = useSocket();
 
-  const navigate = useNavigate();
   const location = useLocation();
   const source = location.state?.source;
 
@@ -773,23 +772,8 @@ const ManagerView = () => {
       socket.off("unread-count", handleUnread);
     };
   }, [socket]);
-  const getViewHeading = () => {
-    if (!currentUser || !currentUser.role) return "View";
-    const roleName = currentUser.role.name;
-    switch (roleName) {
-      case "Manager":
-        return "Manager View";
-      case "Sr. Manager":
-        return "Sr. Manager View";
-      case "Owner":
-        return "Owner View";
-      case "Admin":
-        return "Admin View";
-      default:
-        return "View";
-    }
-  };
-  const viewHeading = getViewHeading();
+
+  const viewHeading = "PC view";
 
   // --- Initial Data Load (Task Counts) ---
   useEffect(() => {
@@ -966,12 +950,6 @@ const ManagerView = () => {
     });
   };
 
-  const allowedRoles = ["Admin", "Owner", "Sr. Manager", "Manager"];
-  const hasAccess =
-    currentUser &&
-    currentUser.role &&
-    allowedRoles.includes(currentUser.role.name);
-
   if (!currentUser) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -979,22 +957,6 @@ const ManagerView = () => {
       </div>
     );
   }
-
-  // if (!hasAccess) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-  //       <Card className="p-8 shadow-lg text-center">
-  //         <CardTitle className="text-red-600 mb-4">Access Denied</CardTitle>
-  //         <CardDescription>
-  //           You do not have permission to view this page.
-  //         </CardDescription>
-  //         <Button onClick={() => navigate("/")} className="mt-4">
-  //           Go to Home
-  //         </Button>
-  //       </Card>
-  //     </div>
-  //   );
-  // }
 
   // --- Handlers ---
   const handleTabChange = (value) => {
@@ -1080,7 +1042,7 @@ const ManagerView = () => {
         <TableHead>Time left</TableHead>
         <TableHead>Status</TableHead>
         {/* Keeping Actions for functionality, though not in the strict list */}
-        <TableHead>Actions</TableHead>
+        {/* <TableHead>Actions</TableHead> */}
       </TableRow>
     </TableHeader>
   );
@@ -1391,8 +1353,7 @@ const ManagerView = () => {
           {task.delay || "-"}
         </TableCell> */}
         <TableCell>{getStatusBadge(task.status)}</TableCell>
-        <TableCell>
-          {/* {activeTab === "today" && ( */}
+        {/* <TableCell>
           <TodayTaskActions
             activeTab={activeTab}
             task={task}
@@ -1405,8 +1366,7 @@ const ManagerView = () => {
             setReopenTask={setReopenTask}
             setReopenModalOpen={setReopenModalOpen}
           />
-          {/* )} */}
-        </TableCell>
+        </TableCell> */}
       </TableRow>
     );
   };
@@ -1900,4 +1860,4 @@ const ManagerView = () => {
   );
 };
 
-export default ManagerView;
+export default PCView;

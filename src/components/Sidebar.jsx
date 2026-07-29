@@ -168,6 +168,8 @@ const Sidebar = ({ children }) => {
         return "Owner View";
       case "Admin": // Admin also shows Owner View
         return "Admin View";
+      case "PC":
+        return "PC View";
       default:
         return ""; // For 'Member' or other roles, hide the specific view
     }
@@ -175,7 +177,11 @@ const Sidebar = ({ children }) => {
 
   // Filter My Day items based on user roles
   const myDayLinks = [
-    { path: "/my-day/mytasks", label: "Delegated & Recurring", icon: ClipboardCheck },
+    {
+      path: "/my-day/mytasks",
+      label: "Delegated & Recurring",
+      icon: ClipboardCheck,
+    },
     { path: "/my-day/my-fms-tasks", label: "FMS Tasks", icon: ClipboardCheck },
     // { path: "/my-day/launchpad", label: "Launchpad", icon: Rocket },
   ];
@@ -183,7 +189,7 @@ const Sidebar = ({ children }) => {
   const managerViewLabel = getManagerViewLabel(user);
   if (managerViewLabel && !isSuper) {
     myDayLinks.push({
-      path: "/my-day/view",
+      path: managerViewLabel === "PC View" ? "/my-day/pc-view" : "/my-day/view",
       label: managerViewLabel,
       icon: Eye,
     });

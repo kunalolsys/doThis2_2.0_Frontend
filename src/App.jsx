@@ -62,6 +62,7 @@ import BucketListingPage from "./pages/task-distribution/BucketListingPage";
 import BucketReqOpenForm from "./pages/public-form/BucketReqOpenForm";
 import PendingBucketRequest from "./pages/task-distribution/PendingBucketReques";
 import FmsTasks from "./pages/myDay/FmsTask";
+import PCView from "./pages/myDay/PcView";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -118,6 +119,7 @@ function App() {
                 <Route path="/my-day/mytasks" element={<MyTask />} />
                 <Route path="/my-day/my-fms-tasks" element={<FmsTasks />} />
                 <Route path="/my-day/view" element={<ManagerView />} />
+                <Route path="/my-day/pc-view" element={<PCView />} />
                 <Route path="/user/:userId" element={<UserTaskHistory />} />
                 <Route path="/form-builder" element={<OpenFormBuilder />} />
                 <Route
