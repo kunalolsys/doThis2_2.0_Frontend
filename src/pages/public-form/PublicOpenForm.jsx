@@ -48,7 +48,7 @@ const DynamicSelectField = ({ field, value, onChange, error, commonStyle }) => {
         .get(`https://mis.suvidhastores.com/api/load-dtenData`, {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, // or use "token": token / "x-api-key": token depending on your server spec
+            Authorization: `Bearer ${token}`,
           },
         })
         .then((res) => {
@@ -86,7 +86,6 @@ const DynamicSelectField = ({ field, value, onChange, error, commonStyle }) => {
 
       {field.optionType === "MASTER"
         ? masterOptions.map((opt, i) => {
-            // Handles string options, object options { label, value }, or { name, _id }
             const optLabel =
               typeof opt === "string"
                 ? opt
@@ -103,7 +102,7 @@ const DynamicSelectField = ({ field, value, onChange, error, commonStyle }) => {
             );
           })
         : (field.options || [])
-            .filter((opt) => opt !== "") // Filter out empty options strings
+            .filter((opt) => opt !== "")
             .map((opt, i) => (
               <option key={i} value={opt}>
                 {opt}
@@ -113,13 +112,19 @@ const DynamicSelectField = ({ field, value, onChange, error, commonStyle }) => {
   );
 };
 
-export default function PublicOpenForm() {
-  const { slug } = useParams();
+export default function PublicOpenForm({
+  slug: propSlug,
+  propEmployeeCode,
+  onFormSubmitted,
+  remark = "",
+}) {
+  const params = useParams();
+  const slug = propSlug || params.slug;
 
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(null);
 
-  const [employeeCode, setEmployeeCode] = useState("");
+  const [employeeCode, setEmployeeCode] = useState(propEmployeeCode || "");
   const [verifiedUser, setVerifiedUser] = useState(null);
   const [verifying, setVerifying] = useState(false);
 
@@ -131,8 +136,8 @@ export default function PublicOpenForm() {
 
   // FETCH FORM
   useEffect(() => {
-    fetchForm();
-  }, []);
+    if (slug) fetchForm();
+  }, [slug]);
 
   const fetchForm = async () => {
     try {
@@ -150,6 +155,7 @@ export default function PublicOpenForm() {
 
   // VERIFY EMPLOYEE
   const verifyEmployee = async (code = employeeCode) => {
+    if (!code) return;
     try {
       setVerifying(true);
 
@@ -168,13 +174,14 @@ export default function PublicOpenForm() {
   };
 
   useEffect(() => {
-    const savedCode = localStorage.getItem(`verifiedEmployee_${slug}`);
+    const savedCode =
+      propEmployeeCode || localStorage.getItem(`verifiedEmployee_${slug}`);
 
     if (savedCode) {
       setEmployeeCode(savedCode);
       verifyEmployee(savedCode);
     }
-  }, [slug]);
+  }, [slug, propEmployeeCode]);
 
   // VALIDATION
   const validateField = (field, value) => {
@@ -229,109 +236,167 @@ export default function PublicOpenForm() {
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+  // 1. State add karein (PublicOpenForm.jsx ke top level par)
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const handleSubmit = async () => {
-    toast.custom((t) => (
-      <div
-        style={{
-          background: "#fff",
-          border: "1px solid #e2e8f0",
-          borderRadius: 18,
-          padding: 18,
-          width: 360,
-          boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 16,
-            fontWeight: 800,
-            color: "#0f172a",
-            marginBottom: 6,
-          }}
-        >
-          Confirm Submission
-        </div>
-
-        <div
-          style={{
-            fontSize: 13,
-            color: "#64748b",
-            marginBottom: 18,
-            lineHeight: 1.5,
-          }}
-        >
-          Are you sure you want to submit this form and trigger the workflow?
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-            gap: 10,
-          }}
-        >
-          <button
-            onClick={() => toast.dismiss(t)}
-            style={{
-              border: "1px solid #e2e8f0",
-              background: "#fff",
-              color: "#0f172a",
-              padding: "10px 14px",
-              borderRadius: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Cancel
-          </button>
-
-          <button
-            onClick={async () => {
-              try {
-                toast.dismiss(t);
-
-                if (!validateForm()) return;
-
-                setSubmitting(true);
-
-                const res = await axios.post(
-                  `${API}/open-forms/${slug}/submit`,
-                  {
-                    employeeCode,
-                    submissionData,
-                  },
-                );
-
-                setSubmitSuccess(
-                  res?.data?.data?.triggeredInstance?.instanceId || "Submitted",
-                );
-                setSubmissionData({});
-                toast.success("Form submitted successfully");
-              } catch (err) {
-                toast.error(
-                  err?.response?.data?.message || "Failed to submit form",
-                );
-              } finally {
-                setSubmitting(false);
-              }
-            }}
-            style={{
-              border: "none",
-              background: "#2563eb",
-              color: "#fff",
-              padding: "10px 14px",
-              borderRadius: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            Yes, Submit
-          </button>
-        </div>
-      </div>
-    ));
+  // 2. Simple handleSubmit
+  const handleSubmit = () => {
+    if (!validateForm()) return;
+    setConfirmOpen(true); // Popup/Confirm box open karein
   };
+
+  // 3. Main submission function
+  const executeSubmit = async () => {
+    try {
+      setConfirmOpen(false);
+      setSubmitting(true);
+
+      const res = await axios.post(`${API}/open-forms/${slug}/submit`, {
+        employeeCode,
+        submissionData,
+      });
+
+      const submissionId =
+        res?.data?.data?.submission?._id ||
+        res?.data?.data?._id ||
+        res?.data?.data?.submissionId;
+
+      setSubmitSuccess(
+        res?.data?.data?.triggeredInstance?.instanceId || "Submitted",
+      );
+      setSubmissionData({});
+      toast.success("Form submitted successfully");
+
+      // FMS Callback
+      if (onFormSubmitted) {
+        onFormSubmitted({
+          submissionId,
+          submissionData,
+          response: res.data,
+        });
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to submit form");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  // const handleSubmit = async () => {
+  //   toast.custom((t) => (
+  //     <div
+  //       style={{
+  //         background: "#fff",
+  //         border: "1px solid #e2e8f0",
+  //         borderRadius: 18,
+  //         padding: 18,
+  //         width: 360,
+  //         boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
+  //       }}
+  //     >
+  //       <div
+  //         style={{
+  //           fontSize: 16,
+  //           fontWeight: 800,
+  //           color: "#0f172a",
+  //           marginBottom: 6,
+  //         }}
+  //       >
+  //         Confirm Submission
+  //       </div>
+
+  //       <div
+  //         style={{
+  //           fontSize: 13,
+  //           color: "#64748b",
+  //           marginBottom: 18,
+  //           lineHeight: 1.5,
+  //         }}
+  //       >
+  //         Are you sure you want to submit this form and trigger the workflow?
+  //       </div>
+
+  //       <div
+  //         style={{
+  //           display: "flex",
+  //           justifyContent: "flex-end",
+  //           gap: 10,
+  //         }}
+  //       >
+  //         <button
+  //           onClick={() => toast.dismiss(t)}
+  //           style={{
+  //             border: "1px solid #e2e8f0",
+  //             background: "#fff",
+  //             color: "#0f172a",
+  //             padding: "10px 14px",
+  //             borderRadius: 12,
+  //             fontWeight: 600,
+  //             cursor: "pointer",
+  //           }}
+  //         >
+  //           Cancel
+  //         </button>
+
+  //         <button
+  //           onClick={async () => {
+  //             try {
+  //               toast.dismiss(t);
+
+  //               if (!validateForm()) return;
+
+  //               setSubmitting(true);
+
+  //               const res = await axios.post(
+  //                 `${API}/open-forms/${slug}/submit`,
+  //                 {
+  //                   employeeCode,
+  //                   submissionData,
+  //                 },
+  //               );
+
+  //               const submissionId =
+  //                 res?.data?.data?.submission?._id ||
+  //                 res?.data?.data?._id ||
+  //                 res?.data?.data?.submissionId;
+
+  //               setSubmitSuccess(
+  //                 res?.data?.data?.triggeredInstance?.instanceId || "Submitted",
+  //               );
+  //               setSubmissionData({});
+  //               toast.success("Form submitted successfully");
+
+  //               // Callback for FMS Tasks Modal Execution
+  //               if (onFormSubmitted) {
+  //                 onFormSubmitted({
+  //                   submissionId,
+  //                   submissionData,
+  //                   response: res.data,
+  //                 });
+  //               }
+  //             } catch (err) {
+  //               toast.error(
+  //                 err?.response?.data?.message || "Failed to submit form",
+  //               );
+  //             } finally {
+  //               setSubmitting(false);
+  //             }
+  //           }}
+  //           style={{
+  //             border: "none",
+  //             background: "#2563eb",
+  //             color: "#fff",
+  //             padding: "10px 14px",
+  //             borderRadius: 12,
+  //             fontWeight: 700,
+  //             cursor: "pointer",
+  //           }}
+  //         >
+  //           Yes, Submit
+  //         </button>
+  //       </div>
+  //     </div>
+  //   ));
+  // };
 
   // FIELD RENDERER
   const renderField = (field) => {
@@ -625,7 +690,7 @@ export default function PublicOpenForm() {
                 gap: 16,
               }}
             >
-              {verifiedUser && (
+              {verifiedUser && !propEmployeeCode && (
                 <button
                   onClick={() => {
                     localStorage.removeItem(`verifiedEmployee_${slug}`);
@@ -948,6 +1013,39 @@ export default function PublicOpenForm() {
                   </button>
                 </div>
               </>
+            )}
+            {/* Confirm Box - 100% Clickable inside any Modal */}
+            {confirmOpen && (
+              <div className="fixed inset-0 z-[999999] bg-black/60 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl p-5 w-full max-w-sm shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in duration-150">
+                  <div className="text-base font-extrabold text-slate-900">
+                    Confirm Submission
+                  </div>
+
+                  <div className="text-xs text-slate-600 leading-relaxed">
+                    Are you sure you want to submit this form and trigger the
+                    workflow?
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmOpen(false)}
+                      className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 transition-all cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={executeSubmit}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                    >
+                      Yes, Submit
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>

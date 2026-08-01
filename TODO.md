@@ -1,7 +1,14 @@
-- [ ] Update TaskTable to support user-controlled column visibility (show/hide) with an “increase/decrease” style UI.
-- [ ] Replace fixed One-time and Recurring table headers/cells with dynamic rendering based on selected visible columns.
-- [ ] Ensure loading/empty states use correct dynamic colSpan.
-- [ ] Keep action column + its buttons always visible (or included explicitly) and verify no layout break.
-- [ ] (Optional) Persist column selection in localStorage and restore on load.
-- [ ] Test UI in One-time and Recurring tabs.
+# Action Gate Feature Implementation
+
+## Steps
+
+- [x] Step 0: Understand codebase (FmsTask.jsx, myTaskSlice.js, api patterns)
+- [x] Step 1: Create plan and get approval
+- [x] Step 2: Add `completeFMSTaskWithActionGate` thunk in `myTaskSlice.js`
+- [x] Step 3: Update `FmsTask.jsx` - Add state variables for Action Gate modal
+- [x] Step 4: Update `FmsTask.jsx` - Add fetch templates API call
+- [x] Step 5: Update `FmsTask.jsx` - Create ActionGateModal component
+- [x] Step 6: Update `FmsTask.jsx` - Modify `handleToggleComplete` to check `enableActionGate`
+- [x] Step 7: Update `FmsTask.jsx` - Wire up the ActionGateModal in the JSX return
+- [x] Step 8: Verify and test
 

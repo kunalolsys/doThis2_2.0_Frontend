@@ -26,6 +26,8 @@ import {
   X,
   Check,
   Edit,
+  Save,
+  FileEdit,
 } from "lucide-react";
 import { Modal, Select } from "antd";
 
@@ -605,7 +607,6 @@ const FieldCard = ({
                       style={{ width: "100%" }}
                     >
                       <Option value="VENDOR">Vendor Master</Option>
-                      {/* <Option value="EMPLOYEE">Employee / User Master</Option> */}
                     </Select>
                   </div>
                 )}
@@ -980,7 +981,6 @@ export default function OpenFormBuilder() {
   });
   const setConf = (k, v) => setConfig((p) => ({ ...p, [k]: v }));
 
-  // Fixed: Give stable unique internal 'id' property so React doesn't lose input focus
   const [fields, setFields] = useState([
     {
       id: "field_init_fullName",
@@ -1033,6 +1033,16 @@ export default function OpenFormBuilder() {
       /* silent */
     }
   };
+
+  // 🟢 Separate Draft & Published Forms List
+  const publishedForms = useMemo(
+    () => forms.filter((f) => f.status === "published"),
+    [forms]
+  );
+  const draftForms = useMemo(
+    () => forms.filter((f) => f.status === "draft"),
+    [forms]
+  );
 
   const addField = (type) =>
     setFields((prev) => [
@@ -1094,87 +1104,72 @@ export default function OpenFormBuilder() {
     });
   };
 
-  const handleSave = async () => {
+  const handleSave = async (status = "published") => {
     if (!config.formName.trim()) {
       showToast("Form name is required", "error");
       return;
     }
-    if (!config.linkedTemplate) {
-      showToast("Please link an FMS template", "error");
+
+    if (status === "published" && !config.linkedTemplate) {
+      showToast("Please link an FMS template to publish the form", "error");
       return;
     }
+
     if (fields.length === 0) {
       showToast("Add at least one field", "error");
       return;
     }
+
     try {
       setSaving(true);
-      if (editingFormId) {
-        await api.put(`/open-forms/${editingFormId}`, {
-          ...config,
-          fields: fields.map((f, i) => ({ ...f, order: i + 1 })),
-        });
+      const payload = {
+        ...config,
+        status,
+        fields: fields.map((f, i) => ({ ...f, order: i + 1 })),
+      };
 
-        showToast("Form updated successfully");
-        setEditingFormId(null);
-        setConfig({
-          formName: "",
-          description: "",
-          linkedTemplate: "",
-          allowMultipleSubmissions: true,
-          isActive: true,
-        });
-        setFields([
-          {
-            id: `field_fullName_${Date.now()}`,
-            fieldId: "fullName",
-            label: "Full Name",
-            fieldType: "text",
-            placeholder: "Enter your full name",
-            isRequired: true,
-            optionType: "STATIC",
-            masterSource: null,
-            options: [],
-            order: 1,
-          },
-        ]);
-        await fetchForms();
-        setTab("forms");
+      if (editingFormId) {
+        await api.put(`/open-forms/${editingFormId}`, payload);
+        showToast(
+          status === "draft"
+            ? "Form saved as draft"
+            : "Form updated & published successfully"
+        );
       } else {
-        await api.post("/open-forms", {
-          ...config,
-          fields: fields.map((f, i) => ({ ...f, order: i + 1 })),
-        });
-        showToast("Open form published successfully");
-        setConfig({
-          formName: "",
-          description: "",
-          linkedTemplate: "",
-          allowMultipleSubmissions: true,
-          isActive: true,
-        });
-        setFields([
-          {
-            id: `field_fullName_${Date.now()}`,
-            fieldId: "fullName",
-            label: "Full Name",
-            fieldType: "text",
-            placeholder: "Enter your full name",
-            isRequired: true,
-            optionType: "STATIC",
-            masterSource: null,
-            options: [],
-            order: 1,
-          },
-        ]);
-        await fetchForms();
-        setTab("forms");
+        await api.post("/open-forms", payload);
+        showToast(
+          status === "draft"
+            ? "Form saved as draft"
+            : "Open form published successfully"
+        );
       }
+
+      setEditingFormId(null);
+      setConfig({
+        formName: "",
+        description: "",
+        linkedTemplate: "",
+        allowMultipleSubmissions: true,
+        isActive: true,
+      });
+      setFields([
+        {
+          id: `field_fullName_${Date.now()}`,
+          fieldId: "fullName",
+          label: "Full Name",
+          fieldType: "text",
+          placeholder: "Enter your full name",
+          isRequired: true,
+          optionType: "STATIC",
+          masterSource: null,
+          options: [],
+          order: 1,
+        },
+      ]);
+      await fetchForms();
+      setTab(status === "draft" ? "drafts" : "forms");
     } catch (e) {
-      showToast(
-        e?.response?.data?.message || "Failed to publish form",
-        "error"
-      );
+      showToast(e?.response?.data?.message || "Failed to save form", "error");
     } finally {
       setSaving(false);
     }
@@ -1219,7 +1214,13 @@ export default function OpenFormBuilder() {
       id: "forms",
       label: "Published Forms",
       icon: FileText,
-      badge: forms.length,
+      badge: publishedForms.length,
+    },
+    {
+      id: "drafts",
+      label: "Draft Forms",
+      icon: FileEdit,
+      badge: draftForms.length,
     },
   ];
 
@@ -1241,7 +1242,11 @@ export default function OpenFormBuilder() {
     setConfig({
       formName: form.formName,
       description: form.description || "",
-      linkedTemplate: form.linkedTemplate?.id || form.linkedTemplate?._id || form.linkedTemplate,
+      linkedTemplate:
+        form.linkedTemplate?.id ||
+        form.linkedTemplate?._id ||
+        form.linkedTemplate ||
+        "",
       isActive: form.isActive,
       allowMultipleSubmissions: form.allowMultipleSubmissions,
     });
@@ -1296,10 +1301,243 @@ export default function OpenFormBuilder() {
 
           showToast("Form deleted successfully");
         } catch (error) {
-          showToast(error.response?.data?.message || "Failed to delete form", "error");
+          showToast(
+            error.response?.data?.message || "Failed to delete form",
+            "error"
+          );
         }
       },
     });
+  };
+
+  // Reusable Form Card renderer
+  const renderFormCard = (form) => {
+    const tpl = templates.find(
+      (t) => t._id === (form.linkedTemplate?._id || form.linkedTemplate)
+    );
+    const isDraft = form.status === "draft";
+
+    return (
+      <div
+        key={form._id}
+        style={{
+          background: T.card,
+          border: `1px solid ${T.border}`,
+          borderRadius: 16,
+          overflow: "hidden",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+          transition: "box-shadow 0.15s",
+        }}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.boxShadow = "0 6px 24px rgba(0,0,0,0.08)")
+        }
+        onMouseLeave={(e) =>
+          (e.currentTarget.style.boxShadow = "0 1px 4px rgba(0,0,0,0.05)")
+        }
+      >
+        <div
+          style={{
+            height: 4,
+            background: isDraft
+              ? T.amber
+              : `linear-gradient(90deg,${T.accent},#4F46E5)`,
+          }}
+        />
+
+        <div style={{ padding: "18px 20px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "space-between",
+              gap: 10,
+              marginBottom: 12,
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: T.text,
+                  marginBottom: 3,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {form.formName}
+              </div>
+              {form.description && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: T.muted,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {form.description}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 4 }}>
+              {isDraft ? (
+                <Pill color={T.amber} bg={T.amberL} border={T.amberB}>
+                  Draft
+                </Pill>
+              ) : (
+                <Pill
+                  color={form.isActive ? T.green : T.muted}
+                  bg={form.isActive ? T.greenL : T.surf}
+                  border={form.isActive ? T.greenB : T.border}
+                  dot={form.isActive ? T.green : T.muted2}
+                >
+                  {form.isActive ? "Active" : "Inactive"}
+                </Pill>
+              )}
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+              marginBottom: 14,
+            }}
+          >
+            <Pill color={T.muted} bg={T.surf} border={T.border}>
+              {form.fields?.length || 0} fields
+            </Pill>
+            {tpl ? (
+              <Pill color={T.accent} bg={T.accentL} border={T.accentB}>
+                ⚡ {tpl.templateName}
+              </Pill>
+            ) : (
+              <Pill color={T.muted} bg={T.surf} border={T.border}>
+                No Template Linked
+              </Pill>
+            )}
+            <Pill color={T.muted} bg={T.surf} border={T.border}>
+              {fmtDate(form.createdAt)}
+            </Pill>
+          </div>
+
+          {!isDraft && (
+            <div
+              style={{
+                background: T.surf,
+                border: `1px solid ${T.border}`,
+                borderRadius: 9,
+                padding: "8px 12px",
+                marginBottom: 14,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: T.muted2,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.6px",
+                    marginBottom: 2,
+                  }}
+                >
+                  Public URL
+                </div>
+                <div
+                  style={{
+                    fontFamily: "monospace",
+                    fontSize: 11,
+                    color: T.accent,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {form.formUrl || "-"}
+                </div>
+              </div>
+              <button
+                onClick={() => handleCopy(form.formUrl, form._id)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: copiedId === form._id ? "#16a34a" : T.muted2,
+                  padding: 4,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  transition: "0.2s ease",
+                }}
+              >
+                {copiedId === form._id ? (
+                  <>
+                    <Check size={14} />
+                    <span style={{ fontSize: 12 }}>Copied</span>
+                  </>
+                ) : (
+                  <Copy size={13} />
+                )}
+              </button>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8 }}>
+            <Btn
+              size="sm"
+              style={{ flex: 1, justifyContent: "center" }}
+              onClick={() => handleEditForm(form)}
+            >
+              <Edit size={13} /> Edit
+            </Btn>
+
+            <Btn
+              size="sm"
+              style={{ flex: 1, justifyContent: "center" }}
+              onClick={() => {
+                setSelectedForm(form);
+                setSubmissionData({});
+                setTab("preview");
+              }}
+            >
+              <Eye size={13} /> Preview
+            </Btn>
+
+            {!isDraft && (
+              <Btn
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(form.formUrl);
+                  window.open(form.formUrl, "_blank");
+                  showToast("Form URL copied");
+                }}
+              >
+                <ExternalLink size={13} />
+              </Btn>
+            )}
+
+            <Btn
+              size="sm"
+              variant="secondary"
+              onClick={() => handleDeleteForm(form._id)}
+            >
+              <Trash2 size={13} />
+            </Btn>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -1426,7 +1664,7 @@ export default function OpenFormBuilder() {
             </div>
           </div>
 
-          {/* Tabs */}
+          {/* Tabs Navigation */}
           <div
             style={{
               display: "flex",
@@ -1482,7 +1720,7 @@ export default function OpenFormBuilder() {
           </div>
         </div>
 
-        {/* TAB: BUILDER */}
+        {/* TAB 1: BUILDER */}
         {tab === "builder" && (
           <div
             style={{
@@ -1520,7 +1758,7 @@ export default function OpenFormBuilder() {
                     />
                   </div>
                   <div>
-                    <Label required>Link FMS Template</Label>
+                    <Label>Link FMS Template</Label>
                     <Select
                       value={config.linkedTemplate || undefined}
                       onChange={(value) => setConf("linkedTemplate", value)}
@@ -1534,6 +1772,7 @@ export default function OpenFormBuilder() {
                       optionFilterProp="children"
                       style={{ width: "100%" }}
                       size="large"
+                      allowClear
                     >
                       {templates.map((t) => (
                         <Option key={t._id} value={t._id}>
@@ -1572,17 +1811,6 @@ export default function OpenFormBuilder() {
                         >
                           {selectedTemplate.templateName}
                         </div>
-                        {selectedTemplate.description && (
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: T.muted,
-                              marginTop: 2,
-                            }}
-                          >
-                            {selectedTemplate.description}
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
@@ -1596,38 +1824,50 @@ export default function OpenFormBuilder() {
                     />
                   </div>
 
-                  <Btn
-                    size="lg"
-                    onClick={handleSave}
-                    disabled={saving}
-                    style={{ width: "100%", justifyContent: "center" }}
-                  >
-                    {saving ? (
-                      <>
+                  {/* Buttons */}
+                  <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+                    <Btn
+                      variant="secondary"
+                      size="lg"
+                      onClick={() => handleSave("draft")}
+                      disabled={saving}
+                      style={{ flex: 1, justifyContent: "center" }}
+                    >
+                      {saving ? (
                         <Loader2
                           size={15}
                           style={{ animation: "spin 0.8s linear infinite" }}
-                        />{" "}
-                        Publishing…
-                      </>
-                    ) : (
-                      <>
-                        {editingFormId ? (
-                          <>
-                            <Edit size={15} /> Update Form
-                          </>
-                        ) : (
-                          <>
-                            <Zap size={15} /> Publish Open Form
-                          </>
-                        )}
-                      </>
-                    )}
-                  </Btn>
+                        />
+                      ) : (
+                        <>
+                          <Save size={15} /> Save Draft
+                        </>
+                      )}
+                    </Btn>
+
+                    <Btn
+                      variant="primary"
+                      size="lg"
+                      onClick={() => handleSave("published")}
+                      disabled={saving}
+                      style={{ flex: 1, justifyContent: "center" }}
+                    >
+                      {saving ? (
+                        <Loader2
+                          size={15}
+                          style={{ animation: "spin 0.8s linear infinite" }}
+                        />
+                      ) : (
+                        <>
+                          <Zap size={15} /> Publish
+                        </>
+                      )}
+                    </Btn>
+                  </div>
                 </div>
               </SectionCard>
 
-              {/* Field Type Palette */}
+              {/* Palette */}
               <SectionCard
                 title="Add Fields"
                 subtitle="Click to add to your form"
@@ -1691,24 +1931,12 @@ export default function OpenFormBuilder() {
               </SectionCard>
             </div>
 
-            {/* Right Field Builder */}
+            {/* Right Fields Builder */}
             <div>
               <SectionCard
                 title="Form Fields"
                 subtitle={`${fields.length} field${fields.length !== 1 ? "s" : ""} configured`}
                 icon={FileText}
-                action={
-                  fields.length > 0 && (
-                    <Pill
-                      color={T.green}
-                      bg={T.greenL}
-                      border={T.greenB}
-                      dot={T.green}
-                    >
-                      {fields.filter((f) => f.isRequired).length} required
-                    </Pill>
-                  )
-                }
               >
                 {fields.length === 0 ? (
                   <div
@@ -1734,9 +1962,6 @@ export default function OpenFormBuilder() {
                     >
                       No fields yet
                     </div>
-                    <div style={{ fontSize: 12, color: T.muted2 }}>
-                      Click a field type on the left to add it
-                    </div>
                   </div>
                 ) : (
                   <div
@@ -1747,7 +1972,6 @@ export default function OpenFormBuilder() {
                     }}
                   >
                     {fields.map((field, idx) => (
-                      /* FIXED KEY: Use field.id instead of field.fieldId */
                       <div key={field.id || idx} className="field-card-enter">
                         <FieldCard
                           field={field}
@@ -1767,7 +1991,7 @@ export default function OpenFormBuilder() {
           </div>
         )}
 
-        {/* TAB: PREVIEW */}
+        {/* TAB 2: PREVIEW */}
         {tab === "preview" && (
           <div
             style={{
@@ -1812,43 +2036,6 @@ export default function OpenFormBuilder() {
                 >
                   Form Submitted!
                 </h2>
-                <p style={{ fontSize: 13, color: T.muted, marginBottom: 16 }}>
-                  FMS workflow triggered successfully.
-                </p>
-                <div
-                  style={{
-                    background: T.accentL,
-                    border: `1px solid ${T.accentB}`,
-                    borderRadius: 10,
-                    padding: "10px 16px",
-                    display: "inline-block",
-                    marginBottom: 24,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: T.accent,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.6px",
-                      marginBottom: 3,
-                    }}
-                  >
-                    Instance ID
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "monospace",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: T.text,
-                    }}
-                  >
-                    {submitSuccess}
-                  </div>
-                </div>
-                <br />
                 <Btn onClick={() => setSubmitSuccess(null)}>
                   Submit another response
                 </Btn>
@@ -1861,30 +2048,11 @@ export default function OpenFormBuilder() {
                   borderRadius: 20,
                   padding: "60px 40px",
                   textAlign: "center",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
                 }}
               >
-                <Eye
-                  size={32}
-                  color={T.muted2}
-                  style={{ marginBottom: 12, margin: "auto" }}
-                />
-                <h3
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: T.muted,
-                    marginBottom: 6,
-                  }}
-                >
-                  No form selected
-                </h3>
-                <p style={{ fontSize: 13, color: T.muted2, marginBottom: 20 }}>
-                  Go to Published Forms and click Open to preview a form
-                </p>
-                <Btn variant="secondary" onClick={() => setTab("forms")}>
-                  View Published Forms
-                </Btn>
+                <Eye size={32} color={T.muted2} style={{ margin: "auto" }} />
+                <h3>No form selected</h3>
+                <p>Go to Published Forms or Drafts to preview a form</p>
               </div>
             ) : (
               <div
@@ -1893,7 +2061,6 @@ export default function OpenFormBuilder() {
                   border: `1px solid ${T.border}`,
                   borderRadius: 20,
                   overflow: "hidden",
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
                 }}
               >
                 <div
@@ -1902,46 +2069,9 @@ export default function OpenFormBuilder() {
                     padding: "32px 36px",
                   }}
                 >
-                  <div
-                    style={{ display: "flex", alignItems: "center", gap: 14 }}
-                  >
-                    <div
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 14,
-                        background: "rgba(255,255,255,0.2)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <FileText size={22} color="#fff" />
-                    </div>
-                    <div>
-                      <h2
-                        style={{
-                          fontSize: 20,
-                          fontWeight: 800,
-                          color: "#fff",
-                          margin: 0,
-                        }}
-                      >
-                        {selectedForm.formName}
-                      </h2>
-                      {selectedForm.description && (
-                        <p
-                          style={{
-                            fontSize: 12,
-                            color: "rgba(255,255,255,0.75)",
-                            margin: "4px 0 0",
-                          }}
-                        >
-                          {selectedForm.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                  <h2 style={{ fontSize: 20, color: "#fff", margin: 0 }}>
+                    {selectedForm.formName}
+                  </h2>
                 </div>
 
                 <div
@@ -1963,54 +2093,24 @@ export default function OpenFormBuilder() {
                     />
                   ))}
 
-                  <div
-                    style={{
-                      paddingTop: 12,
-                      borderTop: `1px solid ${T.border}`,
-                    }}
+                  <Btn
+                    size="lg"
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                    style={{ width: "100%", justifyContent: "center" }}
                   >
-                    <Btn
-                      size="lg"
-                      onClick={handleSubmit}
-                      disabled={submitting}
-                      style={{ width: "100%", justifyContent: "center" }}
-                    >
-                      {submitting ? (
-                        <>
-                          <Loader2
-                            size={15}
-                            style={{ animation: "spin 0.8s linear infinite" }}
-                          />{" "}
-                          Triggering FMS…
-                        </>
-                      ) : (
-                        <>
-                          <Zap size={15} /> Submit &amp; Trigger FMS Workflow
-                        </>
-                      )}
-                    </Btn>
-                    <div
-                      style={{
-                        fontSize: 11,
-                        color: T.muted2,
-                        textAlign: "center",
-                        marginTop: 8,
-                      }}
-                    >
-                      Submitting this form will automatically launch the linked
-                      FMS workflow
-                    </div>
-                  </div>
+                    {submitting ? "Triggering FMS…" : "Submit & Trigger FMS Workflow"}
+                  </Btn>
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* TAB: PUBLISHED FORMS */}
+        {/* TAB 3: PUBLISHED FORMS */}
         {tab === "forms" && (
           <div style={{ animation: "fadeUp 0.3s ease" }}>
-            {forms.length === 0 ? (
+            {publishedForms.length === 0 ? (
               <div
                 style={{
                   background: T.card,
@@ -2018,28 +2118,17 @@ export default function OpenFormBuilder() {
                   borderRadius: 20,
                   padding: "80px 40px",
                   textAlign: "center",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
                 }}
               >
                 <FileText
                   size={36}
                   color={T.muted2}
-                  style={{ marginBottom: 14, opacity: 0.4, margin: "auto" }}
+                  style={{ opacity: 0.4, margin: "auto", marginBottom: 14 }}
                 />
-                <h3
-                  style={{
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: T.muted,
-                    marginBottom: 6,
-                  }}
-                >
-                  No forms published yet
+                <h3 style={{ fontSize: 16, color: T.muted }}>
+                  No published forms yet
                 </h3>
-                <p style={{ fontSize: 13, color: T.muted2, marginBottom: 20 }}>
-                  Create your first form in the Form Builder tab
-                </p>
-                <Btn onClick={() => setTab("builder")}>
+                <Btn onClick={() => setTab("builder")} style={{ marginTop: 14 }}>
                   <Plus size={14} /> Create Form
                 </Btn>
               </div>
@@ -2051,222 +2140,46 @@ export default function OpenFormBuilder() {
                   gap: 14,
                 }}
               >
-                {forms.map((form) => {
-                  const tpl = templates.find(
-                    (t) => t._id === (form.linkedTemplate?._id || form.linkedTemplate)
-                  );
-                  return (
-                    <div
-                      key={form._id}
-                      style={{
-                        background: T.card,
-                        border: `1px solid ${T.border}`,
-                        borderRadius: 16,
-                        overflow: "hidden",
-                        boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-                        transition: "box-shadow 0.15s",
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.boxShadow =
-                          "0 6px 24px rgba(0,0,0,0.08)")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.boxShadow =
-                          "0 1px 4px rgba(0,0,0,0.05)")
-                      }
-                    >
-                      <div
-                        style={{
-                          height: 4,
-                          background: `linear-gradient(90deg,${T.accent},#4F46E5)`,
-                        }}
-                      />
+                {publishedForms.map(renderFormCard)}
+              </div>
+            )}
+          </div>
+        )}
 
-                      <div style={{ padding: "18px 20px" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            justifyContent: "space-between",
-                            gap: 10,
-                            marginBottom: 12,
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                              style={{
-                                fontSize: 15,
-                                fontWeight: 700,
-                                color: T.text,
-                                marginBottom: 3,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {form.formName}
-                            </div>
-                            {form.description && (
-                              <div
-                                style={{
-                                  fontSize: 12,
-                                  color: T.muted,
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                }}
-                              >
-                                {form.description}
-                              </div>
-                            )}
-                          </div>
-                          <Pill
-                            color={form.isActive ? T.green : T.muted}
-                            bg={form.isActive ? T.greenL : T.surf}
-                            border={form.isActive ? T.greenB : T.border}
-                            dot={form.isActive ? T.green : T.muted2}
-                          >
-                            {form.isActive ? "Active" : "Inactive"}
-                          </Pill>
-                        </div>
-
-                        <div
-                          style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 6,
-                            marginBottom: 14,
-                          }}
-                        >
-                          <Pill color={T.muted} bg={T.surf} border={T.border}>
-                            {form.fields?.length || 0} fields
-                          </Pill>
-                          {tpl && (
-                            <Pill
-                              color={T.accent}
-                              bg={T.accentL}
-                              border={T.accentB}
-                            >
-                              ⚡ {tpl.templateName}
-                            </Pill>
-                          )}
-                          <Pill color={T.muted} bg={T.surf} border={T.border}>
-                            {fmtDate(form.createdAt)}
-                          </Pill>
-                        </div>
-
-                        <div
-                          style={{
-                            background: T.surf,
-                            border: `1px solid ${T.border}`,
-                            borderRadius: 9,
-                            padding: "8px 12px",
-                            marginBottom: 14,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 8,
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: T.muted2,
-                                textTransform: "uppercase",
-                                letterSpacing: "0.6px",
-                                marginBottom: 2,
-                              }}
-                            >
-                              Public URL
-                            </div>
-                            <div
-                              style={{
-                                fontFamily: "monospace",
-                                fontSize: 11,
-                                color: T.accent,
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
-                              {form.formUrl || "-"}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleCopy(form.formUrl, form._id)}
-                            style={{
-                              background: "none",
-                              border: "none",
-                              cursor: "pointer",
-                              color:
-                                copiedId === form._id ? "#16a34a" : T.muted2,
-                              padding: 4,
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 6,
-                              transition: "0.2s ease",
-                            }}
-                          >
-                            {copiedId === form._id ? (
-                              <>
-                                <Check size={14} />
-                                <span style={{ fontSize: 12 }}>Copied</span>
-                              </>
-                            ) : (
-                              <Copy size={13} />
-                            )}
-                          </button>
-                        </div>
-
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <Btn
-                            size="sm"
-                            style={{ flex: 1, justifyContent: "center" }}
-                            onClick={() => {
-                              handleEditForm(form);
-                            }}
-                          >
-                            <Edit size={13} /> Edit
-                          </Btn>
-
-                          <Btn
-                            size="sm"
-                            style={{ flex: 1, justifyContent: "center" }}
-                            onClick={() => {
-                              setSelectedForm(form);
-                              setSubmissionData({});
-                              setTab("preview");
-                            }}
-                          >
-                            <Eye size={13} /> Preview
-                          </Btn>
-                          <Btn
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => {
-                              navigator.clipboard.writeText(form.formUrl);
-                              window.open(form.formUrl, "_blank");
-                              showToast("Form URL copied");
-                            }}
-                          >
-                            <ExternalLink size={13} />
-                          </Btn>
-                          <Btn
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                              handleDeleteForm(form._id);
-                            }}
-                          >
-                            <Trash2 size={13} />
-                          </Btn>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* TAB 4: DRAFT FORMS */}
+        {tab === "drafts" && (
+          <div style={{ animation: "fadeUp 0.3s ease" }}>
+            {draftForms.length === 0 ? (
+              <div
+                style={{
+                  background: T.card,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 20,
+                  padding: "80px 40px",
+                  textAlign: "center",
+                }}
+              >
+                <FileEdit
+                  size={36}
+                  color={T.muted2}
+                  style={{ opacity: 0.4, margin: "auto", marginBottom: 14 }}
+                />
+                <h3 style={{ fontSize: 16, color: T.muted }}>
+                  No draft forms saved
+                </h3>
+                <Btn onClick={() => setTab("builder")} style={{ marginTop: 14 }}>
+                  <Plus size={14} /> Create Draft
+                </Btn>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill,minmax(360px,1fr))",
+                  gap: 14,
+                }}
+              >
+                {draftForms.map(renderFormCard)}
               </div>
             )}
           </div>

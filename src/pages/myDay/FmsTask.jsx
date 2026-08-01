@@ -40,6 +40,8 @@ import {
   MessageSquarePlus,
   Eye,
   Lock,
+  GitBranch,
+  ExternalLink,
 } from "lucide-react";
 import {
   Dialog,
@@ -102,6 +104,7 @@ import TaskChat from "../../components/TaskChat";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { FileTextOutlined } from "@ant-design/icons";
 import { Textarea } from "../../components/ui";
+import PublicOpenForm from "../public-form/PublicOpenForm";
 
 // --- Helper: Status Badge ---
 const getStatusBadge = (status) => {
@@ -240,6 +243,7 @@ const TaskActions = ({
           <p>View Checklist</p>
         </TooltipContent>
       </Tooltip>
+
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -261,6 +265,7 @@ const TaskActions = ({
           <p>View Form</p>
         </TooltipContent>
       </Tooltip>
+
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -280,7 +285,8 @@ const TaskActions = ({
           <p>View Submission's</p>
         </TooltipContent>
       </Tooltip>
-      {/* Complete/Reopen Button */}
+
+      {/* Complete Button */}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -297,6 +303,7 @@ const TaskActions = ({
           <p>Mark as Done</p>
         </TooltipContent>
       </Tooltip>
+
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -316,43 +323,7 @@ const TaskActions = ({
           <p>Mark as Not Done</p>
         </TooltipContent>
       </Tooltip>
-      {/* {!isCompleted ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              disabled={upComing || onHold || stopped}
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-green-600 hover:bg-green-50"
-              onClick={() => onToggleComplete(task)}
-            >
-              <CheckCircle className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Mark as Done</p>
-          </TooltipContent>
-        </Tooltip>
-      ) : !isFms ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-yellow-600 hover:bg-yellow-50"
-              onClick={() => onToggleComplete(task)}
-              disabled={onHold || stopped}
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Reopen Task</p>
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        <></>
-      )} */}
+
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="relative">
@@ -360,10 +331,7 @@ const TaskActions = ({
               disabled={assignedByUser?._id === assignedToUser?._id || notDone}
               size="icon"
               variant="ghost"
-              className="h-8 w-8 rounded-full 
-        text-blue-600 bg-blue-50 
-        hover:bg-blue-100 hover:text-blue-700 
-        transition-all duration-200"
+              className="h-8 w-8 rounded-full text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 transition-all duration-200"
               onClick={() => {
                 setSelectedQueryTask(task);
                 setQueryDrawerOpen(true);
@@ -378,13 +346,7 @@ const TaskActions = ({
             </Button>
 
             {unreadCount > 0 && (
-              <span
-                className="absolute -top-1 -right-1 
-          min-w-[16px] h-[16px] px-1 
-          flex items-center justify-center 
-          text-[10px] font-bold text-white 
-          bg-red-500 rounded-full shadow"
-              >
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full shadow">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
@@ -393,17 +355,15 @@ const TaskActions = ({
         <TooltipContent>
           <p>Open Conversation</p>
         </TooltipContent>
-      </Tooltip>{" "}
+      </Tooltip>
+
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
             disabled={assignedByUser?._id === assignedToUser?._id || notDone}
             size="icon"
             variant="ghost"
-            className="h-8 w-8 rounded-full 
-        text-orange-600 bg-orange-50 
-        hover:bg-orange-100 hover:text-orange-700 
-        transition-all duration-200"
+            className="h-8 w-8 rounded-full text-orange-600 bg-orange-50 hover:bg-orange-100 hover:text-orange-700 transition-all duration-200"
             onClick={() => {
               setSelectedQueryTask(task);
               setRaiseQueryModalOpen(true);
@@ -419,8 +379,10 @@ const TaskActions = ({
     </div>
   );
 };
+
 const getFieldKey = (fieldName) =>
   fieldName.replace(/[.[\]]/g, "_").replace(/\s+/g, "_");
+
 const buildValidationSchema = (fields) => {
   const shape = {};
 
@@ -460,7 +422,7 @@ const buildValidationSchema = (fields) => {
   return Yup.object().shape(shape);
 };
 
-/* ------------------ ✅ Component ------------------ */
+/* ------------------ Component ------------------ */
 const FmsFormModal = ({
   open,
   onClose,
@@ -473,6 +435,7 @@ const FmsFormModal = ({
     if (!text) return "";
     return text.charAt(0).toUpperCase() + text.slice(1);
   };
+
   useEffect(() => {
     if (open) {
       formik.resetForm({
@@ -480,23 +443,10 @@ const FmsFormModal = ({
       });
     }
   }, [task, open]);
+
   const formik = useFormik({
     enableReinitialize: true,
-
-    /* ✅ Dynamic Initial Values */
     initialValues,
-    // initialValues:
-    //   task?.createdForm?.reduce((acc, field) => {
-    //     const key = getFieldKey(field.fieldName);
-
-    //     acc[key] =
-    //       task?.formData?.[field.fieldName] ??
-    //       (field.fieldType === "checkbox" ? false : "");
-
-    //     return acc;
-    //   }, {}) || {},
-
-    /* ✅ Dynamic Validation */
     validationSchema: buildValidationSchema(task?.createdForm || []),
 
     onSubmit: (values) => {
@@ -520,14 +470,12 @@ const FmsFormModal = ({
   return (
     <div className="fixed inset-0 bg-black/30 flex justify-center items-center z-50">
       <div className="bg-white rounded-lg w-[480px] max-h-[80vh] overflow-y-auto border">
-        {/* Header */}
         <div className="px-5 py-3 border-b">
           <h2 className="text-base font-semibold text-gray-800">
             Fill Task Form
           </h2>
         </div>
 
-        {/* Body */}
         <div className="p-5 space-y-4">
           {task.createdForm.map((field, index) => {
             const key = getFieldKey(field.fieldName);
@@ -541,7 +489,6 @@ const FmsFormModal = ({
                   )}
                 </label>
 
-                {/* TEXT / EMAIL */}
                 {["text", "email"].includes(field.fieldType) && (
                   <input
                     type={field.fieldType}
@@ -550,7 +497,6 @@ const FmsFormModal = ({
                   />
                 )}
 
-                {/* NUMBER */}
                 {field.fieldType === "number" && (
                   <input
                     type="number"
@@ -559,7 +505,6 @@ const FmsFormModal = ({
                   />
                 )}
 
-                {/* TEXTAREA */}
                 {field.fieldType === "textarea" && (
                   <textarea
                     rows={3}
@@ -568,7 +513,6 @@ const FmsFormModal = ({
                   />
                 )}
 
-                {/* DROPDOWN */}
                 {field.fieldType === "dropdown" && (
                   <Select
                     value={formik.values[key] || ""}
@@ -590,7 +534,6 @@ const FmsFormModal = ({
                   </Select>
                 )}
 
-                {/* CHECKBOX */}
                 {field.fieldType === "checkbox" && (
                   <div className="flex items-center mt-2">
                     <input
@@ -603,7 +546,6 @@ const FmsFormModal = ({
                   </div>
                 )}
 
-                {/* DATE */}
                 {field.fieldType === "date" && (
                   <input
                     type="date"
@@ -612,7 +554,6 @@ const FmsFormModal = ({
                   />
                 )}
 
-                {/* ERROR MESSAGE */}
                 {formik.touched[key] && formik.errors[key] && (
                   <p className="text-red-500 text-xs mt-1">
                     {formik.errors[key]}
@@ -623,7 +564,6 @@ const FmsFormModal = ({
           })}
         </div>
 
-        {/* Footer */}
         <div className="flex justify-end gap-2 px-5 py-3 border-t">
           <button
             onClick={onClose}
@@ -635,7 +575,6 @@ const FmsFormModal = ({
           {task.status != "Completed" && (
             <button
               onClick={formik.handleSubmit}
-              // disabled={!formik.dirty || !formik.isValid || formik.isSubmitting}
               className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md disabled:opacity-50"
             >
               Submit
@@ -646,6 +585,7 @@ const FmsFormModal = ({
     </div>
   );
 };
+
 // --- Helper: Pagination ---
 const Pagination = ({
   totalItems,
@@ -719,7 +659,6 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-      {/* Total Tasks */}
       <Card
         className={`${getCardClass("total", "blue")} bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200`}
         onClick={() => onStatClick("total")}
@@ -736,7 +675,7 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
           </div>
         </CardContent>
       </Card>
-      {/* Pending */}
+
       <Card
         className={`${getCardClass("pending", "yellow")} bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200`}
         onClick={() => onStatClick("pending")}
@@ -755,7 +694,7 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
           </div>
         </CardContent>
       </Card>
-      {/* Overdue */}
+
       <Card
         className={`${getCardClass("overdue", "red")} bg-gradient-to-br from-red-50 to-red-100 border-red-200`}
         onClick={() => onStatClick("overdue")}
@@ -775,7 +714,6 @@ const StatsCards = ({ counts, selectedStat, onStatClick }) => {
         </CardContent>
       </Card>
 
-      {/* Completed */}
       <Card
         className={`${getCardClass("completed", "green")} bg-gradient-to-br from-green-50 to-green-100 border-green-200`}
         onClick={() => onStatClick("completed")}
@@ -835,31 +773,6 @@ const FilterBar = ({
     </div>
 
     <div className="flex flex-col sm:flex-row gap-2 flex-1">
-      {/* {(isDoThisEnable || isFMSEnable) && !(!isDoThisEnable && isFMSEnable) && (
-        <Select
-          value={selectedFilterTaskType}
-          onValueChange={setSelectedFilterTaskType}
-        >
-          <SelectTrigger className="w-full bg-white">
-            <SelectValue placeholder="All Types" />
-          </SelectTrigger>
-
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-
-            {isDoThisEnable && (
-              <>
-                <SelectItem value="DelegationTask">Delegation</SelectItem>
-                <SelectItem value="RecurringTask">Recurring</SelectItem>
-              </>
-            )}
-
-            {isFMSEnable && (
-              <SelectItem value="FmsInstanceTask">FMS</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
-      )} */}
       {(selectedStatFilter == "total" || !selectedStatFilter) && (
         <Select
           value={selectedFilterStatus}
@@ -876,7 +789,6 @@ const FilterBar = ({
             <SelectItem value="Overdue">Overdue</SelectItem>
             <SelectItem value="Delayed">Delayed</SelectItem>
             {isFMSEnable && <SelectItem value="Stopped">Stopped</SelectItem>}
-            {/* <SelectItem value="Due Today">Due Today</SelectItem> */}
           </SelectContent>
         </Select>
       )}
@@ -928,17 +840,16 @@ const TodayTasksTable = ({
     combinedTasks.length > 0
       ? Object.entries(combinedTasks[0]?.submissionData || {}).filter(
           ([_, field]) =>
-            typeof field === "object" ? field?.isTableColumn : true, // old format doesn't have isTableColumn
+            typeof field === "object" ? field?.isTableColumn : true,
         )
       : [];
-  // console.log(tableColumns);
+
   return (
     <div className="overflow-x-auto border rounded-lg bg-white">
       <Table>
         <TableHeader className="bg-gray-50">
           <TableRow>
             <TableHead>Sr. No.</TableHead>
-            {/* <TableHead>Task Id</TableHead> */}
             <TableHead>Task Title</TableHead>
             {tableColumns.map(([key, field]) => (
               <TableHead key={key}>
@@ -949,12 +860,7 @@ const TodayTasksTable = ({
                       .replace(/^./, (str) => str.toUpperCase())}
               </TableHead>
             ))}
-            {/* <TableHead>Assigned By</TableHead> */}
-            {/* <TableHead>Assigned To</TableHead> */}
             <TableHead>Description</TableHead>
-            {/* <TableHead>Type</TableHead> */}
-            {/* <TableHead>Attachment</TableHead> */}
-            {/* <TableHead>Start Date & Time</TableHead>{" "} */}
             <TableHead>Due Date & Time</TableHead>
             <TableHead>Frequency</TableHead>
             <TableHead>Time Left</TableHead>
@@ -985,33 +891,19 @@ const TodayTasksTable = ({
                       {(currentPage - 1) * itemsPerPage + index + 1}
                     </TableCell>
 
-                    {/* <TableCell>{task.TaskId || "-"}</TableCell> */}
                     <TableCell className="font-medium">
                       <div className="flex flex-col gap-1">
-                        {/* TITLE + BADGE */}
                         <div className="flex items-center gap-2 flex-wrap">
                           <span>{task.title}</span>
 
                           {task.isReopen && (
-                            <span
-                              className="
-            inline-flex items-center gap-1
-            px-2 py-0.5
-            rounded-full
-            text-[10px]
-            font-semibold
-            bg-yellow-100
-            text-yellow-800
-            border border-yellow-300
-          "
-                            >
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
                               <RotateCcw className="h-3 w-3" />
                               Reopened
                             </span>
                           )}
                         </div>
 
-                        {/* VIEW REASON ALWAYS NEXT LINE */}
                         {task.reopenedReason && (
                           <div>
                             <Popover
@@ -1042,18 +934,7 @@ const TodayTasksTable = ({
                                       Reason
                                     </p>
 
-                                    <div
-                                      className="
-                    text-sm
-                    bg-gray-50
-                    border
-                    rounded-lg
-                    p-3
-                    whitespace-pre-wrap
-                    break-words
-                    text-gray-700
-                  "
-                                    >
+                                    <div className="text-sm bg-gray-50 border rounded-lg p-3 whitespace-pre-wrap break-words text-gray-700">
                                       {task.reopenedReason}
                                     </div>
                                   </div>
@@ -1069,15 +950,7 @@ const TodayTasksTable = ({
                                 </div>
                               }
                             >
-                              <button
-                                className="
-              text-[11px]
-              text-blue-600
-              cursor-pointer
-              hover:text-blue-800
-              hover:underline
-            "
-                              >
+                              <button className="text-[11px] text-blue-600 cursor-pointer hover:text-blue-800 hover:underline">
                                 View Reason
                               </button>
                             </Popover>
@@ -1098,59 +971,6 @@ const TodayTasksTable = ({
                           "-"}
                       </TableCell>
                     ))}
-                    {/* <TableCell>
-                      <div className="flex flex-row gap-1">
-                        <span className="text-sm font-medium text-gray-900">
-                          {task.assignedBy?.name || "-"}
-                        </span>
-                        {assignedByUser?.name && (
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
-      ${
-        assignedByUser.role?.name === "Admin"
-          ? "bg-red-100 text-red-700"
-          : assignedByUser.role?.name === "Owner"
-            ? "bg-purple-100 text-purple-700"
-            : assignedByUser.role?.name === "Sr. Manager"
-              ? "bg-blue-100 text-blue-700"
-              : assignedByUser.role?.name === "Manager"
-                ? "bg-green-100 text-green-700"
-                : "bg-gray-100 text-gray-700"
-      }
-    `}
-                          >
-                            {assignedByUser.role?.name}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-row gap-1">
-                        <span className="text-sm font-medium text-gray-900">
-                          {task.assignedTo?.name || "-"}
-                        </span>
-
-                        {assignedToUser?.name && (
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
-      ${
-        assignedToUser.role?.name === "Admin"
-          ? "bg-red-100 text-red-700"
-          : assignedToUser.role?.name === "Owner"
-            ? "bg-purple-100 text-purple-700"
-            : assignedToUser.role?.name === "Sr. Manager"
-              ? "bg-blue-100 text-blue-700"
-              : assignedToUser.role?.name === "Manager"
-                ? "bg-green-100 text-green-700"
-                : "bg-gray-100 text-gray-700"
-      }
-    `}
-                          >
-                            {assignedToUser.role?.name}
-                          </span>
-                        )}
-                      </div>
-                    </TableCell> */}
 
                     <TableCell>
                       <Button
@@ -1162,39 +982,7 @@ const TodayTasksTable = ({
                         View
                       </Button>
                     </TableCell>
-                    {/* <TableCell>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          task.taskType === "FmsInstanceTask"
-                            ? "bg-blue-100 text-blue-700"
-                            : task.taskType === "RecurringTask"
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-gray-100 text-gray-700"
-                        }`}
-                      >
-                        {task.taskType === "FmsInstanceTask"
-                          ? "FMS"
-                          : task.taskType === "RecurringTask"
-                            ? "Recurring"
-                            : task.taskType == "FutureRecurringTask"
-                              ? "Future Recurring"
-                              : task.frequency
-                                ? "Recurring"
-                                : "Delegation"}
-                      </span>
-                    </TableCell> */}
-                    {/* <TableCell>{task.assignedBy?.name || "Self"}</TableCell> */}
-                    {/* <TableCell>
-                      {Array.isArray(task?.attachmentFile) &&
-                      task.attachmentFile.length > 0 ? (
-                        <ViewLink file={task.attachmentFile} />
-                      ) : (
-                        "NA"
-                      )}
-                    </TableCell> */}
-                    {/* <TableCell>
-                      {task.startDate ? formatDate(task.startDate) : "-"}
-                    </TableCell> */}
+
                     <TableCell>
                       {task.dueDate ? formatDate(task.dueDate) : "-"}
                     </TableCell>
@@ -1234,7 +1022,6 @@ const TodayTasksTable = ({
                                           : "border-l-4 border-l-emerald-500"
                                     }`}
                           >
-                            {/* Animated Status Dot */}
                             <div className="mr-3 relative flex h-3 w-3 items-center justify-center">
                               {(dueStatus.type === "overdue" ||
                                 dueStatus.type === "today" ||
@@ -1263,7 +1050,6 @@ const TodayTasksTable = ({
                               />
                             </div>
 
-                            {/* Content */}
                             <div>
                               <p
                                 className={`text-xs font-semibold
@@ -1287,7 +1073,6 @@ const TodayTasksTable = ({
                               </p>
                             </div>
 
-                            {/* Shine Effect */}
                             <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
                               <span className="absolute -left-full top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 hover:left-full" />
                             </span>
@@ -1295,9 +1080,7 @@ const TodayTasksTable = ({
                         );
                       })()}
                     </TableCell>
-                    {/* <TableCell className={task.delay ? "text-red-600" : ""}>
-                      {task.delay || "-"}
-                    </TableCell> */}
+
                     <TableCell>
                       <div className="flex items-center gap-3">
                         {getStatusBadge(task.status)}{" "}
@@ -1397,11 +1180,9 @@ const FmsTasks = () => {
   const location = useLocation();
   const currentUser = useSelector((state) => state.users.currentUser);
   const source = location.state?.source;
-  // 🔴 AUTH CHECK
-  // only save if NOT login page
+
   if (location.pathname !== "/") {
     const redirectPath = location.pathname + location.search + location.hash;
-
     localStorage.setItem("redirectAfterLogin", redirectPath);
   }
 
@@ -1414,29 +1195,23 @@ const FmsTasks = () => {
     error,
     totalTasks,
   } = useSelector((state) => state.myTasks);
+
   const fetchTaskById = async () => {
     try {
       const res = await api.get(`/tasks/${taskId}`);
       const task = res.data.data || [];
-      // ✅ task not found
       if (!task) return;
 
-      // ✅ only assignee OR assigner can open
       const currentUserId = currentUser?._id?.toString();
       const assignedToId =
         task?.assignedTo?._id?.toString() || task?.assignedTo?.id?.toString();
 
       const hasAccess = currentUserId === assignedToId;
-
       if (!hasAccess) return;
 
-      // ✅ set selected task
       setSelectedQueryTask(task);
-
-      // ✅ open drawer
       setQueryDrawerOpen(true);
 
-      // optional unread reset
       if (task?.conversationId) {
         setUnreadMap((prev) => ({
           ...prev,
@@ -1447,9 +1222,9 @@ const FmsTasks = () => {
       console.log(error);
     }
   };
+
   useEffect(() => {
     if (!taskId) return;
-
     fetchTaskById();
   }, [taskId, currentUser]);
 
@@ -1458,6 +1233,7 @@ const FmsTasks = () => {
   const [configOpen, setConfigOpen] = useState(false);
   const { isConnected, socket, events } = useSocket();
   const [unreadMap, setUnreadMap] = useState({});
+
   useEffect(() => {
     if (!socket) return;
 
@@ -1473,7 +1249,6 @@ const FmsTasks = () => {
     };
   }, [socket]);
 
-  // NOTE: selectedStatFilter can be: 'total', 'overdue', 'completed', 'dueToday', or null (no stat filter)
   const [selectedStatFilter, setSelectedStatFilter] = useState(null);
   useEffect(() => {
     if (!source) return;
@@ -1501,10 +1276,20 @@ const FmsTasks = () => {
     useState(null);
   const [checklistItems, setChecklistItems] = useState([]);
 
+  // Decision Step Dialog States
+  const [isDecisionDialogOpen, setIsDecisionDialogOpen] = useState(false);
+  const [decisionTask, setDecisionTask] = useState(null);
+  const [decisionChoice, setDecisionChoice] = useState(null); // "yes" | "no" | null
+  const [decisionRemark, setDecisionRemark] = useState("");
+  const [isSubmittingDecision, setIsSubmittingDecision] = useState(false);
+
+  // OpenForm Dialog States (For Trigger FMS with Linked Form)
+  const [linkedFormModalOpen, setLinkedFormModalOpen] = useState(false);
+
   // Export State
   const [isExporting, setIsExporting] = useState(false);
 
-  // Edit Form States (Minimal placeholder)
+  // Edit Form States
   const [editTitle, setEditTitle] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [isFetching, setIsFetching] = useState(false);
@@ -1521,6 +1306,7 @@ const FmsTasks = () => {
   const [refreshUI, setRefreshUI] = useState(false);
   const [submissionModalOpen, setSubmissionModalOpen] = useState(false);
   const [selectedSubmissionTask, setSelectedSubmissionTask] = useState(null);
+
   // --- Initial Data Load ---
   useEffect(() => {
     if (currentUser?._id) {
@@ -1528,7 +1314,7 @@ const FmsTasks = () => {
     }
   }, [currentUser, dispatch, refetch]);
 
-  //**Fetch users */
+  // Fetch users
   const [allUsers, setAllUsers] = useState([]);
   useEffect(() => {
     const fetchUsers = async () => {
@@ -1557,6 +1343,7 @@ const FmsTasks = () => {
     debouncedSearch,
     dateRange,
   ]);
+
   // --- Fetch Trigger ---
   useEffect(() => {
     let mounted = true;
@@ -1570,13 +1357,8 @@ const FmsTasks = () => {
           limit: localItemsPerPage,
           dateRange,
           search: debouncedSearch || undefined,
-
-          // ✅ MULTI FILTER OBJECT
           filters: {
-            // 📊 STAT FILTER
             stat: selectedStatFilter || null,
-
-            // 📌 TAB FILTER
             taskCategory: selectedStatFilter
               ? null
               : activeTab === "today"
@@ -1586,12 +1368,8 @@ const FmsTasks = () => {
                   : activeTab === "completed"
                     ? "completed"
                     : null,
-
-            // 🔁 TYPE
             taskType:
               selectedFilterTaskType === "all" ? null : selectedFilterTaskType,
-
-            // 📊 STATUS
             status:
               selectedFilterStatus === "all" ? null : selectedFilterStatus,
           },
@@ -1630,12 +1408,8 @@ const FmsTasks = () => {
           userId: currentUser._id,
           dateRange,
           search: debouncedSearch || undefined,
-
           filters: {
-            // 📊 STAT
             stat: selectedStatFilter || null,
-
-            // 📌 TAB
             taskCategory: selectedStatFilter
               ? null
               : activeTab === "today"
@@ -1645,12 +1419,8 @@ const FmsTasks = () => {
                   : activeTab === "completed"
                     ? "completed"
                     : null,
-
-            // 🔁 TYPE
             taskType:
               selectedFilterTaskType === "all" ? null : selectedFilterTaskType,
-
-            // 📊 STATUS
             status:
               selectedFilterStatus === "all" ? null : selectedFilterStatus,
           },
@@ -1664,72 +1434,43 @@ const FmsTasks = () => {
         return;
       }
 
-      // ==================================================
-      // FORMAT EXPORT DATA
-      // ==================================================
-
       const dataToExport = filteredData.map((task, index) => ({
         "Sr. No.": index + 1,
-
         "Task ID": task?.TaskId || "-",
-
         "Task Title": task?.title || "-",
-
         Description: task?.description || "-",
-
         Type: task?.taskType || "-",
-
         Frequency: task?.frequency || "-",
-
         Status: task?.status || "-",
-
         Source: task?.assignedBy?.name || "Self",
-
         Assignee: task?.assignedTo?.name || "-",
-
         Department: task?.departmentOfAssignToUser?.name || "-",
-
         Attachment: task?.attachmentFile?.length > 0 ? "Yes" : "No",
-
         "Checklist Count": task?.checklist?.length || 0,
-
         "Start Date": task?.startDate
           ? new Date(task.startDate).toLocaleDateString()
           : "-",
-
         "Due Date": task?.dueDate
           ? new Date(task.dueDate).toLocaleDateString()
           : "-",
-
         Delay: task?.delay || "-",
-
         "Created At": task?.createdAt
           ? new Date(task.createdAt).toLocaleString()
           : "-",
-
         "Updated At": task?.updatedAt
           ? new Date(task.updatedAt).toLocaleString()
           : "-",
       }));
 
-      // ==================================================
-      // CREATE EXCEL
-      // ==================================================
-
       const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-
       const workbook = XLSX.utils.book_new();
-
       XLSX.utils.book_append_sheet(workbook, worksheet, "My Tasks");
-
       const timestamp = new Date().toISOString().split("T")[0];
-
       XLSX.writeFile(workbook, `MyTasks_${timestamp}.xlsx`);
 
       toast.success("Export completed successfully");
     } catch (error) {
       console.error("Export error:", error);
-
       toast.error(error?.message || "Failed to export tasks");
     } finally {
       setIsExporting(false);
@@ -1741,12 +1482,9 @@ const FmsTasks = () => {
     setSelectedStatFilter(statType);
     setLocalCurrentPage(1);
     setSearchTerm("");
-
-    // reset filters
     setSelectedFilterStatus("all");
     setSelectedFilterTaskType("all");
 
-    // UI sync
     if (statType === "completed") {
       setActiveTab("completed");
     } else {
@@ -1756,38 +1494,192 @@ const FmsTasks = () => {
 
   const handleTabChange = (value) => {
     setActiveTab(value);
-    setSelectedStatFilter(null); // Clear stat filter when user manually switches tabs
+    setSelectedStatFilter(null);
     setSelectedFilterStatus("all");
     setLocalCurrentPage(1);
-    setSearchTerm(""); // Clear search when switching tabs
+    setSearchTerm("");
   };
 
-  // --- Action Handlers ---
+  // --- Decision Gate Task Completion Logic ---
+  const handleToggleComplete = async (task) => {
+    try {
+      // 🔀 Step 1: Call decision-info API to check if task has a Decision Step
+      const res = await api.get(
+        `/fms-decision/${task._id || task.id}/decision-info`,
+      );
+      const decisionData = res.data?.data;
+
+      if (decisionData?.hasDecision) {
+        setDecisionTask({
+          ...task,
+          decisionYesAction: decisionData.decisionYesAction,
+          triggerFmsTemplate: decisionData.triggerFmsTemplate,
+          linkedForm: decisionData.linkedForm, // OpenForm object if exists
+        });
+        setDecisionChoice(null);
+        setDecisionRemark("");
+        setIsDecisionDialogOpen(true);
+        return;
+      }
+
+      // Standard Completion confirmation modal for non-decision tasks
+      Modal.confirm({
+        title: `Confirm Action`,
+        content: `Are you sure you want to complete this task?`,
+        okText: "Yes",
+        cancelText: "No",
+        centered: true,
+        onOk: async () => {
+          executeStandardCompletion(task);
+        },
+      });
+    } catch (error) {
+      console.error("Decision Info Error:", error);
+      // Fallback to standard completion if info check fails
+      Modal.confirm({
+        title: `Confirm Action`,
+        content: `Are you sure you want to complete this task?`,
+        okText: "Yes",
+        cancelText: "No",
+        centered: true,
+        onOk: async () => {
+          executeStandardCompletion(task);
+        },
+      });
+    }
+  };
+
+  // Helper function to execute normal completion
+  const executeStandardCompletion = async (task) => {
+    setRefreshUI(true);
+    const newStatus = task.status !== "Completed";
+    const isFMSTask = task.taskType === "FmsInstanceTask";
+
+    try {
+      if (!isFMSTask) {
+        await api.patch(`/tasks/${task._id || task.id}/completion`, {
+          completeStatus: newStatus,
+        });
+      } else {
+        await dispatch(
+          completeFMSTask({
+            id: task.fmsInstanceId,
+            taskId: task.TaskId || task.taskId,
+            status: newStatus,
+          }),
+        ).unwrap();
+      }
+
+      toast.success("Task Completed");
+    } catch (error) {
+      console.error("COMPLETE TASK ERROR:", error);
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        (typeof error === "string" ? error : null) ||
+        "Failed to update status";
+
+      toast.error(errorMessage);
+    } finally {
+      setRefreshUI(false);
+    }
+  };
+
+  // Execute Backend Decision Submission
+  const executeDecisionApi = async (payload) => {
+    setIsSubmittingDecision(true);
+    try {
+      const res = await api.post(
+        `/fms-decision/${decisionTask._id || decisionTask.id}/decision`,
+        payload,
+      );
+
+      if (res.data?.success) {
+        toast.success(res.data.message || "Decision processed successfully.");
+
+        if (res.data?.data?.alertMessage) {
+          toast.warning(res.data.data.alertMessage);
+        }
+      }
+
+      setIsDecisionDialogOpen(false);
+      setDecisionTask(null);
+      setDecisionChoice(null);
+      setDecisionRemark("");
+      setRefreshUI((prev) => !prev);
+    } catch (error) {
+      console.error("DECISION SUBMIT ERROR:", error);
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to process decision step.",
+      );
+    } finally {
+      setIsSubmittingDecision(false);
+      setRefreshUI(false);
+    }
+  };
+
+  // Submit Handler for Decision Gate Modal
+  const handleDecisionSubmit = async () => {
+    if (!decisionChoice) {
+      toast.error("Please select an option.");
+      return;
+    }
+
+    if (!decisionRemark.trim()) {
+      toast.error("Please enter a remark.");
+      return;
+    }
+
+    // 📋 Case: User chooses "YES" + "TRIGGER_FMS" + "LINKED_FORM EXISTS"
+    if (
+      decisionChoice === "yes" &&
+      decisionTask?.decisionYesAction === "trigger_fms" &&
+      decisionTask?.linkedForm
+    ) {
+      // Close decision dialog and open Embedded PublicOpenForm Modal
+      setIsDecisionDialogOpen(false);
+      setLinkedFormModalOpen(true);
+      return;
+    }
+
+    // Standard cases: NO, or YES with Terminate, or YES with Trigger (No form)
+    executeDecisionApi({
+      answer: decisionChoice,
+      remark: decisionRemark.trim(),
+    });
+  };
+
+  // Callback executed when PublicOpenForm finishes submission in modal
+  const handleLinkedFormComplete = async ({ submissionId }) => {
+    setLinkedFormModalOpen(false);
+
+    // Complete decision task on backend by linking submissionId
+    await executeDecisionApi({
+      answer: "yes",
+      remark: decisionRemark.trim(),
+      submissionId,
+    });
+  };
+
   const handleEditClick = (task) => {
     setEditingTask(task);
-    setEditTitle(task.title); // Populate other fields as needed
+    setEditTitle(task.title);
     setIsEditOpen(true);
   };
 
   const handleSaveEdit = async () => {
-    // Implement your update logic here (api.put...)
     setIsEditOpen(false);
     toast.success("Task updated");
-    // dispatch(fetchMyTasks(getFetchParams()));
     dispatch(
       getFilterFMSTasks({
         userId: currentUser._id,
         page: localCurrentPage,
         limit: localItemsPerPage,
-
         search: debouncedSearch || undefined,
-
-        // ✅ MULTI FILTER OBJECT
         filters: {
-          // 📊 STAT FILTER
           stat: selectedStatFilter || null,
-
-          // 📌 TAB FILTER
           taskCategory: selectedStatFilter
             ? null
             : activeTab === "today"
@@ -1797,99 +1689,13 @@ const FmsTasks = () => {
                 : activeTab === "completed"
                   ? "completed"
                   : null,
-
-          // 🔁 TYPE
           taskType:
             selectedFilterTaskType === "all" ? null : selectedFilterTaskType,
-
-          // 📊 STATUS
           status: selectedFilterStatus === "all" ? null : selectedFilterStatus,
         },
       }),
     );
   };
-  const handleToggleComplete = (task) => {
-    // Trigger Ant Design's confirmation modal
-    Modal.confirm({
-      title: `Confirm Action`,
-      content: `Are you sure you want to complete this task?`,
-      okText: "Yes",
-      cancelText: "No",
-      centered: true, // Centers the modal vertically on the screen
-
-      // Everything in onOk runs when the user clicks 'Yes'
-      onOk: async () => {
-        setRefreshUI(true);
-        const newStatus = task.status !== "Completed";
-        const isFMSTask = task.taskType === "FmsInstanceTask";
-
-        try {
-          if (!isFMSTask) {
-            await api.patch(`/tasks/${task._id || task.id}/completion`, {
-              completeStatus: newStatus,
-            });
-          } else {
-            await dispatch(
-              completeFMSTask({
-                id: task.fmsInstanceId,
-                taskId: task.TaskId,
-                status: newStatus,
-              }),
-            ).unwrap(); // .unwrap() throws a serializable rejection or error object
-          }
-
-          toast.success(newStatus ? "Task Completed" : "Task Reopened");
-        } catch (error) {
-          console.error("COMPLETE TASK ERROR:", error);
-
-          // 🔥 FIX: Safely extract a string message. Never pass the raw 'error' object directly to toast.
-          const errorMessage =
-            error?.response?.data?.message ||
-            error?.message ||
-            (typeof error === "string" ? error : null) ||
-            "Failed to update status";
-
-          toast.error(errorMessage);
-        } finally {
-          setRefreshUI(false);
-        }
-      },
-    });
-  };
-  // const handleToggleComplete = async (task) => {
-  //   setRefreshUI(true);
-  //   const newStatus = task.status !== "Completed";
-  //   const isFMSTask = task.taskType === "FmsInstanceTask";
-
-  //   try {
-  //     if (!isFMSTask) {
-  //       await api.patch(`/tasks/${task._id || task.id}/completion`, {
-  //         completeStatus: newStatus,
-  //       });
-  //     } else {
-  //       await dispatch(
-  //         completeFMSTask({
-  //           id: task.fmsInstanceId,
-  //           taskId: task.TaskId,
-  //           status: newStatus,
-  //         }),
-  //       ).unwrap();
-  //     }
-
-  //     toast.success(newStatus ? "Task Completed" : "Task Reopened");
-  //   } catch (error) {
-  //     console.log("COMPLETE TASK ERROR:", error);
-
-  //     toast.error(
-  //       error ||
-  //         error?.response?.data?.message ||
-  //         error?.message ||
-  //         "Failed to update status",
-  //     );
-  //   } finally {
-  //     setRefreshUI(false);
-  //   }
-  // };
 
   const handleDeleteClick = (task) => {
     setTaskToDelete(task);
@@ -1901,21 +1707,14 @@ const FmsTasks = () => {
       await api.delete(`/tasks/${taskToDelete._id}`);
       setIsDeleteOpen(false);
       toast.success("Deleted");
-      // dispatch(fetchMyTasks(getFetchParams()));
       dispatch(
         getFilterFMSTasks({
           userId: currentUser._id,
           page: localCurrentPage,
           limit: localItemsPerPage,
-
           search: debouncedSearch || undefined,
-
-          // ✅ MULTI FILTER OBJECT
           filters: {
-            // 📊 STAT FILTER
             stat: selectedStatFilter || null,
-
-            // 📌 TAB FILTER
             taskCategory: selectedStatFilter
               ? null
               : activeTab === "today"
@@ -1925,12 +1724,8 @@ const FmsTasks = () => {
                   : activeTab === "completed"
                     ? "completed"
                     : null,
-
-            // 🔁 TYPE
             taskType:
               selectedFilterTaskType === "all" ? null : selectedFilterTaskType,
-
-            // 📊 STATUS
             status:
               selectedFilterStatus === "all" ? null : selectedFilterStatus,
           },
@@ -1947,15 +1742,16 @@ const FmsTasks = () => {
     setChecklistItems(task.checklist || []);
     setIsChecklistDialogOpen(true);
   };
+
   const handleViewDescription = (desc) => {
     setFullDescription(desc);
     setIsDescriptionDialogOpen(true);
   };
+
   const handleChecklistToggle = async (task, taskID, index, currentValue) => {
     setRefetch(true);
     const isFMStask = task.taskType == "FmsInstanceTask";
     try {
-      // ✅ Optimistic UI (IMMUTABLE)
       const updated = checklistItems.map((item, i) =>
         i === index ? { ...item, isCompleted: !currentValue } : item,
       );
@@ -1963,7 +1759,6 @@ const FmsTasks = () => {
       setChecklistItems(updated);
 
       if (!isFMStask) {
-        // ✅ API CALL
         await dispatch(
           updateMyTaskChecklistItems({
             id: taskID,
@@ -1983,12 +1778,9 @@ const FmsTasks = () => {
       }
     } catch (err) {
       console.error(err);
-
-      // ❌ revert UI safely
       const reverted = checklistItems.map((item, i) =>
         i === index ? { ...item, isCompleted: currentValue } : item,
       );
-
       setChecklistItems(reverted);
     } finally {
       setRefetch(false);
@@ -1999,14 +1791,12 @@ const FmsTasks = () => {
     if (task.taskType === "FmsInstanceTask" && task.createdForm?.length > 0) {
       setSelectedTask(task);
       setShowFormModal(true);
-    } else {
-      // onToggleComplete(task);
     }
   };
+
   const handleFormSubmit = async (formData) => {
     try {
       setRefetch(true);
-      // 🔥 1. Save formData first
       await dispatch(
         updateMyTaskFormData({
           id: selectedTask.fmsInstanceId,
@@ -2014,14 +1804,6 @@ const FmsTasks = () => {
           data: formData,
         }),
       );
-
-      // // 🔥 2. Complete task
-      // await dispatch(
-      //   completeFmsTask({
-      //     instanceId: selectedTask.fmsInstanceId,
-      //     taskId: selectedTask.taskId,
-      //   })
-      // );
       toast.success("Task updated successfully!");
       setShowFormModal(false);
     } catch (err) {
@@ -2031,6 +1813,7 @@ const FmsTasks = () => {
       toast.error(errorMessage);
     }
   };
+
   const [modules, setModules] = useState([]);
   useEffect(() => {
     const fetch_ = async () => {
@@ -2044,16 +1827,16 @@ const FmsTasks = () => {
     };
     fetch_();
   }, []);
+
   const role = Cookies.get("role") || "";
   const isSuper = role === "Super";
   const isModuleEnabled = (moduleKey) => {
-    // ✅ Super user can access all modules
     if (isSuper) return true;
-
     return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
   };
   const isDoThisEnable = isModuleEnabled("DO_THIS2");
   const isFMSEnable = isModuleEnabled("FMS_ENGINE");
+
   const initialValues = useMemo(() => {
     return (
       selectedTask?.createdForm?.reduce((acc, field) => {
@@ -2088,15 +1871,13 @@ const FmsTasks = () => {
       setNotDoneModalOpen(false);
       setRemark("");
       setSelectedTask(null);
-
-      // Refresh tasks
-      // fetchTasks();
     } catch (err) {
       toast.error(
         err?.response?.data?.error || "Failed to mark task as Not Done.",
       );
     }
   };
+
   if (status === "failed")
     return <div className="p-6 text-red-500">Error: {error}</div>;
 
@@ -2111,22 +1892,14 @@ const FmsTasks = () => {
               size="sm"
               onClick={() => {
                 dispatch(fetchTaskCounts(currentUser._id));
-                // Refresh tasks with current params
-                // dispatch(fetchMyTasks(getFetchParams()));
                 dispatch(
                   getFilterFMSTasks({
                     userId: currentUser._id,
                     page: localCurrentPage,
                     limit: localItemsPerPage,
-
                     search: debouncedSearch || undefined,
-
-                    // ✅ MULTI FILTER OBJECT
                     filters: {
-                      // 📊 STAT FILTER
                       stat: selectedStatFilter || null,
-
-                      // 📌 TAB FILTER
                       taskCategory: selectedStatFilter
                         ? null
                         : activeTab === "today"
@@ -2136,14 +1909,10 @@ const FmsTasks = () => {
                             : activeTab === "completed"
                               ? "completed"
                               : null,
-
-                      // 🔁 TYPE
                       taskType:
                         selectedFilterTaskType === "all"
                           ? null
                           : selectedFilterTaskType,
-
-                      // 📊 STATUS
                       status:
                         selectedFilterStatus === "all"
                           ? null
@@ -2158,14 +1927,12 @@ const FmsTasks = () => {
           </div>
 
           <CardContent className="px-6 pb-6">
-            {/* STATS SUMMARY */}
             <StatsCards
               counts={taskCounts}
               selectedStat={selectedStatFilter}
               onStatClick={handleStatClick}
             />
 
-            {/* TABS NAVIGATION */}
             <Tabs
               value={activeTab}
               onValueChange={handleTabChange}
@@ -2176,7 +1943,6 @@ const FmsTasks = () => {
                 <TabsTrigger value="upcoming">Upcoming Tasks</TabsTrigger>
               </TabsList>
 
-              {/* FILTERS */}
               <FilterBar
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
@@ -2194,7 +1960,6 @@ const FmsTasks = () => {
                 isFMSEnable={isFMSEnable}
               />
 
-              {/* DATA TABLE */}
               <div className="space-y-4">
                 {status === "loading" || isFetching ? (
                   <div className="text-center py-10 flex flex-col items-center gap-2">
@@ -2203,7 +1968,6 @@ const FmsTasks = () => {
                   </div>
                 ) : (
                   <>
-                    {/* Visual Indicator of Current Filter Mode */}
                     {selectedStatFilter === "total" && (
                       <div className="text-sm font-bold text-blue-600 mb-2">
                         Showing All Assigned Tasks
@@ -2220,16 +1984,10 @@ const FmsTasks = () => {
                       </div>
                     )}
 
-                    {/* Show search term in UI */}
                     {searchTerm && (
                       <div className="text-sm text-gray-600 mb-2">
                         Searching for: "
                         <span className="font-semibold">{searchTerm}</span>"
-                        {/* {totalTasks === 0 && fetchedTasks.length > 0 && (
-                          <span className="ml-2 text-red-500">
-                            (No matches found in current view)
-                          </span>
-                        )} */}
                       </div>
                     )}
 
@@ -2275,7 +2033,184 @@ const FmsTasks = () => {
           </CardContent>
         </Card>
       </div>
+
       {/* --- DIALOGS --- */}
+
+      {/* 🟢 Decision Step Modal */}
+      <Dialog
+        open={isDecisionDialogOpen}
+        onOpenChange={setIsDecisionDialogOpen} 
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-full bg-blue-100 text-blue-600">
+                <GitBranch className="h-5 w-5" />
+              </div>
+              <div>
+                <DialogTitle>Decision Step Check</DialogTitle>
+                <DialogDescription>
+                  This task requires a decision choice before completion.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="bg-slate-50 border rounded-lg p-3 text-sm">
+              <p className="font-semibold text-slate-800">
+                {decisionTask?.title}
+              </p>
+              <p className="text-slate-600 text-xs mt-1">
+                {decisionTask?.description}
+              </p>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">Select Choice *</Label>
+              <div className="grid grid-cols-2 gap-3 mt-2">
+                {/* Dynamic YES Choice Button */}
+                <button
+                  type="button"
+                  onClick={() => setDecisionChoice("yes")}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border font-semibold text-sm transition-all ${
+                    decisionChoice === "yes"
+                      ? "bg-green-50 border-green-500 text-green-700 ring-2 ring-green-400 shadow-sm"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span>
+                    {decisionTask?.decisionYesAction === "terminate"
+                      ? "Terminate FMS"
+                      : decisionTask?.decisionYesAction === "trigger_fms"
+                        ? decisionTask?.linkedForm
+                          ? "Open Form & Trigger FMS"
+                          : "Trigger Another FMS"
+                        : "Yes (Proceed)"}
+                  </span>
+                </button>
+
+                {/* Dynamic NO Choice Button */}
+                <button
+                  type="button"
+                  onClick={() => setDecisionChoice("no")}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-lg border font-semibold text-sm transition-all ${
+                    decisionChoice === "no"
+                      ? "bg-slate-100 border-slate-500 text-slate-800 ring-2 ring-slate-400 shadow-sm"
+                      : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <XCircle className="h-4 w-4 text-slate-600" />
+                  <span>Normal Complete</span>
+                </button>
+              </div>
+            </div>
+
+            {/* If Choice === YES and Trigger FMS + Linked Form exists */}
+            {decisionChoice === "yes" &&
+              decisionTask?.decisionYesAction === "trigger_fms" &&
+              decisionTask?.linkedForm && (
+                <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-800 flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold">
+                      📋 Linked Form Required:{" "}
+                      {decisionTask.linkedForm.formName}
+                    </p>
+                    <p className="text-[11px] text-indigo-600 mt-0.5">
+                      Submitting this form will automatically launch the linked
+                      FMS.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+            {/* Remark Input - Mandatory in ALL cases */}
+            {decisionChoice && (
+              <div className="space-y-1.5 animate-in fade-in duration-200">
+                <Label className="text-xs font-semibold text-slate-700">
+                  Remark *
+                </Label>
+                <Textarea
+                  placeholder="Enter detailed remark or reason..."
+                  value={decisionRemark}
+                  onChange={(e) => setDecisionRemark(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDecisionDialogOpen(false);
+                setDecisionTask(null);
+                setDecisionChoice(null);
+                setDecisionRemark("");
+              }}
+              disabled={isSubmittingDecision}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleDecisionSubmit}
+              disabled={
+                !decisionChoice ||
+                !decisionRemark.trim() ||
+                isSubmittingDecision
+              }
+              className={
+                decisionChoice === "no"
+                  ? "bg-slate-700 hover:bg-slate-800 text-white"
+                  : "bg-green-600 hover:bg-green-700 text-white"
+              }
+            >
+              {isSubmittingDecision ? (
+                <>
+                  <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />{" "}
+                  Submitting...
+                </>
+              ) : decisionChoice === "yes" &&
+                decisionTask?.decisionYesAction === "trigger_fms" &&
+                decisionTask?.linkedForm ? (
+                "Open Linked Form"
+              ) : (
+                "Submit Decision"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 🟢 OpenForm React Component Modal (Replaces iframe & Auto verifies employeeCode) */}
+      <Dialog open={linkedFormModalOpen} onOpenChange={setLinkedFormModalOpen}>
+        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4">
+          <DialogHeader className="pb-2 border-b">
+            <DialogTitle className="text-lg font-bold text-slate-800">
+              Fill Linked Form: {decisionTask?.linkedForm?.formName}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Complete the form below. Once submitted, the decision task will be
+              completed and the workflow will trigger.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            {decisionTask?.linkedForm?.slug && (
+              <PublicOpenForm
+                slug={decisionTask.linkedForm.slug}
+                propEmployeeCode={Cookies.get("empCode")}
+                remark={decisionRemark}
+                onFormSubmitted={handleLinkedFormComplete}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Delete Confirmation */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent className="sm:max-w-md">
@@ -2293,7 +2228,8 @@ const FmsTasks = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Edit Dialog (Minimal Placeholder) */}
+
+      {/* Edit Dialog */}
       <Dialog
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
@@ -2315,6 +2251,7 @@ const FmsTasks = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       {/* Description Dialog */}
       <Dialog
         open={isDescriptionDialogOpen}
@@ -2334,6 +2271,7 @@ const FmsTasks = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       {/* Checklist Dialog */}
       <Dialog
         open={isChecklistDialogOpen}
@@ -2393,6 +2331,7 @@ const FmsTasks = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       {/* Form Modal */}
       <FmsFormModal
         key={`${selectedTask?._id}-${JSON.stringify(selectedTask?.formData || {})}`}
@@ -2403,41 +2342,30 @@ const FmsTasks = () => {
         initialValues={initialValues}
         setRefreshUI={setRefreshUI}
       />
+
       <RaiseQueryModal
         task={selectedQueryTask}
         open={raiseQueryModalOpen}
         onClose={() => setRaiseQueryModalOpen(false)}
       />
-      {/* <QueryDrawer
-        task={selectedQueryTask}
-        open={queryDrawerOpen}
-        onClose={() => setQueryDrawerOpen(false)}
-      />{" "} */}
-      {/* Legacy local TaskChat - kept for compatibility */}
-      {/* <TaskChat
-        task={selectedQueryTask}
-        open={queryDrawerOpen}
-        onClose={() => setQueryDrawerOpen(false)}
-      /> */}
+
       {queryDrawerOpen && selectedQueryTask && (
         <TaskChat
           task={selectedQueryTask}
           open={queryDrawerOpen}
-          // onClose={() => setQueryDrawerOpen(false)}
           onClose={() => {
-            // ✅ reset unread count when closing
             if (selectedQueryTask?.conversationId) {
               setUnreadMap((prev) => ({
                 ...prev,
                 [selectedQueryTask.conversationId]: 0,
               }));
             }
-
             setQueryDrawerOpen(false);
           }}
           setRefreshTaskAfterReopen={setRefreshTaskAfterReopen}
         />
       )}
+
       <AntdModal
         title="Form Submission Details"
         open={submissionModalOpen}
@@ -2464,6 +2392,7 @@ const FmsTasks = () => {
           </Descriptions>
         )}
       </AntdModal>
+
       <Dialog open={notDoneModalOpen} onOpenChange={setNotDoneModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

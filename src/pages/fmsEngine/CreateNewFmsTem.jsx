@@ -13,8 +13,6 @@ import {
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-// import { fetchUsers } from "../../../redux/slices/user/userSlice";
-// import { fetchDepartments } from "../../../redux/slices/department/departmentSlice";
 
 // shadcn/ui components
 import {
@@ -69,15 +67,16 @@ const initialTask = {
   frequency: "Daily",
   value: "",
   startTime: "none",
-  decisionStep: "no",
-  ifTrue: "",
-  ifFalse: "",
+  decisionStep: false, // ✅ Set boolean default
+  decisionYesAction: "",
+  triggerFmsTemplate: "",
   formFields: [],
 };
+
 const mapTasksToUI = (apiTasks) => {
   return apiTasks.map((task) => ({
-    _id: task._id, // keep for edit
-    isFromAPI: true, // ✅ IMPORTANT
+    _id: task._id,
+    isFromAPI: true,
     taskId: task.taskId || "",
     description: task.description || "",
 
@@ -95,13 +94,16 @@ const mapTasksToUI = (apiTasks) => {
 
     startTime: task.startTimeSetting || "none",
 
-    decisionStep: task.decisionStep ? "yes" : "no",
-    ifTrue: task.ifTrueStep || "",
-    ifFalse: task.elseStep || "",
+    // ✅ FIX 1: Explicitly preserve boolean value from API
+    decisionStep: Boolean(task.decisionStep),
+    decisionYesAction: task.decisionYesAction || "",
+    triggerFmsTemplate:
+      task.triggerFmsTemplate?._id || task.triggerFmsTemplate || "",
 
     formFields: task.createdForm || [],
   }));
 };
+
 // --- Main Component ---
 const CreateNewFmsTem = () => {
   const dispatch = useDispatch();
@@ -130,10 +132,12 @@ const CreateNewFmsTem = () => {
   const [srManagers, setSrManagers] = useState([]);
   const [filteredUser, setFilteredUser] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [fmsTemplatesList, setFmsTemplatesList] = useState([]);
   const [editingIndex, setEditingIndex] = useState(null);
   const [newRowIndex, setNewRowIndex] = useState(null);
   const [loadUpdate, setLoadUpdate] = useState(false);
   const [isAlreadyLaunched, setIsAlreadyLaunched] = useState(false);
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -141,17 +145,13 @@ const CreateNewFmsTem = () => {
         const users = response.data?.data || [];
         setAllUsers(users);
         const doers = users.filter((u) => u.role?.name === "Member");
-
         const managers = users.filter((u) => u.role?.name === "Manager");
-
         const srManagers = users.filter((u) => u.role?.name === "Sr. Manager");
         const filteredUsers = users.filter((u) =>
           ["Member", "Manager", "Sr. Manager"].includes(u.role?.name),
         );
 
-        // single state
         setFilteredUser(filteredUsers);
-        // ✅ SET STATE
         setDoers(doers);
         setManagers(managers);
         setSrManagers(srManagers);
@@ -163,7 +163,9 @@ const CreateNewFmsTem = () => {
 
     fetchUsers();
     fetchDepartments();
+    fetchFmsTemplates();
   }, []);
+
   const fetchDepartments = async () => {
     try {
       const response = await api.get("/setup/departments/allDepartmentsForFMS");
@@ -172,6 +174,23 @@ const CreateNewFmsTem = () => {
       console.log(error);
     }
   };
+
+  const fetchFmsTemplates = async () => {
+    try {
+      const response = await api.get("/fms/all-templates");
+      const list = response.data?.data || response.data || [];
+
+      const currentId = id || templateId;
+      const filteredList = list.filter(
+        (t) => String(t._id || t.id) !== String(currentId),
+      );
+
+      setFmsTemplatesList(filteredList);
+    } catch (error) {
+      console.error("Failed to fetch FMS templates:", error);
+    }
+  };
+
   const formik = useFormik({
     initialValues: {
       fms_id: "",
@@ -181,31 +200,10 @@ const CreateNewFmsTem = () => {
       endDate: "",
       manager: "",
       srManager: "",
-      // tasks: [],
     },
-    // validationSchema: Yup.object({
-    //   fms_id: Yup.string().required("FMS ID is required"),
-    //   templateName: Yup.string().required("Template name is required"),
-    //   description: Yup.string().required("Description is required").min(10),
-    //   manager: Yup.string().required("Manager is required"),
-    //   srManager: Yup.string().required("Sr. Manager is required"),
-    //   tasks: Yup.array()
-    //     .of(
-    //       Yup.object({
-    //         description: Yup.string().required("Task description required"),
-    //         dept: Yup.string().required("Department required"),
-    //         doer: Yup.string().required("Doer required"),
-    //       })
-    //     )
-    //     .min(1, "At least one task required"),
-    //   ...(formik.values.fms_duration === "fixed" && {
-    //     endDate: Yup.string().required("End date required for fixed duration"),
-    //   }),
-    // }),
     onSubmit: async (values) => {
       setLoading(true);
       try {
-        // ✅ FIRST TIME → CREATE TEMPLATE ONLY
         if (!templateCreated) {
           if (!values.templateName?.trim()) {
             toast.error("Template name is required");
@@ -226,9 +224,6 @@ const CreateNewFmsTem = () => {
           toast.success("Template created successfully!");
           return;
         }
-        // =====================================================
-        // TASK VALIDATION
-        // =====================================================
 
         const newTasks = tasks.filter((task) => !task.isFromAPI);
 
@@ -261,11 +256,22 @@ const CreateNewFmsTem = () => {
           if (task.isDependent === "yes" && !task.dependentOn) {
             validationErrors.push(`Row ${row}: Dependent task required`);
           }
-        });
 
-        // =====================================================
-        // SHOW ERRORS
-        // =====================================================
+          const isDecisionYes =
+            task.decisionStep === true || task.decisionStep === "yes";
+
+          if (isDecisionYes && !task.decisionYesAction) {
+            validationErrors.push(`Row ${row}: Decision Yes Action required`);
+          }
+
+          if (
+            isDecisionYes &&
+            task.decisionYesAction === "trigger_fms" &&
+            !task.triggerFmsTemplate
+          ) {
+            validationErrors.push(`Row ${row}: Trigger FMS Template required`);
+          }
+        });
 
         if (validationErrors.length > 0) {
           toast.error(
@@ -275,40 +281,46 @@ const CreateNewFmsTem = () => {
               ))}
             </div>,
           );
-
           return;
         }
-        // ✅ AFTER TEMPLATE CREATED → SAVE TASKS
+
         const payload = tasks
-          .filter((task) => !task.isFromAPI) // 🔥 ONLY NEW TASKS
-          .map((task) => ({
-            fmsTemplateId: templateId,
-            taskId: task.taskId,
-            description: task.description,
-            departmentOfAssignToUser: task.dept,
-            assignedTo: task.doer,
-            frequency: task.frequency,
-            xValue: task.value,
-            isDependent: task.isDependent === "yes",
-            dependentOn: task.dependentOn,
-            startTimeSetting:
-              task.startTime == "none" ? undefined : task.startTime,
-            decisionStep: task.decisionStep == "yes",
-            ifTrueStep: task.ifTrue,
-            elseStep: task.ifFalse,
-            // taskEndDays: task.taskEndDays,
-            checklist: task.checklistItems,
-            createdForm: task.formFields,
-          }));
+          .filter((task) => !task.isFromAPI)
+          .map((task) => {
+            // ✅ FIX 2: Strict boolean evaluation for onSubmit
+            const isDecisionStep =
+              task.decisionStep === true || task.decisionStep === "yes";
+
+            return {
+              fmsTemplateId: templateId,
+              taskId: task.taskId,
+              description: task.description,
+              departmentOfAssignToUser: task.dept,
+              assignedTo: task.doer,
+              frequency: task.frequency,
+              xValue: task.value,
+              isDependent:
+                task.isDependent === "yes" || task.isDependent === true,
+              dependentOn: task.dependentOn,
+              startTimeSetting:
+                task.startTime == "none" ? undefined : task.startTime,
+              decisionStep: isDecisionStep,
+              decisionYesAction: isDecisionStep ? task.decisionYesAction : null,
+              triggerFmsTemplate:
+                isDecisionStep && task.decisionYesAction === "trigger_fms"
+                  ? task.triggerFmsTemplate
+                  : null,
+              checklist: task.checklistItems,
+              createdForm: task.formFields,
+            };
+          });
 
         const res = await api.post(
           `/fms/templates/${templateId}/tasks`,
           payload,
         );
-        if (res.data.errors.length > 0) {
+        if (res.data?.errors?.length > 0) {
           const messages = res.data.errors.map((e) => e.error);
-
-          // remove duplicates (optional)
           const uniqueMessages = [...new Set(messages)];
 
           toast.error(
@@ -324,13 +336,13 @@ const CreateNewFmsTem = () => {
         await fetchTasks();
       } catch (error) {
         console.error(error);
-        toast.error(error.response.data.message || "Something went wrong");
+        toast.error(error.response?.data?.message || "Something went wrong");
       } finally {
         setLoading(false);
       }
     },
   });
-  //**edit mode details */
+
   const fetchTemplate = async () => {
     try {
       const res = await api.get(`/fms/templates-details/${id}`);
@@ -340,8 +352,6 @@ const CreateNewFmsTem = () => {
       setTemplateFMSId(data.fmsId);
       setTemplateCreated(true);
 
-      // setTasks(data.tasks || []);
-
       formik.setValues({
         fms_id: data.fmsId,
         templateName: data.templateName,
@@ -350,13 +360,13 @@ const CreateNewFmsTem = () => {
         endDate: data.endDate,
         manager: data.manager?._id,
         srManager: data.srManager?._id,
-        // tasks: data.tasks || [],
       });
     } catch (err) {
       console.error(err);
       toast.error("Failed to load template");
     }
   };
+
   const fetchTasks = async (search, departmentId) => {
     setLoadingTasks(true);
 
@@ -369,8 +379,6 @@ const CreateNewFmsTem = () => {
       const formattedTasks = mapTasksToUI(tasksData);
 
       setTasks(formattedTasks);
-
-      // optional: sync with formik if needed
       formik.setFieldValue("tasks", tasksData);
     } catch (err) {
       console.error(err);
@@ -379,6 +387,7 @@ const CreateNewFmsTem = () => {
       setLoadingTasks(false);
     }
   };
+
   useEffect(() => {
     if (!id) return;
     fetchTemplate();
@@ -389,50 +398,40 @@ const CreateNewFmsTem = () => {
     if (!id) return;
     fetchTasks(debounceSearch, deptFilter);
   }, [id, loadUpdate, debounceSearch, deptFilter]);
-  // useEffect(() => {
-  //   if (!templateFMSId) return;
 
-  //   const updatedTasks = tasks.map((t, i) => ({
-  //     ...t,
-  //     taskId: `${templateFMSId}-${String(i + 1).padStart(2, "0")}`,
-  //   }));
-
-  //   setTasks(updatedTasks);
-  //   formik.setFieldValue("tasks", updatedTasks);
-  // }, [templateFMSId, tasks.length]);
+  // ✅ FIX 3: Prevent useEffect re-render from overriding state variables
   useEffect(() => {
     if (!templateFMSId) return;
 
     setTasks((prev) =>
-      prev.map((t, i) => ({
-        ...t,
-        taskId: `${templateFMSId}_T${i + 1}`,
-      })),
+      prev.map((t, i) => {
+        const generatedId = `${templateFMSId}_T${i + 1}`;
+        if (t.taskId === generatedId) return t;
+        return {
+          ...t,
+          taskId: generatedId,
+        };
+      }),
     );
   }, [templateFMSId, tasks.length]);
-  //**auto update template when change */
+
   const updateTemplate = async () => {
     setLoadUpdate(true);
 
     try {
       const values = { ...formik.values };
-      // ✅ remove endDate if Timeless
       if (values.fmsDuration === "Timeless") {
         values.endDate = null;
       }
 
-      // ✅ send ONLY task ids
       const cleanedTasks = (values.tasks || [])
         .map((task) => {
           if (!task) return null;
-
           if (typeof task === "string") return task;
-
           return task._id || task.id || null;
         })
         .filter(Boolean);
 
-      // ✅ minimal payload
       const payload = {
         fms_id: values.fms_id,
         templateName: values.templateName,
@@ -453,7 +452,6 @@ const CreateNewFmsTem = () => {
       };
 
       await api.put(`/fms/templates/${templateId}`, payload);
-
       toast.success("Template updated successfully");
     } catch (err) {
       toast.error(err?.response?.data?.message || "Update failed");
@@ -461,35 +459,33 @@ const CreateNewFmsTem = () => {
       setLoadUpdate(false);
     }
   };
-  const addTask = () => {
-    const newTask = { ...initialTask, isFromAPI: false }; // ✅
 
+  const addTask = () => {
+    const newTask = { ...initialTask, isFromAPI: false };
     const newTasks = [...tasks, newTask];
     setTasks(newTasks);
 
     const newIndex = newTasks.length - 1;
-
-    setEditingIndex(null); // ❌ don't force edit mode
+    setEditingIndex(null);
     setNewRowIndex(newIndex);
   };
+
   const removeTask = (index) => {
     const newTasks = tasks.filter((_, i) => i !== index);
     setTasks(newTasks);
     formik.setFieldValue("tasks", newTasks);
   };
+
   const handleDeleteTask = async (index) => {
     const task = tasks[index];
 
-    // ✅ NEW ROW (not in DB)
     if (!task._id) {
       removeTask(index);
       return;
     }
 
-    // ✅ EXISTING ROW (API)
     try {
       await api.delete(`/fms/templates/${templateId}/tasks/${task.taskId}`);
-
       removeTask(index);
       toast.success("Task deleted successfully");
     } catch (error) {
@@ -501,10 +497,10 @@ const CreateNewFmsTem = () => {
       );
     }
   };
+
   const handleTaskChange = (index, field, value) => {
     const newTasks = [...tasks];
 
-    // 🚫 First task rules
     if (index === 0) {
       if (field === "isDependent") return;
       newTasks[index].isDependent = "no";
@@ -513,8 +509,18 @@ const CreateNewFmsTem = () => {
 
     newTasks[index][field] = value;
     if (field === "dept") {
-      newTasks[index].doer = ""; // clear selected user
+      newTasks[index].doer = "";
     }
+
+    if (field === "decisionStep" && (value === false || value === "no")) {
+      newTasks[index].decisionYesAction = "";
+      newTasks[index].triggerFmsTemplate = "";
+    }
+
+    if (field === "decisionYesAction" && value !== "trigger_fms") {
+      newTasks[index].triggerFmsTemplate = "";
+    }
+
     setTasks(newTasks);
     formik.setFieldValue("tasks", newTasks);
   };
@@ -549,6 +555,11 @@ const CreateNewFmsTem = () => {
   const handleSave = async (index) => {
     try {
       const task = tasks[index];
+
+      // ✅ FIX 4: Correct Boolean resolution in handleSave
+      const isDecisionStep =
+        task.decisionStep === true || task.decisionStep === "yes";
+
       const payload = {
         fmsTemplateId: templateId,
         taskId: task.taskId,
@@ -557,13 +568,15 @@ const CreateNewFmsTem = () => {
         assignedTo: task.doer,
         frequency: task.frequency,
         xValue: task.value,
-        isDependent: task.isDependent === "yes",
+        isDependent: task.isDependent === "yes" || task.isDependent === true,
         dependentOn: task.dependentOn,
         startTimeSetting: task.startTime == "none" ? undefined : task.startTime,
-        decisionStep: task.decisionStep == "yes",
-        ifTrueStep: task.ifTrue,
-        elseStep: task.ifFalse,
-        // taskEndDays: task.taskEndDays,
+        decisionStep: isDecisionStep,
+        decisionYesAction: isDecisionStep ? task.decisionYesAction : null,
+        triggerFmsTemplate:
+          isDecisionStep && task.decisionYesAction === "trigger_fms"
+            ? task.triggerFmsTemplate
+            : null,
         checklist: task.checklistItems,
         createdForm: task.formFields,
       };
@@ -573,25 +586,27 @@ const CreateNewFmsTem = () => {
         payload,
       );
 
-      toast.success("Tasks edit successfully!");
-      // ✅ after save → remove new flag
+      toast.success("Task updated successfully!");
       if (newRowIndex === index) {
         setNewRowIndex(null);
       }
 
       setEditingIndex(null);
+      await fetchTasks(searchTerm, deptFilter); // ✅ Refetch updated state
     } catch (error) {
       console.log(error);
+      toast.error(error.response?.data?.message || "Failed to update task");
     }
   };
+
   const handleEdit = (index) => {
     setEditingIndex(index);
   };
+
   return (
     <Card className="m-6 shadow-lg">
       <CardHeader className="border-b">
         <div className="flex justify-between items-center">
-          {/* Left Side */}
           <div className="flex flex-col">
             <CardTitle className="text-lg font-semibold">
               {templateCreated
@@ -609,52 +624,37 @@ const CreateNewFmsTem = () => {
             )}
           </div>
 
-          {/* Right Side */}
           <div className="flex items-center gap-2">
-            {/* ✅ STATUS BADGE */}
             {templateCreated && (
               <Badge
                 variant="outline"
-                className={`capitalize px-2 py-1 text-xs font-medium
-            ${
-              isAlreadyLaunched
-                ? "bg-green-50 text-green-600 border-green-200"
-                : "bg-yellow-50 text-yellow-600 border-yellow-200"
-            }`}
+                className={`capitalize px-2 py-1 text-xs font-medium ${
+                  isAlreadyLaunched
+                    ? "bg-green-50 text-green-600 border-green-200"
+                    : "bg-yellow-50 text-yellow-600 border-yellow-200"
+                }`}
               >
                 {isAlreadyLaunched ? "Launched" : "Draft"}
               </Badge>
             )}
-
-            {/* Bulk Upload Button */}
-            {/* {templateCreated && !isAlreadyLaunched && (
-              <Button type="button" variant="outline" size="sm">
-                Bulk Upload Tasks
-              </Button>
-            )} */}
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="">
         <form className="space-y-6" onSubmit={formik.handleSubmit}>
-          {/* Template Details */}
           <div className="space-y-6">
-            {/* Top Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* FMS ID */}
               <div className="space-y-2">
                 <Label>FMS ID *</Label>
                 <Input
                   name="fms_id"
                   disabled
                   value={templateFMSId || ""}
-                  // onChange={formik.handleChange}
-                  // onBlur={formik.handleBlur}
                   placeholder="Auto Generated"
                 />
               </div>
 
-              {/* Template Name */}
               <div className="space-y-2">
                 <Label>Template Name *</Label>
                 <Input
@@ -667,7 +667,6 @@ const CreateNewFmsTem = () => {
                 />
               </div>
 
-              {/* Manager */}
               <div className="space-y-2">
                 <Label>Manager *</Label>
                 <Select
@@ -688,7 +687,6 @@ const CreateNewFmsTem = () => {
                 </Select>
               </div>
 
-              {/* Sr Manager */}
               <div className="space-y-2">
                 <Label>Sr Manager</Label>
                 <Select
@@ -708,9 +706,9 @@ const CreateNewFmsTem = () => {
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
                 <Label>FMS Duration</Label>
-
                 <div className="border rounded-lg" style={{ padding: "8px" }}>
                   <RadioGroup
                     disabled={isAlreadyLaunched}
@@ -733,7 +731,6 @@ const CreateNewFmsTem = () => {
                 </div>
               </div>
 
-              {/* End Date (AntD DatePicker) */}
               {formik.values.fmsDuration === "Fixed Period" && (
                 <div className="space-y-2">
                   <Label>End Date *</Label>
@@ -756,7 +753,7 @@ const CreateNewFmsTem = () => {
                 </div>
               )}
             </div>
-            {/* Description */}
+
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
@@ -769,6 +766,7 @@ const CreateNewFmsTem = () => {
                 placeholder="Enter description..."
               />
             </div>
+
             {templateCreated && !isAlreadyLaunched && (
               <div className="flex justify-end gap-2 pt-6 border-t">
                 <Button
@@ -781,7 +779,7 @@ const CreateNewFmsTem = () => {
               </div>
             )}
           </div>
-          {/* Tasks */}
+
           {templateCreated && (
             <>
               <Divider />
@@ -794,8 +792,8 @@ const CreateNewFmsTem = () => {
                     </Button>
                   )}
                 </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-                  {/* Search (takes more space) */}
                   <div className="md:col-span-2 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -806,7 +804,6 @@ const CreateNewFmsTem = () => {
                     />
                   </div>
 
-                  {/* Filter (compact) */}
                   <Select value={deptFilter} onValueChange={setDeptFilter}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="All Depts" />
@@ -826,12 +823,8 @@ const CreateNewFmsTem = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[180px]">Task Id</TableHead>{" "}
-                        {/* increased */}
-                        <TableHead className="w-[300px]">
-                          Description
-                        </TableHead>{" "}
-                        {/* increased */}
+                        <TableHead className="w-[180px]">Task Id</TableHead>
+                        <TableHead className="w-[300px]">Description</TableHead>
                         <TableHead className="w-[140px]">Department</TableHead>
                         <TableHead className="w-[140px]">Doer</TableHead>
                         <TableHead className="w-[120px]">
@@ -843,13 +836,15 @@ const CreateNewFmsTem = () => {
                         </TableHead>
                         <TableHead className="w-[140px]">Frequency</TableHead>
                         <TableHead className="w-[100px]">Value</TableHead>
-                        {/* <TableHead className="w-[140px]">
+                        <TableHead className="w-[140px]">
                           Decision Step?
                         </TableHead>
-                        <TableHead className="w-[160px]">
-                          If True - Step
+                        <TableHead className="w-[180px]">
+                          Decision Action (If Yes)
                         </TableHead>
-                        <TableHead className="w-[160px]">Else - Step</TableHead> */}
+                        <TableHead className="w-[200px]">
+                          Trigger Target FMS
+                        </TableHead>
                         <TableHead className="w-[140px]">Checklist</TableHead>
                         <TableHead className="w-[140px]">Create Form</TableHead>
                         <TableHead className="w-[100px]">Action</TableHead>
@@ -868,11 +863,15 @@ const CreateNewFmsTem = () => {
                         tasks.map((task, index) => {
                           const isEditable =
                             !task.isFromAPI || editingIndex === index;
+                          const isDecisionYes =
+                            task.decisionStep === true ||
+                            task.decisionStep === "yes";
+
                           return (
                             <TableRow key={index}>
                               <TableCell>
                                 <Input
-                                  value={task.taskId} // value={task.taskId}
+                                  value={task.taskId}
                                   name="taskId"
                                   disabled
                                   className="font-mono text-xs w-[150px]"
@@ -948,16 +947,11 @@ const CreateNewFmsTem = () => {
                                 <Select
                                   disabled={!isEditable}
                                   value={index === 0 ? "no" : task.isDependent}
-                                  // onValueChange={(v) =>
-                                  //   index !== 0 &&
-                                  //   handleTaskChange(index, "isDependent", v)
-                                  // }
                                   onValueChange={(v) => {
                                     if (index === 0) return;
 
                                     handleTaskChange(index, "isDependent", v);
 
-                                    // ✅ clear dependent task
                                     if (v === "no") {
                                       handleTaskChange(
                                         index,
@@ -983,7 +977,7 @@ const CreateNewFmsTem = () => {
                               </TableCell>
                               <TableCell>
                                 <Select
-                                  value={task.dependentOn || undefined} // IMPORTANT (no empty string)
+                                  value={task.dependentOn || undefined}
                                   onValueChange={(val) =>
                                     handleTaskChange(index, "dependentOn", val)
                                   }
@@ -999,9 +993,8 @@ const CreateNewFmsTem = () => {
 
                                   <SelectContent>
                                     <SelectItem value="none">None</SelectItem>
-
                                     {tasks
-                                      .filter((_, i) => i !== index) // ❌ remove current row
+                                      .filter((_, i) => i !== index)
                                       .map((t) => (
                                         <SelectItem
                                           key={t.taskId}
@@ -1030,7 +1023,6 @@ const CreateNewFmsTem = () => {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {/* <SelectItem value="none">None</SelectItem> */}
                                     <SelectItem value="none">None</SelectItem>
                                     <SelectItem value="planned-to-planned">
                                       Planned-To-Planned
@@ -1054,30 +1046,28 @@ const CreateNewFmsTem = () => {
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {task.isDependent == "no" &&
-                                      task.isDependent == "no" && (
-                                        <>
-                                          {/* <SelectItem value="none">None</SelectItem> */}
-                                          <SelectItem value="Anytime">
-                                            Anytime
-                                          </SelectItem>
-                                          <SelectItem value="Daily">
-                                            Daily
-                                          </SelectItem>
-                                          <SelectItem value="Weekly">
-                                            Weekly
-                                          </SelectItem>
-                                          <SelectItem value="Monthly">
-                                            Monthly
-                                          </SelectItem>
-                                          <SelectItem value="Start+X in days">
-                                            Start+X in days
-                                          </SelectItem>
-                                          <SelectItem value="Start+X in hours">
-                                            Start+X in hours
-                                          </SelectItem>
-                                        </>
-                                      )}
+                                    {task.isDependent == "no" && (
+                                      <>
+                                        <SelectItem value="Anytime">
+                                          Anytime
+                                        </SelectItem>
+                                        <SelectItem value="Daily">
+                                          Daily
+                                        </SelectItem>
+                                        <SelectItem value="Weekly">
+                                          Weekly
+                                        </SelectItem>
+                                        <SelectItem value="Monthly">
+                                          Monthly
+                                        </SelectItem>
+                                        <SelectItem value="Start+X in days">
+                                          Start+X in days
+                                        </SelectItem>
+                                        <SelectItem value="Start+X in hours">
+                                          Start+X in hours
+                                        </SelectItem>
+                                      </>
+                                    )}
                                     {task.isDependent == "yes" && (
                                       <>
                                         <SelectItem value="Task+X in days">
@@ -1086,12 +1076,6 @@ const CreateNewFmsTem = () => {
                                         <SelectItem value="Task+X in hours">
                                           Task+X in hours
                                         </SelectItem>
-                                        {/* <SelectItem value="Task-X in days">
-                                          Task-X in days
-                                        </SelectItem>
-                                        <SelectItem value="Task-X in hours">
-                                          Task-X in hours
-                                        </SelectItem> */}
                                       </>
                                     )}
                                     {formik.values.fmsDuration ==
@@ -1123,13 +1107,6 @@ const CreateNewFmsTem = () => {
                                     task.frequency === "Daily" ||
                                     task.frequency === "Weekly" ||
                                     task.frequency === "Monthly"
-                                    // ||
-                                    // task.frequency === "Start+X in days" ||
-                                    // task.frequency === "Start+X in hours" ||
-                                    // task.frequency === "Event+X in days" ||
-                                    // task.frequency === "Event+X in hours" ||
-                                    // task.frequency === "Event-X in days" ||
-                                    // task.frequency === "Event-X in hours"
                                   }
                                   className="w-16"
                                   value={task.value}
@@ -1143,17 +1120,22 @@ const CreateNewFmsTem = () => {
                                 />
                               </TableCell>
 
-                              {/* <TableCell>
+                              {/* Decision Step Cell */}
+                              <TableCell>
                                 <Select
                                   disabled={!isEditable}
-                                  value={task.decisionStep}
+                                  value={isDecisionYes ? "yes" : "no"}
                                   onValueChange={(v) =>
-                                    handleTaskChange(index, "decisionStep", v)
+                                    handleTaskChange(
+                                      index,
+                                      "decisionStep",
+                                      v === "yes", // ✅ Saves as strict boolean
+                                    )
                                   }
-                                  className="w-[60px]"
+                                  className="w-[80px]"
                                 >
                                   <SelectTrigger>
-                                    <SelectValue />
+                                    <SelectValue placeholder="Select" />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="no">No</SelectItem>
@@ -1161,38 +1143,72 @@ const CreateNewFmsTem = () => {
                                   </SelectContent>
                                 </Select>
                               </TableCell>
+
+                              {/* decisionYesAction Dropdown */}
                               <TableCell>
-                                <Input
-                                  disabled={
-                                    !isEditable || task.decisionStep === "no"
-                                  }
-                                  className="w-22"
-                                  value={task.ifTrue}
-                                  onChange={(e) =>
+                                <Select
+                                  disabled={!isEditable || !isDecisionYes}
+                                  value={task.decisionYesAction || ""}
+                                  onValueChange={(v) =>
                                     handleTaskChange(
                                       index,
-                                      "ifTrue",
-                                      e.target.value,
+                                      "decisionYesAction",
+                                      v,
                                     )
                                   }
-                                />
+                                  className="w-[160px]"
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select Action" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="terminate">
+                                      Terminate FMS
+                                    </SelectItem>
+                                    <SelectItem value="trigger_fms">
+                                      Trigger Another FMS
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </TableCell>
+
+                              {/* triggerFmsTemplate Dropdown */}
                               <TableCell>
-                                <Input
-                                  disabled={
-                                    !isEditable || task.decisionStep === "no"
-                                  }
-                                  className="w-22"
-                                  value={task.ifFalse}
-                                  onChange={(e) =>
-                                    handleTaskChange(
-                                      index,
-                                      "ifFalse",
-                                      e.target.value,
-                                    )
-                                  }
-                                />
-                              </TableCell> */}
+                                {isDecisionYes &&
+                                task.decisionYesAction === "trigger_fms" ? (
+                                  <Select
+                                    disabled={!isEditable}
+                                    value={task.triggerFmsTemplate || ""}
+                                    onValueChange={(v) =>
+                                      handleTaskChange(
+                                        index,
+                                        "triggerFmsTemplate",
+                                        v,
+                                      )
+                                    }
+                                    className="w-[180px]"
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select Template" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {fmsTemplatesList?.map((template) => (
+                                        <SelectItem
+                                          key={template._id}
+                                          value={template._id}
+                                        >
+                                          {template.templateName}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <span className="text-muted-foreground text-xs">
+                                    —
+                                  </span>
+                                )}
+                              </TableCell>
+
                               <TableCell>
                                 <div className="flex items-center">
                                   <Button
@@ -1242,15 +1258,7 @@ const CreateNewFmsTem = () => {
                                   )}
                                 </div>
                               </TableCell>
-                              {/* <TableCell>
-                        <Button
-                          variant="link"
-                          size="sm"
-                          className="h-auto p-1 text-xs"
-                        >
-                          Setup
-                        </Button>
-                      </TableCell> */}
+
                               <TableCell>
                                 <div className="flex items-center gap-2">
                                   <div>
@@ -1295,18 +1303,6 @@ const CreateNewFmsTem = () => {
                                       <Trash2 className="h-4 w-4 text-destructive" />
                                     </Button>
                                   </Popconfirm>
-                                  {/* <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => removeTask(index)}
-                                      className="h-8 w-8 p-0"
-                                      // disabled={index === 0} // ✅ disable first row
-                                    >
-                                      <Trash2
-                                        className={`h-4 w-4 ${"text-destructive"}`}
-                                      />
-                                    </Button> */}
                                 </div>
                               </TableCell>
                             </TableRow>

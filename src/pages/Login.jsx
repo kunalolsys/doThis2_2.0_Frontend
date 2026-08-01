@@ -42,6 +42,7 @@ const Login = () => {
         Cookies.set("isLoggedIn", "true");
         Cookies.set("name", res.data.user.name);
         Cookies.set("email", res.data.user.email);
+        Cookies.set("empCode", res.data.user.employeeCode);
         Cookies.set("role", res.data.role || "Employee");
         Cookies.set("token", res.data.accessToken);
 
