@@ -1587,6 +1587,7 @@ const FmsTasks = () => {
 
   // Execute Backend Decision Submission
   const executeDecisionApi = async (payload) => {
+    setRefreshUI(true);
     setIsSubmittingDecision(true);
     try {
       const res = await api.post(
@@ -1606,7 +1607,7 @@ const FmsTasks = () => {
       setDecisionTask(null);
       setDecisionChoice(null);
       setDecisionRemark("");
-      setRefreshUI((prev) => !prev);
+      // setRefreshUI((prev) => !prev);
     } catch (error) {
       console.error("DECISION SUBMIT ERROR:", error);
       toast.error(
@@ -2039,7 +2040,7 @@ const FmsTasks = () => {
       {/* 🟢 Decision Step Modal */}
       <Dialog
         open={isDecisionDialogOpen}
-        onOpenChange={setIsDecisionDialogOpen} 
+        onOpenChange={setIsDecisionDialogOpen}
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
