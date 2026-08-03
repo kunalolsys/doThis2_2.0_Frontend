@@ -309,7 +309,7 @@ const MisReports = () => {
 
       {/* SUMMARY */}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
+      {/* <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
         {[
           {
             label: "Total",
@@ -368,7 +368,7 @@ const MisReports = () => {
             </h2>
           </Card>
         ))}
-      </div>
+      </div> */}
 
       {/* CHART + TOP */}
 

@@ -6,10 +6,13 @@ import {
   ShieldCheck,
   Zap,
   LogOut,
+  Upload,
+  FileSpreadsheet,
 } from "lucide-react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
+import FormBulkImport from "./FormBulkImport";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
@@ -117,6 +120,7 @@ export default function PublicOpenForm({
   propEmployeeCode,
   onFormSubmitted,
   remark = "",
+  refetch,
 }) {
   const params = useParams();
   const slug = propSlug || params.slug;
@@ -133,6 +137,9 @@ export default function PublicOpenForm({
 
   const [submitSuccess, setSubmitSuccess] = useState(null);
   const [errors, setErrors] = useState({});
+
+  // Toggle between "manual" and "import" modes
+  const [submissionMode, setSubmissionMode] = useState("manual"); // 'manual' | 'import'
 
   // FETCH FORM
   useEffect(() => {
@@ -236,16 +243,14 @@ export default function PublicOpenForm({
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-  // 1. State add karein (PublicOpenForm.jsx ke top level par)
+
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // 2. Simple handleSubmit
   const handleSubmit = () => {
     if (!validateForm()) return;
-    setConfirmOpen(true); // Popup/Confirm box open karein
+    setConfirmOpen(true);
   };
 
-  // 3. Main submission function
   const executeSubmit = async () => {
     try {
       setConfirmOpen(false);
@@ -281,122 +286,6 @@ export default function PublicOpenForm({
       setSubmitting(false);
     }
   };
-  // const handleSubmit = async () => {
-  //   toast.custom((t) => (
-  //     <div
-  //       style={{
-  //         background: "#fff",
-  //         border: "1px solid #e2e8f0",
-  //         borderRadius: 18,
-  //         padding: 18,
-  //         width: 360,
-  //         boxShadow: "0 10px 30px rgba(15,23,42,0.08)",
-  //       }}
-  //     >
-  //       <div
-  //         style={{
-  //           fontSize: 16,
-  //           fontWeight: 800,
-  //           color: "#0f172a",
-  //           marginBottom: 6,
-  //         }}
-  //       >
-  //         Confirm Submission
-  //       </div>
-
-  //       <div
-  //         style={{
-  //           fontSize: 13,
-  //           color: "#64748b",
-  //           marginBottom: 18,
-  //           lineHeight: 1.5,
-  //         }}
-  //       >
-  //         Are you sure you want to submit this form and trigger the workflow?
-  //       </div>
-
-  //       <div
-  //         style={{
-  //           display: "flex",
-  //           justifyContent: "flex-end",
-  //           gap: 10,
-  //         }}
-  //       >
-  //         <button
-  //           onClick={() => toast.dismiss(t)}
-  //           style={{
-  //             border: "1px solid #e2e8f0",
-  //             background: "#fff",
-  //             color: "#0f172a",
-  //             padding: "10px 14px",
-  //             borderRadius: 12,
-  //             fontWeight: 600,
-  //             cursor: "pointer",
-  //           }}
-  //         >
-  //           Cancel
-  //         </button>
-
-  //         <button
-  //           onClick={async () => {
-  //             try {
-  //               toast.dismiss(t);
-
-  //               if (!validateForm()) return;
-
-  //               setSubmitting(true);
-
-  //               const res = await axios.post(
-  //                 `${API}/open-forms/${slug}/submit`,
-  //                 {
-  //                   employeeCode,
-  //                   submissionData,
-  //                 },
-  //               );
-
-  //               const submissionId =
-  //                 res?.data?.data?.submission?._id ||
-  //                 res?.data?.data?._id ||
-  //                 res?.data?.data?.submissionId;
-
-  //               setSubmitSuccess(
-  //                 res?.data?.data?.triggeredInstance?.instanceId || "Submitted",
-  //               );
-  //               setSubmissionData({});
-  //               toast.success("Form submitted successfully");
-
-  //               // Callback for FMS Tasks Modal Execution
-  //               if (onFormSubmitted) {
-  //                 onFormSubmitted({
-  //                   submissionId,
-  //                   submissionData,
-  //                   response: res.data,
-  //                 });
-  //               }
-  //             } catch (err) {
-  //               toast.error(
-  //                 err?.response?.data?.message || "Failed to submit form",
-  //               );
-  //             } finally {
-  //               setSubmitting(false);
-  //             }
-  //           }}
-  //           style={{
-  //             border: "none",
-  //             background: "#2563eb",
-  //             color: "#fff",
-  //             padding: "10px 14px",
-  //             borderRadius: 12,
-  //             fontWeight: 700,
-  //             cursor: "pointer",
-  //           }}
-  //         >
-  //           Yes, Submit
-  //         </button>
-  //       </div>
-  //     </div>
-  //   ));
-  // };
 
   // FIELD RENDERER
   const renderField = (field) => {
@@ -917,101 +806,187 @@ export default function PublicOpenForm({
                   </div>
                 </div>
 
-                {/* FORM FIELDS */}
+                {/* TOGGLE SWITCH FOR MANUAL VS BULK IMPORT */}
                 <div
                   style={{
                     display: "flex",
-                    flexDirection: "column",
-                    gap: 22,
-                  }}
-                >
-                  {form.fields.map((field) => (
-                    <div key={field.fieldId}>
-                      <label
-                        style={{
-                          display: "block",
-                          fontSize: 13,
-                          fontWeight: 700,
-                          color: T.text,
-                          marginBottom: 8,
-                        }}
-                      >
-                        {field.label}
-
-                        {field.isRequired && (
-                          <span
-                            style={{
-                              color: T.red,
-                              marginLeft: 4,
-                            }}
-                          >
-                            *
-                          </span>
-                        )}
-                      </label>
-
-                      {renderField(field)}
-
-                      {errors[field.fieldId] && (
-                        <div
-                          style={{
-                            color: T.red,
-                            fontSize: 12,
-                            marginTop: 6,
-                          }}
-                        >
-                          {errors[field.fieldId]}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* SUBMIT BUTTON */}
-                <div
-                  style={{
-                    marginTop: 36,
-                    paddingTop: 24,
-                    borderTop: `1px solid ${T.border}`,
+                    background: "#f1f5f9",
+                    padding: 4,
+                    borderRadius: 16,
+                    marginBottom: 28,
+                    gap: 4,
                   }}
                 >
                   <button
-                    onClick={handleSubmit}
-                    disabled={submitting}
+                    type="button"
+                    onClick={() => setSubmissionMode("manual")}
                     style={{
-                      width: "100%",
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: 12,
                       border: "none",
-                      background: T.accent,
-                      color: "#fff",
-                      padding: "16px",
-                      borderRadius: 16,
+                      background:
+                        submissionMode === "manual" ? "#ffffff" : "transparent",
+                      color: submissionMode === "manual" ? T.accent : T.muted,
                       fontWeight: 700,
+                      fontSize: 13,
                       cursor: "pointer",
+                      boxShadow:
+                        submissionMode === "manual"
+                          ? "0 2px 8px rgba(0,0,0,0.05)"
+                          : "none",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       gap: 8,
-                      fontSize: 14,
+                      transition: "all 0.2s ease",
                     }}
                   >
-                    {submitting ? (
-                      <>
-                        <Loader2
-                          size={17}
-                          style={{
-                            animation: "spin 1s linear infinite",
-                          }}
-                        />
-                        Triggering Workflow...
-                      </>
-                    ) : (
-                      <>
-                        <Zap size={16} />
-                        Submit & Trigger Workflow
-                      </>
-                    )}
+                    <FileText size={16} />
+                    Manual Submission
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionMode("import")}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: 12,
+                      border: "none",
+                      background:
+                        submissionMode === "import" ? "#ffffff" : "transparent",
+                      color: submissionMode === "import" ? T.accent : T.muted,
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      boxShadow:
+                        submissionMode === "import"
+                          ? "0 2px 8px rgba(0,0,0,0.05)"
+                          : "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <FileSpreadsheet size={16} />
+                    Bulk Excel / CSV Import
                   </button>
                 </div>
+
+                {/* CONDITIONAL SCREEN RENDER */}
+                {submissionMode === "import" ? (
+                  /* BULK IMPORT SCREEN — EXPLICITLY WAITS FOR USER TO CLICK DONE BUTTON BEFORE RETURNING TO MANUAL TAB */
+                  <FormBulkImport
+                    formSlug={slug}
+                    formName={slug}
+                    onDone={() => {
+                      // refetch?.();
+                      setSubmissionMode("manual");
+                    }}
+                  />
+                ) : (
+                  /* MANUAL FORM SUBMISSION SCREEN */
+                  <>
+                    {/* FORM FIELDS */}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 22,
+                      }}
+                    >
+                      {form.fields.map((field) => (
+                        <div key={field.fieldId}>
+                          <label
+                            style={{
+                              display: "block",
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: T.text,
+                              marginBottom: 8,
+                            }}
+                          >
+                            {field.label}
+
+                            {field.isRequired && (
+                              <span
+                                style={{
+                                  color: T.red,
+                                  marginLeft: 4,
+                                }}
+                              >
+                                *
+                              </span>
+                            )}
+                          </label>
+
+                          {renderField(field)}
+
+                          {errors[field.fieldId] && (
+                            <div
+                              style={{
+                                color: T.red,
+                                fontSize: 12,
+                                marginTop: 6,
+                              }}
+                            >
+                              {errors[field.fieldId]}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* SUBMIT BUTTON */}
+                    <div
+                      style={{
+                        marginTop: 36,
+                        paddingTop: 24,
+                        borderTop: `1px solid ${T.border}`,
+                      }}
+                    >
+                      <button
+                        onClick={handleSubmit}
+                        disabled={submitting}
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          background: T.accent,
+                          color: "#fff",
+                          padding: "16px",
+                          borderRadius: 16,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 8,
+                          fontSize: 14,
+                        }}
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2
+                              size={17}
+                              style={{
+                                animation: "spin 1s linear infinite",
+                              }}
+                            />
+                            Triggering Workflow...
+                          </>
+                        ) : (
+                          <>
+                            <Zap size={16} />
+                            Submit & Trigger Workflow
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
               </>
             )}
             {/* Confirm Box - 100% Clickable inside any Modal */}
