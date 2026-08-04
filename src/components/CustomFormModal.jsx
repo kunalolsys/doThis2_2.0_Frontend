@@ -19,7 +19,13 @@ import { Label } from "../components/ui/label";
 import { Trash2 } from "lucide-react";
 import { Checkbox } from "./ui/checkbox";
 
-const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
+const CustomFormModal = ({
+  open,
+  onClose,
+  formFields = [],
+  onSave,
+  isView = false,
+}) => {
   const [fields, setFields] = useState(
     formFields.map((f) => ({
       fieldName: f.fieldName || "",
@@ -148,51 +154,53 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col flex-1 overflow-hidden space-y-3">
-          <div className="space-y-2 p-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              <Input
-                placeholder="Field label..."
-                value={newField.fieldName}
-                onChange={(e) =>
-                  setNewField({ ...newField, fieldName: e.target.value })
-                }
-              />
-              <Select
-                value={newField.fieldType}
-                onValueChange={(v) =>
-                  setNewField({ ...newField, fieldType: v })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {fieldTypes.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  checked={newField.isMandatory}
-                  onCheckedChange={(checked) =>
-                    setNewField({ ...newField, isMandatory: checked })
+          {!isView && (
+            <div className="space-y-2 p-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                <Input
+                  placeholder="Field label..."
+                  value={newField.fieldName}
+                  onChange={(e) =>
+                    setNewField({ ...newField, fieldName: e.target.value })
                   }
                 />
-                <Label className="text-sm">Required</Label>
+                <Select
+                  value={newField.fieldType}
+                  onValueChange={(v) =>
+                    setNewField({ ...newField, fieldType: v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fieldTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={newField.isMandatory}
+                    onCheckedChange={(checked) =>
+                      setNewField({ ...newField, isMandatory: checked })
+                    }
+                  />
+                  <Label className="text-sm">Required</Label>
+                </div>
               </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={addField}
+                className="w-full"
+              >
+                + Add Field
+              </Button>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={addField}
-              className="w-full"
-            >
-              + Add Field
-            </Button>
-          </div>
+          )}
           <div className="flex-1 overflow-y-auto space-y-2">
             {fields.map((field, index) => (
               <div
@@ -206,6 +214,7 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
                     onChange={(e) =>
                       updateField(index, "fieldName", e.target.value)
                     }
+                    disabled={isView}
                     className="h-9"
                   />
                 </div>
@@ -214,6 +223,7 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
                   <Select
                     value={field.fieldType}
                     onValueChange={(v) => updateField(index, "fieldType", v)}
+                    disabled={isView}
                   >
                     <SelectTrigger className="h-9">
                       <SelectValue />
@@ -246,6 +256,7 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
                               e.target.value,
                             )
                           }
+                          disabled={isView}
                         />
                         <Input
                           placeholder="Value"
@@ -258,45 +269,53 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
                               e.target.value,
                             )
                           }
+                          disabled={isView}
                         />
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => removeOption(index, optIndex)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        {!isView && (
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => removeOption(index, optIndex)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     ))}
 
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => addOption(index)}
-                    >
-                      + Add Option
-                    </Button>
+                    {!isView && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => addOption(index)}
+                      >
+                        + Add Option
+                      </Button>
+                    )}
                   </div>
                 )}
                 <div className="flex items-center gap-2">
                   <Checkbox
                     checked={field.isMandatory}
+                    disabled={isView}
                     onCheckedChange={(checked) =>
                       updateField(index, "isMandatory", checked)
                     }
                   />
                   <Label className="text-xs whitespace-nowrap">Required</Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 ml-auto"
-                    onClick={() => removeField(index)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  {!isView && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 ml-auto"
+                      onClick={() => removeField(index)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}
@@ -307,19 +326,21 @@ const CustomFormModal = ({ open, onClose, formFields = [], onSave }) => {
             )}
           </div>
         </div>
-        <div className="flex gap-2 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            className="flex-1"
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSave} className="flex-1">
-            Save Form ({fields.length})
-          </Button>
-        </div>
+        {!isView && (
+          <div className="flex gap-2 pt-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSave} className="flex-1">
+              Save Form ({fields.length})
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

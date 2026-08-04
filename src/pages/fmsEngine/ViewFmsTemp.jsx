@@ -847,7 +847,7 @@ const ViewFmsTemp = () => {
                         </TableHead>
                         <TableHead className="w-[140px]">Checklist</TableHead>
                         <TableHead className="w-[140px]">Create Form</TableHead>
-                        <TableHead className="w-[100px]">Action</TableHead>
+                        {/* <TableHead className="w-[100px]">Action</TableHead> */}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1217,7 +1217,7 @@ const ViewFmsTemp = () => {
                                     size="sm"
                                     className="h-auto p-0 text-xs"
                                     onClick={() => openChecklistModal(index)}
-                                    disabled={!isEditable}
+                                    // disabled={!isEditable}
                                   >
                                     <ListCheck className="h-3 w-3 mr-1" />
                                     {task.checklistItems.length > 0
@@ -1243,7 +1243,7 @@ const ViewFmsTemp = () => {
                                     size="sm"
                                     className="h-auto p-1 text-xs"
                                     onClick={() => openFormModal(index)}
-                                    disabled={!isEditable}
+                                    // disabled={!isEditable}
                                   >
                                     <FilePlus className="h-3 w-3 mr-1" /> Add
                                     Form
@@ -1259,7 +1259,7 @@ const ViewFmsTemp = () => {
                                 </div>
                               </TableCell>
 
-                              <TableCell>
+                              {/* <TableCell>
                                 <div className="flex items-center gap-2">
                                   <div>
                                     {task.isFromAPI ? (
@@ -1304,7 +1304,7 @@ const ViewFmsTemp = () => {
                                     </Button>
                                   </Popconfirm>
                                 </div>
-                              </TableCell>
+                              </TableCell> */}
                             </TableRow>
                           );
                         })
@@ -1346,6 +1346,7 @@ const ViewFmsTemp = () => {
           }
           onClose={() => setChecklistModal({ open: false, taskIndex: -1 })}
           onSave={saveChecklistItems}
+          isView={true}
         />
         <CustomFormModal
           open={formModal.open}
@@ -1356,6 +1357,7 @@ const ViewFmsTemp = () => {
           }
           onClose={() => setFormModal({ open: false, taskIndex: -1 })}
           onSave={saveFormFields}
+          isView={true}
         />
       </CardContent>
     </Card>

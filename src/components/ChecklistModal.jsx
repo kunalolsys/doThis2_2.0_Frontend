@@ -14,7 +14,13 @@ import { Badge } from "../components/ui/badge";
 import { Label } from "./ui";
 import { Trash2 } from "lucide-react";
 
-const ChecklistModal = ({ open, onClose, checklist = [], onSave }) => {
+const ChecklistModal = ({
+  open,
+  onClose,
+  checklist = [],
+  onSave,
+  isView = false,
+}) => {
   const [items, setItems] = useState(
     checklist.map((item) => ({
       text: item.text || item,
@@ -69,17 +75,19 @@ const ChecklistModal = ({ open, onClose, checklist = [], onSave }) => {
           <DialogDescription>Manage checklist for this task</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="flex gap-2">
-            <Input
-              value={newItem}
-              onChange={(e) => setNewItem(e.target.value)}
-              placeholder="Add new checklist item..."
-              onKeyPress={(e) => e.key === "Enter" && addItem()}
-            />
-            <Button type="button" size="sm" onClick={addItem}>
-              Add
-            </Button>
-          </div>
+          {!isView && (
+            <div className="flex gap-2">
+              <Input
+                value={newItem}
+                onChange={(e) => setNewItem(e.target.value)}
+                placeholder="Add new checklist item..."
+                onKeyPress={(e) => e.key === "Enter" && addItem()}
+              />
+              <Button type="button" size="sm" onClick={addItem}>
+                Add
+              </Button>
+            </div>
+          )}
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {items.map((item, index) => (
               <div
@@ -93,27 +101,32 @@ const ChecklistModal = ({ open, onClose, checklist = [], onSave }) => {
                   value={item.text}
                   onChange={(e) => updateItem(index, e.target.value)}
                   className="flex-1 h-8"
+                  disabled={isView}
                   placeholder="Checklist item..."
                 />
-                <div className="flex items-center gap-1 text-xs">
-                  <Checkbox
-                    id={`req-${index}`}
-                    checked={item.isMandatory}
-                    onCheckedChange={() => toggleMandatory(index)}
-                  />
-                  <Label htmlFor={`req-${index}`} className="cursor-pointer">
-                    Req
-                  </Label>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeItem(index)}
-                  className="h-6 w-6 p-0 text-destructive hover:text-destructive-foreground"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                {!isView && (
+                  <div className="flex items-center gap-1 text-xs">
+                    <Checkbox
+                      id={`req-${index}`}
+                      checked={item.isMandatory}
+                      onCheckedChange={() => toggleMandatory(index)}
+                    />
+                    <Label htmlFor={`req-${index}`} className="cursor-pointer">
+                      Req
+                    </Label>
+                  </div>
+                )}
+                {!isView && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeItem(index)}
+                    className="h-6 w-6 p-0 text-destructive hover:text-destructive-foreground"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                )}
               </div>
             ))}
           </div>
@@ -124,12 +137,16 @@ const ChecklistModal = ({ open, onClose, checklist = [], onSave }) => {
           )}
         </div>
         <div className="flex gap-2 pt-4">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>
-            Save {items.length > 0 && `(${items.length})`}
-          </Button>
+          {!isView && (
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+          )}
+          {!isView && (
+            <Button onClick={handleSave}>
+              Save {items.length > 0 && `(${items.length})`}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

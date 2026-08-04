@@ -575,38 +575,27 @@ const FmsTemplates = () => {
                         </TableCell>
                         <TableCell className="p-3">
                           <div className="flex gap-2">
-                            {template.isLaunched ? (
-                              role == "Admin" ? (
-                                <div className="flex items-center gap-2">
-                                  <Link
-                                    to={`/fms-engine/view-template/${template._id}`}
-                                    className="h-8 w-8 bg-green-100 text-green-600 rounded-md flex items-center justify-center hover:bg-green-200 transition-colors duration-200"
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </Link>
-                                  <Link
-                                    to={`/fms-engine/edit-template/${template._id}`}
-                                    className="h-8 w-8 bg-blue-100 text-blue-600 rounded-md flex items-center justify-center hover:bg-blue-200 transition-colors duration-200"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Link>
-                                </div>
-                              ) : (
-                                <Link
-                                  to={`/fms-engine/view-template/${template._id}`}
-                                  className="h-8 w-8 bg-green-100 text-green-600 rounded-md flex items-center justify-center hover:bg-green-200 transition-colors duration-200"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Link>
-                              )
-                            ) : (
+                            <div className="flex items-center gap-2">
+                              {/* Eye (View) Icon — Always Visible for Everyone */}
                               <Link
-                                to={`/fms-engine/edit-template/${template._id}`}
-                                className="h-8 w-8 bg-blue-100 text-blue-600 rounded-md flex items-center justify-center hover:bg-blue-200 transition-colors duration-200"
+                                to={`/fms-engine/view-template/${template._id}`}
+                                className="h-8 w-8 bg-green-100 text-green-600 rounded-md flex items-center justify-center hover:bg-green-200 transition-colors duration-200"
+                                title="View Template"
                               >
-                                <Edit className="h-4 w-4" />
+                                <Eye className="h-4 w-4" />
                               </Link>
-                            )}
+
+                              {/* Edit Icon — Only Visible to Admin */}
+                              {role === "Admin" && (
+                                <Link
+                                  to={`/fms-engine/edit-template/${template._id}`}
+                                  className="h-8 w-8 bg-blue-100 text-blue-600 rounded-md flex items-center justify-center hover:bg-blue-200 transition-colors duration-200"
+                                  title="Edit Template"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Link>
+                              )}
+                            </div>
                             {(role == "Sr. Manager" || role == "Admin") && (
                               <Popconfirm
                                 title="Delete Template"
