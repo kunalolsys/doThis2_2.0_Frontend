@@ -171,20 +171,31 @@ const UpcomingOngoingFms = () => {
   const [limit, setLimit] = useState(10);
   const [activeTab, setActiveTab] = useState("upcoming");
   const [FMS, setFMS] = useState([]);
-   useEffect(() => {
+  useEffect(() => {
     if (!source) return;
     setActiveTab(source);
   }, [source]);
   const fetchFMS = async (search, activeTab, page, limit) => {
     try {
-      const payload = { search, status: activeTab, page, limit };
+      const isTerminatedTab = activeTab?.toLowerCase() === "terminated";
+
+      const payload = {
+        search,
+        page,
+        limit,
+        // If activeTab is terminated, pass isTerminated flag instead of status
+        ...(isTerminatedTab
+          ? { isTerminated: true }
+          : { status: activeTab, isTerminated: false }),
+      };
+
       const res = await api.post(`/fms/instances/`, payload);
       const FMSData = res.data.data || [];
       setPagination(res.data.pagination);
       setFMS(FMSData);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load tasks");
+      toast.error("Failed to load instances");
     }
   };
 
@@ -209,6 +220,13 @@ const UpcomingOngoingFms = () => {
   const stoppedFMS =
     Array.isArray(FMS) && FMS.length > 0
       ? FMS.filter((items) => items.status == "Stopped")
+      : [];
+  // Filter terminated items directly from state (supports both status string & boolean flag)
+  const terminatedFMS =
+    Array.isArray(FMS) && FMS.length > 0
+      ? FMS.filter(
+          (item) => item.isTerminated === true || item.status === "Terminated",
+        )
       : [];
   useEffect(() => {
     fetchFMS(debounceSearch, activeTab, page, limit);
@@ -316,6 +334,7 @@ const UpcomingOngoingFms = () => {
               <TabsTrigger value="completed">Completed</TabsTrigger>
               <TabsTrigger value="onhold">On Hold</TabsTrigger>
               <TabsTrigger value="stopped">Stopped</TabsTrigger>
+              <TabsTrigger value="terminated">Terminated</TabsTrigger>
             </TabsList>
             {/* --- Upcoming FMSs Tab --- */}
             <TabsContent value="upcoming" className="mt-4">
@@ -745,6 +764,112 @@ const UpcomingOngoingFms = () => {
                   <TableBody>
                     {Array.isArray(stoppedFMS) && stoppedFMS.length > 0 ? (
                       stoppedFMS.map((fms) => (
+                        <TableRow
+                          key={fms.instanceId}
+                          className="hover:bg-muted/50"
+                        >
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {fms.instanceId || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.createdAt) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {fms.instanceName || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {triggerSourceMap[fms.triggerType] || "-"}
+                          </TableCell>
+                          {/* <TableCell className="whitespace-nowrap">""</TableCell> */}
+                          {/* <TableCell className="whitespace-nowrap">
+                          {fms.endDate}
+                        </TableCell> */}
+                          <TableCell className="whitespace-nowrap">
+                            {fms.srManager ? fms.srManager.name : "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {fms.manager ? fms.manager.name : "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.startDate) || "-"}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            {formatDate(fms.endDate) || "-"}
+                          </TableCell>
+                          {/* <TableCell className="whitespace-nowrap">
+                            {getStatusBadge(formatLabel(fms.status)) || "-"}
+                          </TableCell> */}
+                          {/* <TableCell className="whitespace-nowrap min-w-[180px]">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex justify-between text-xs text-slate-600">
+                                <span>
+                                  {fms.progress?.completedTasks || 0}/
+                                  {fms.progress?.totalTasks || 0}
+                                </span>
+                                <span>{fms.progress?.rate || 0}%</span>
+                              </div>
+
+                              <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full transition-all",
+                                    fms.progress?.rate === 100
+                                      ? "bg-green-500"
+                                      : fms.progress?.rate > 0
+                                        ? "bg-blue-500"
+                                        : "bg-gray-400",
+                                  )}
+                                  style={{
+                                    width: `${fms.progress?.rate || 0}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </TableCell> */}
+                          <FmsTableActions
+                            id={fms._id || fms.id}
+                            handleChangeAction={handleChangeAction}
+                            fms={fms}
+                          />
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableCell
+                        colSpan={9}
+                        className="p-6 text-center text-gray-500"
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <span>No FMS found</span>
+                          {/* <span className="text-xs text-gray-400">
+                            Try creating a new template
+                          </span> */}
+                        </div>
+                      </TableCell>
+                    )}
+                  </TableBody>
+                </Table>
+                <DataPagination
+                  page={page}
+                  limit={limit}
+                  total={pagination?.total || 0}
+                  totalPages={pagination?.pages || 1}
+                  onPageChange={(p) => setPage(p)}
+                  onLimitChange={(l) => {
+                    setLimit(l);
+                    setPage(1); // reset page when limit changes
+                  }}
+                />
+              </div>
+            </TabsContent>
+            {/* Terminated FMS's Tab */}
+            <TabsContent value="terminated" className="mt-4">
+              <div className="overflow-x-auto">
+                <Table>
+                  <FmsTableHeader />
+                  <TableBody>
+                    {Array.isArray(terminatedFMS) &&
+                    terminatedFMS.length > 0 ? (
+                      terminatedFMS.map((fms) => (
                         <TableRow
                           key={fms.instanceId}
                           className="hover:bg-muted/50"

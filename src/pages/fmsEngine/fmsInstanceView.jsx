@@ -21,6 +21,7 @@ import {
   RefreshCw,
   PauseCircle,
   StopCircle,
+  XCircle,
 } from "lucide-react";
 
 const STATUS_COLUMNS = [
@@ -73,6 +74,13 @@ const STATUS_COLUMNS = [
     gradient: "from-red-400 to-rose-500",
     iconBg: "from-red-500 to-rose-600",
   },
+  {
+    key: "terminated",
+    label: "Terminated",
+    icon: XCircle,
+    gradient: "from-rose-600 to-red-800", // 🔴 Dark Crimson Red gradient for Terminated
+    iconBg: "from-rose-700 to-red-900",
+  },
 ];
 
 export default function FmsPremiumView() {
@@ -112,14 +120,25 @@ export default function FmsPremiumView() {
     },
   };
 
-  const getStatusGradient = (status) => {
+  const getStatusGradient = (status, isTerminated = false) => {
+    // If the boolean flag is active, prioritize Terminated gradient
+    if (isTerminated) {
+      return "from-rose-600 to-red-800";
+    }
+
     const styles = {
       Upcoming: "from-blue-400 to-indigo-500",
       "In Progress": "from-orange-400 to-yellow-500",
       Completed: "from-emerald-400 to-green-500",
       Ongoing: "from-red-400 to-rose-500",
 
-      // 🔥 Additional useful statuses
+      // 🔥 Added Statuses
+      Terminated: "from-rose-600 to-red-800",
+      terminated: "from-rose-600 to-red-800",
+      Stopped: "from-slate-600 to-zinc-700",
+      stopped: "from-slate-600 to-zinc-700",
+
+      // Additional useful statuses
       Pending: "from-slate-400 to-gray-500",
       Overdue: "from-red-500 to-pink-600",
       Cancelled: "from-zinc-400 to-zinc-600",
@@ -127,8 +146,10 @@ export default function FmsPremiumView() {
       Approved: "from-green-500 to-emerald-600",
       Rejected: "from-rose-500 to-red-600",
       OnHold: "from-yellow-400 to-amber-500",
+      onhold: "from-yellow-400 to-amber-500",
       Deferred: "from-purple-400 to-indigo-500",
     };
+
     return styles[status] || "from-gray-400 to-gray-500";
   };
   const handleRefresh = async () => {
@@ -201,9 +222,12 @@ export default function FmsPremiumView() {
                       {instance.instanceId}
                     </Badge>
                     <Badge
-                      className={`font-bold text-sm px-4 py-1.5 shadow-lg bg-gradient-to-r ${getStatusGradient(instance.status)} text-white rounded-xl backdrop-blur-sm border-0`}
+                      className={`font-bold text-sm px-4 py-1.5 shadow-lg bg-gradient-to-r ${getStatusGradient(
+                        instance.status,
+                        instance.isTerminated,
+                      )} text-white rounded-xl backdrop-blur-sm border-0`}
                     >
-                      {instance.status}
+                      {instance.isTerminated ? "Terminated" : instance.status}
                     </Badge>
                   </div>
                 </div>
@@ -370,10 +394,51 @@ export default function FmsPremiumView() {
         >
           {STATUS_COLUMNS.map((col, index) => {
             const Icon = col.icon;
+const columnTasks = tasks.filter((t) => {
+  const taskStatus = String(t.status || "").toLowerCase().trim();
+  const isTaskTerminated = t.isTerminated === true || taskStatus === "terminated";
 
-            const columnTasks = tasks.filter(
-              (t) => t.status?.toLowerCase() === col.key,
-            );
+  // 🔴 1. TERMINATED COLUMN
+  if (col.key === "terminated") {
+    return isTaskTerminated;
+  }
+
+  // If a task is terminated, exclude it from all other columns
+  if (isTaskTerminated) {
+    return false;
+  }
+
+  // 🟠 2. PENDING / IN PROGRESS COLUMN
+  if (col.key === "pending") {
+    return (
+      taskStatus === "pending" ||
+      taskStatus === "in progress" ||
+      taskStatus === "inprocess"
+    );
+  }
+
+  // 🟡 3. ON HOLD COLUMN
+  if (col.key === "onhold") {
+    return taskStatus === "onhold" || taskStatus === "on hold";
+  }
+
+  // 🔴 4. DELAYED / OVERDUE COLUMNS
+  if (col.key === "delayed") {
+    return taskStatus === "delayed";
+  }
+
+  if (col.key === "overdue") {
+    return taskStatus === "overdue";
+  }
+
+  // ⚪ 5. STOPPED / NOT DONE COLUMN
+  if (col.key === "stopped") {
+    return taskStatus === "stopped" || taskStatus === "not done";
+  }
+
+  // 🟢 6. UPCOMING & COMPLETED COLUMNS (Exact Match)
+  return taskStatus === col.key;
+});
 
             return (
               <motion.div

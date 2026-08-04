@@ -105,7 +105,7 @@ const mapTasksToUI = (apiTasks) => {
 };
 
 // --- Main Component ---
-const CreateNewFmsTem = () => {
+const ViewFmsTemp = () => {
   const dispatch = useDispatch();
   const { id } = useParams();
   const isEditMode = !!id;
@@ -137,7 +137,6 @@ const CreateNewFmsTem = () => {
   const [newRowIndex, setNewRowIndex] = useState(null);
   const [loadUpdate, setLoadUpdate] = useState(false);
   const [isAlreadyLaunched, setIsAlreadyLaunched] = useState(false);
-  const [status, setStatus] = useState(null);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -348,8 +347,7 @@ const CreateNewFmsTem = () => {
     try {
       const res = await api.get(`/fms/templates-details/${id}`);
       const data = res.data.data;
-      // setIsAlreadyLaunched(data.isLaunched);
-      setStatus(data.isLaunched);
+      setIsAlreadyLaunched(data.isLaunched);
       setTemplateId(data._id);
       setTemplateFMSId(data.fmsId);
       setTemplateCreated(true);
@@ -479,38 +477,15 @@ const CreateNewFmsTem = () => {
   };
 
   const handleDeleteTask = async (index) => {
-    const taskToDelete = tasks[index];
+    const task = tasks[index];
 
-    // 🛑 DEPENDENCY CHECK: Block deletion if another task in the list depends on this task
-    if (taskToDelete?.taskId) {
-      const dependentChildTasks = tasks.filter(
-        (t) => t.isDependent === "yes" && t.dependentOn === taskToDelete.taskId,
-      );
-
-      if (dependentChildTasks.length > 0) {
-        const childTaskIds = dependentChildTasks
-          .map((t) => t.taskId || "New Task")
-          .join(", ");
-
-        toast.error(
-          `Cannot delete this task! The following task(s) depend on it: ${childTaskIds}. Please reassign or remove their dependencies first.`,
-        );
-        return;
-      }
-    }
-
-    // If it's a new task (not saved in backend yet)
-    if (!taskToDelete._id) {
+    if (!task._id) {
       removeTask(index);
-      toast.success("Task removed");
       return;
     }
 
-    // Delete existing task from API
     try {
-      await api.delete(
-        `/fms/templates/${templateId}/tasks/${taskToDelete.taskId}`,
-      );
+      await api.delete(`/fms/templates/${templateId}/tasks/${task.taskId}`);
       removeTask(index);
       toast.success("Task deleted successfully");
     } catch (error) {
@@ -654,12 +629,12 @@ const CreateNewFmsTem = () => {
               <Badge
                 variant="outline"
                 className={`capitalize px-2 py-1 text-xs font-medium ${
-                  status
+                  isAlreadyLaunched
                     ? "bg-green-50 text-green-600 border-green-200"
                     : "bg-yellow-50 text-yellow-600 border-yellow-200"
                 }`}
               >
-                {status ? "Launched" : "Draft"}
+                {isAlreadyLaunched ? "Launched" : "Draft"}
               </Badge>
             )}
           </div>
@@ -1387,4 +1362,4 @@ const CreateNewFmsTem = () => {
   );
 };
 
-export default CreateNewFmsTem;
+export default ViewFmsTemp;

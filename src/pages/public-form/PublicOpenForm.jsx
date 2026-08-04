@@ -705,6 +705,11 @@ export default function PublicOpenForm({
                   placeholder="Enter employee code"
                   value={employeeCode}
                   onChange={(e) => setEmployeeCode(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !verifying) {
+                      verifyEmployee(employeeCode);
+                    }
+                  }}
                   style={{
                     width: "100%",
                     padding: "14px 16px",

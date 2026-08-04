@@ -63,6 +63,7 @@ import BucketReqOpenForm from "./pages/public-form/BucketReqOpenForm";
 import PendingBucketRequest from "./pages/task-distribution/PendingBucketReques";
 import FmsTasks from "./pages/myDay/FmsTask";
 import PCView from "./pages/myDay/PcView";
+import ViewFmsTemp from "./pages/fmsEngine/ViewFmsTemp";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -217,6 +218,10 @@ function App() {
                 <Route
                   path="/fms-engine/edit-template/:id"
                   element={<CreateNewFmsTem />}
+                />{" "}
+                <Route
+                  path="/fms-engine/view-template/:id"
+                  element={<ViewFmsTemp />}
                 />{" "}
                 <Route
                   path="/fms-engine/instance/:id"

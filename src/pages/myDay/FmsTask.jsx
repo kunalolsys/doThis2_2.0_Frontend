@@ -843,7 +843,39 @@ const TodayTasksTable = ({
             typeof field === "object" ? field?.isTableColumn : true,
         )
       : [];
+  const renderCellValue = (val) => {
+    if (val === null || val === undefined || val === "") return "-";
 
+    // If the value is a boolean (true / false)
+    if (typeof val === "boolean") return val ? "Yes" : "No";
+
+    // If the value is an object or array
+    if (typeof val === "object") {
+      // Handle Date objects
+      if (val instanceof Date) return val.toLocaleDateString();
+
+      // Handle Arrays (e.g. multi-select or checklists)
+      if (Array.isArray(val)) {
+        return val.length > 0
+          ? val
+              .map((item) =>
+                typeof item === "object" ? JSON.stringify(item) : String(item),
+              )
+              .join(", ")
+          : "-";
+      }
+
+      // Fallback for nested plain objects
+      try {
+        return JSON.stringify(val);
+      } catch {
+        return "[Object]";
+      }
+    }
+
+    // Convert numbers, strings, etc.
+    return String(val);
+  };
   return (
     <div className="overflow-x-auto border rounded-lg bg-white">
       <Table>
@@ -964,13 +996,23 @@ const TodayTasksTable = ({
                         )}
                       </div>
                     </TableCell>
-                    {tableColumns.map(([key]) => (
-                      <TableCell key={key}>
-                        {task.submissionData?.[key]?.value ??
-                          task.submissionData?.[key] ??
-                          "-"}
-                      </TableCell>
-                    ))}
+                    {tableColumns.map(([key]) => {
+                      const rawData = task?.submissionData?.[key];
+
+                      // Extract value if submissionData is wrapped in an object like { value: "...", label: "..." }
+                      const cellVal =
+                        typeof rawData === "object" &&
+                        rawData !== null &&
+                        "value" in rawData
+                          ? rawData.value
+                          : rawData;
+
+                      return (
+                        <TableCell key={key}>
+                          {renderCellValue(cellVal)}
+                        </TableCell>
+                      );
+                    })}
 
                     <TableCell>
                       <Button
