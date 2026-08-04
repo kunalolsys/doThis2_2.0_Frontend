@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
   FileText,
   Search,
@@ -7,97 +7,197 @@ import {
   CheckCircle2,
   AlertTriangle,
   Inbox,
-  Filter,
 } from "lucide-react";
 import api from "../../lib/api";
 import { Select } from "antd";
 
+// --- Helper Component: Renders Each Response Field Safely ---
+const SubmissionField = ({ fieldKey, field }) => {
+  // 1. Safe Label Extraction
+  const labelText = useMemo(() => {
+    if (typeof field === "object" && field !== null && field?.label) {
+      return field.label;
+    }
+    return String(fieldKey || "")
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (str) => str.toUpperCase());
+  }, [field, fieldKey]);
+
+  // 2. Crash-Proof Value Extractor
+  const renderedValue = useMemo(() => {
+    if (field === null || field === undefined) return "";
+
+    let val = field;
+
+    // Handle field metadata wrapper objects e.g., { isTableColumn, label, fieldType, value }
+    if (typeof field === "object" && field !== null && !Array.isArray(field)) {
+      if ("value" in field) {
+        val = field.value;
+      } else {
+        return ""; // Prevent stringifying object metadata if user value is missing
+      }
+    }
+
+    if (val === null || val === undefined || val === "") return "";
+
+    // Booleans
+    if (typeof val === "boolean") return val ? "Yes" : "No";
+
+    // Arrays (Multi-select, Checkboxes, File lists)
+    if (Array.isArray(val)) {
+      return val.length > 0
+        ? val
+            .map((item) =>
+              typeof item === "object" && item !== null
+                ? JSON.stringify(item)
+                : String(item ?? "")
+            )
+            .filter(Boolean)
+            .join(", ")
+        : "";
+    }
+
+    // Safety check for nested objects to prevent React Child Crash
+    if (typeof val === "object") return "";
+
+    return String(val);
+  }, [field]);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-semibold tracking-tight text-neutral-500">
+        {labelText}
+      </label>
+      <div className="text-sm font-normal text-neutral-800 bg-white border border-neutral-200/70 px-4 py-3 rounded-xl whitespace-pre-wrap leading-relaxed shadow-xs font-sans min-h-[42px]">
+        {renderedValue}
+      </div>
+    </div>
+  );
+};
+
 export default function OpenFormResponses() {
   const [forms, setForms] = useState([]);
-  const [selectedFormId, setSelectedFormId] = useState("all"); // Default to global unified view
+  const [selectedFormId, setSelectedFormId] = useState("all");
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
+  // Safe Date Formatter Helper
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return "-";
+    return d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
 
-  const fetchInitialData = async () => {
+  // Fetch initial registries and submission data
+  const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
       const formsRes = await api.get(`/open-forms`);
-      const formsList = formsRes.data.data || [];
+      const formsList = formsRes.data?.data || [];
       setForms(formsList);
 
-      // Fetch all submissions or the first available form's submissions initially
       if (formsList.length > 0) {
-        fetchAllSubmissions(formsList);
+        // Aggregate submissions across all registries
+        const results = await Promise.allSettled(
+          formsList.map((form) =>
+            api.get(`/open-forms/${form._id}/submissions`)
+          )
+        );
+
+        const combined = results.flatMap((result, index) => {
+          if (result.status === "fulfilled") {
+            const data = result.value.data?.data || [];
+            return data.map((item) => ({
+              ...item,
+              parentFormName: formsList[index]?.formName || "Unnamed Form",
+              parentFormId: formsList[index]?._id,
+            }));
+          }
+          return [];
+        });
+
+        // Chronological descending sort safely
+        combined.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        });
+
+        setSubmissions(combined);
       }
     } catch (err) {
-      console.error("Initialization failed:", err);
+      console.error("Failed to load submission logs:", err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchAllSubmissions = async (formsList) => {
-    try {
-      setLoading(true);
-      // Aggregates submissions across all active registries for a global view
-      const promises = formsList.map((form) =>
-        api.get(`/open-forms/${form._id}/submissions`),
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+  // Memoized filter pipeline
+  const filteredSubmissions = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return submissions.filter((item) => {
+      const matchesForm =
+        selectedFormId === "all" || item.parentFormId === selectedFormId;
+
+      const name = item?.submittedBy?.name?.toLowerCase() || "";
+      const code = item?.submittedBy?.employeeCode?.toLowerCase() || "";
+      const matchesSearch = !query || name.includes(query) || code.includes(query);
+
+      const isTriggered = item.status === "Triggered";
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "success" && isTriggered) ||
+        (statusFilter === "failed" && !isTriggered);
+
+      return matchesForm && matchesSearch && matchesStatus;
+    });
+  }, [submissions, selectedFormId, searchQuery, statusFilter]);
+
+  // 🟢 FIX: Reset preview selection safely when dropdown or filter changes
+  useEffect(() => {
+    if (filteredSubmissions.length > 0) {
+      const existsInFiltered = filteredSubmissions.some(
+        (sub) => sub?._id === selectedSubmission?._id
       );
-      const results = await Promise.all(promises);
 
-      const combined = results.flatMap((res, index) => {
-        const data = res.data.data || [];
-        return data.map((item) => ({
-          ...item,
-          parentFormName: formsList[index].formName,
-          parentFormId: formsList[index]._id,
-        }));
-      });
-
-      // Sort combined array chronologically descending
-      combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setSubmissions(combined);
-
-      if (combined.length > 0) {
-        setSelectedSubmission(combined[0]); // Auto-preview first entry
+      if (!existsInFiltered) {
+        setSelectedSubmission(filteredSubmissions[0]);
       }
-    } catch (err) {
-      console.error("Error gathering logs:", err);
-    } finally {
-      setLoading(false);
+    } else {
+      setSelectedSubmission(null);
     }
-  };
+  }, [filteredSubmissions, selectedFormId]);
 
-  // Filter pipeline handling search queries and target variables
-  const filteredSubmissions = submissions.filter((item) => {
-    const matchesForm =
-      selectedFormId === "all" || item.parentFormId === selectedFormId;
-
-    const name = item?.submittedBy?.name?.toLowerCase() || "";
-    const code = item?.submittedBy?.employeeCode?.toLowerCase() || "";
-    const matchesSearch =
-      name.includes(searchQuery.toLowerCase()) ||
-      code.includes(searchQuery.toLowerCase());
-
-    const isTriggered = item.status === "Triggered";
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "success" && isTriggered) ||
-      (statusFilter === "failed" && !isTriggered);
-
-    return matchesForm && matchesSearch && matchesStatus;
-  });
+  // Select Options Memoization
+  const formOptions = useMemo(
+    () => [
+      { value: "all", label: "All Registries Combined" },
+      ...forms.map((f) => ({
+        value: f._id,
+        label: f.formName || "Untitled Form",
+      })),
+    ],
+    [forms]
+  );
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] text-[#171717] font-['-apple-system',BlinkMacSystemFont,'Segoe_UI',Roboto,sans-serif] antialiased flex flex-col h-screen overflow-hidden selection:bg-neutral-200">
-      {/* GLOBAL MANAGEMENT NAVBAR */}
+    <div className="min-h-screen bg-[#FAFAFA] text-[#171717] font-sans antialiased flex flex-col h-screen overflow-hidden selection:bg-neutral-200">
+      {/* NAVBAR HEADER */}
       <header className="h-16 bg-white border-b border-neutral-200/80 px-8 flex items-center justify-between shrink-0 z-10">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5">
@@ -110,30 +210,17 @@ export default function OpenFormResponses() {
           </div>
           <div className="h-4 w-px bg-neutral-200" />
 
-          {/* REGISTRY FILTER DROPDOWN COMPONENT */}
-          {/* <div className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 pl-3 pr-1 py-1 rounded-lg text-xs font-medium text-neutral-600 hover:bg-neutral-100/60 transition-colors cursor-pointer relative"> */}
-          {/* <Filter size={12} className="text-neutral-400 shrink-0" /> */}
-
           <Select
             value={selectedFormId}
-            onChange={(value) => setSelectedFormId(value)}
-            //   variant="borderless"
+            onChange={setSelectedFormId}
             popupMatchSelectWidth={false}
             className="text-neutral-800 font-medium text-xs ant-custom-select"
-            options={[
-              { value: "all", label: "All Registries Combined" },
-              ...forms.map((f) => ({
-                value: f._id,
-                label: f.formName,
-              })),
-            ]}
+            options={formOptions}
           />
-          {/* </div> */}
         </div>
 
-        {/* UTILITY CONTROL MODULES */}
+        {/* UTILITY CONTROLS */}
         <div className="flex items-center gap-3">
-          {/* CONTROL STATUS BUTTON SEGMENTS */}
           <div className="flex bg-neutral-100 p-0.5 rounded-lg border border-neutral-200/40">
             {[
               { id: "all", label: "All Items" },
@@ -143,7 +230,7 @@ export default function OpenFormResponses() {
               <button
                 key={tab.id}
                 onClick={() => setStatusFilter(tab.id)}
-                className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
                   statusFilter === tab.id
                     ? "bg-white text-neutral-900 shadow-xs border border-neutral-200/10"
                     : "text-neutral-500 hover:text-neutral-900"
@@ -154,7 +241,6 @@ export default function OpenFormResponses() {
             ))}
           </div>
 
-          {/* DYNAMIC SEARCH UNIT */}
           <div className="flex items-center gap-2 border border-neutral-200 bg-neutral-50 px-3 py-1.5 rounded-lg w-64 focus-within:bg-white focus-within:ring-1 focus-within:ring-neutral-900 focus-within:border-neutral-900 transition-all">
             <Search size={13} className="text-neutral-400 shrink-0" />
             <input
@@ -168,9 +254,9 @@ export default function OpenFormResponses() {
         </div>
       </header>
 
-      {/* CORE CONTENT DUAL-PANEL LAYOUT SPLIT */}
+      {/* CORE DUAL-PANEL LAYOUT */}
       <div className="flex-1 flex overflow-hidden w-full max-w-[1600px] mx-auto bg-white border-x border-neutral-200/40">
-        {/* PANEL A: MAIN WORKSPACE FLOW LIST */}
+        {/* PANEL A: LOGS LIST */}
         <section className="flex-1 flex flex-col min-w-0 border-r border-neutral-200/60 bg-white h-full overflow-hidden">
           {loading ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2.5 text-neutral-400 text-xs font-medium">
@@ -186,20 +272,17 @@ export default function OpenFormResponses() {
                 No records located
               </h4>
               <p className="text-xs text-neutral-400 max-w-[260px] mt-1 leading-relaxed">
-                Adjust or reset your lookup constraints or chosen category
-                registry schemas.
+                Adjust or reset your lookup constraints or chosen category registry schemas.
               </p>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto split-view-list divide-y divide-neutral-100">
-              {/* COMPACT CLEAN TABLE HEADER LABELS */}
+            <div className="flex-1 overflow-y-auto divide-y divide-neutral-100">
               <div className="px-6 py-3 bg-neutral-50 border-b border-neutral-200/60 flex items-center text-[11px] font-semibold text-neutral-400 uppercase tracking-wider sticky top-0 z-10 select-none">
                 <div className="w-[45%]">Ingress Profile Identity</div>
                 <div className="w-[30%]">Source Form Identity</div>
                 <div className="flex-1 text-right">Registered Ingress</div>
               </div>
 
-              {/* ITERATIVE LOGS MAP LOOPS GRID */}
               {filteredSubmissions.map((item) => {
                 const isSelected = selectedSubmission?._id === item._id;
                 const isSuccess = item.status === "Triggered";
@@ -214,7 +297,6 @@ export default function OpenFormResponses() {
                         : "hover:bg-neutral-50/30"
                     }`}
                   >
-                    {/* COL 1: IDENTITY STRUCT BASE */}
                     <div className="w-[45%] flex items-center gap-3.5 min-w-0 pr-4">
                       <div
                         className={`w-8 h-8 rounded-lg font-bold text-xs flex items-center justify-center shrink-0 border transition-colors ${
@@ -245,32 +327,18 @@ export default function OpenFormResponses() {
                       </div>
                     </div>
 
-                    {/* COL 2: ROUTED PARENT SCHEMAS LINK */}
                     <div className="w-[30%] truncate pr-4 text-xs font-medium text-neutral-500 tracking-tight">
                       {item.parentFormName || "Active Registry Profile"}
                     </div>
 
-                    {/* COL 3: TIME TICKERS TRACKER */}
                     <div className="flex-1 text-right flex items-center justify-end gap-2 text-neutral-400 font-mono text-xs">
-                      <Calendar
-                        size={12}
-                        className="text-neutral-300 shrink-0"
-                      />
-                      <span>
-                        {new Date(item.createdAt).toLocaleDateString(
-                          undefined,
-                          {
-                            month: "short",
-                            day: "2-digit",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: false,
-                          },
-                        )}
-                      </span>
+                      <Calendar size={12} className="text-neutral-300 shrink-0" />
+                      <span>{formatDate(item.createdAt)}</span>
                       <ChevronRight
                         size={14}
-                        className={`text-neutral-300 transition-transform ${isSelected ? "translate-x-0.5 text-neutral-500" : ""}`}
+                        className={`text-neutral-300 transition-transform ${
+                          isSelected ? "translate-x-0.5 text-neutral-500" : ""
+                        }`}
                       />
                     </div>
                   </div>
@@ -280,23 +348,20 @@ export default function OpenFormResponses() {
           )}
         </section>
 
-        {/* PANEL B: COHESIVE REALTIME PREVIEW FIELD DECK */}
-        <aside className="w-[480px] bg-[#FAFAFA] flex flex-col shrink-0 h-full overflow-hidden">
+        {/* PANEL B: DETAILS SIDEBAR */}
+        <aside className="w-[480px] bg-[#FAFAFA] flex flex-col shrink-0 h-full overflow-hidden border-l border-neutral-200/60">
           {selectedSubmission ? (
             <div className="flex flex-col h-full overflow-hidden">
-              {/* PANEL METRICS HEADER CARD TITLE */}
               <div className="p-6 bg-white border-b border-neutral-200/80 flex items-center justify-between">
                 <div>
                   <span className="text-[10px] text-neutral-400 uppercase tracking-widest block font-bold">
                     Metadata Registry Log
                   </span>
                   <h3 className="text-sm font-bold text-neutral-900 tracking-tight mt-0.5 truncate max-w-[320px]">
-                    {selectedSubmission?.submittedBy?.name ||
-                      "Anonymous Ingress"}
+                    {selectedSubmission?.submittedBy?.name || "Anonymous Ingress"}
                   </h3>
                 </div>
 
-                {/* PIPELINE STATUS BADGE SHAPELESS CONTEXT UNIT */}
                 <div className="flex items-center gap-1.5 text-xs font-semibold bg-white border border-neutral-200 shadow-2xs px-3 py-1.5 rounded-lg">
                   {selectedSubmission.status === "Triggered" ? (
                     <>
@@ -312,18 +377,8 @@ export default function OpenFormResponses() {
                 </div>
               </div>
 
-              {/* DATA DISCOVERY TRANSFORM LOOP ARRAYS */}
-              <div className="p-6 flex-1 overflow-y-auto space-y-6 custom-scrollbar">
-                {/* QUICK INFRASTRUCTURE STAT SHEET BAR */}
+              <div className="p-6 flex-1 overflow-y-auto space-y-6">
                 <div className="grid grid-cols-2 gap-4 p-4 rounded-xl border border-neutral-200/80 bg-white shadow-2xs text-xs">
-                  {/* <div>
-                    <span className="text-neutral-400 text-[10px] font-semibold uppercase tracking-wider block">
-                      Log Identifier Hash
-                    </span>
-                    <span className="font-mono text-neutral-700 mt-1 block font-medium">
-                      {selectedSubmission._id.toUpperCase().substring(0, 16)}
-                    </span>
-                  </div> */}
                   <div>
                     <span className="text-neutral-400 text-[10px] font-semibold uppercase tracking-wider block">
                       Registry Source Target
@@ -334,42 +389,20 @@ export default function OpenFormResponses() {
                   </div>
                 </div>
 
-                {/* SCHEMATIC DATASET BODY ITERATION */}
+                {/* RESPONSES SECTION */}
                 <div className="space-y-5">
                   <div className="text-xs font-bold text-neutral-400 uppercase tracking-wider border-b border-neutral-200 pb-1.5">
-                    Response
+                    Response Payload
                   </div>
 
-                  {Object.entries(selectedSubmission.submissionData || {}).map(
-                    ([key, field]) => {
-                      return (
-                        <div key={key} className="flex flex-col gap-1.5">
-                          <label className="text-xs font-semibold tracking-tight text-neutral-500">
-                            {key
-                              .replace(/([A-Z])/g, " $1")
-                              .replace(/^./, (str) => str.toUpperCase())}
-                          </label>
-                          <div className="text-sm font-normal text-neutral-800 bg-white border border-neutral-200/70 px-4 py-3 rounded-xl whitespace-pre-wrap leading-relaxed shadow-3xs font-sans">
-                            {field.value !== null &&
-                            field.value !== undefined &&
-                            field.value !== "" ? (
-                              String(field.value)
-                            ) : (
-                              <span
-                                className={`${field ? "font-normal text-neutral-800" : "text-neutral-300 italic"} text-sm`}
-                              >
-                                {field || ""}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    },
+                  {Object.entries(selectedSubmission?.submissionData || {}).map(
+                    ([key, field]) => (
+                      <SubmissionField key={key} fieldKey={key} field={field} />
+                    )
                   )}
                 </div>
               </div>
 
-              {/* FOOTER METADATA PLANE PROTECTION MODULE */}
               <div className="p-4 bg-white border-t border-neutral-200/80 flex items-center justify-between text-[10px] text-neutral-400 px-6 font-mono tracking-tight select-none shrink-0">
                 <span>Secure SSL Node Link Verified</span>
                 <span>PRODUCTION_ENV_2026</span>
@@ -377,10 +410,7 @@ export default function OpenFormResponses() {
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-neutral-400 text-xs font-medium">
-              <span>
-                Select an entry payload card row log segment to expand
-                structural details.
-              </span>
+              <span>Select an entry row log to inspect payload response details.</span>
             </div>
           )}
         </aside>

@@ -199,6 +199,7 @@ const TaskActions = ({
   task,
   onChecklist,
   onToggleComplete,
+  handleNotDoneClick,
   handleCompleteClick,
   setSelectedQueryTask,
   setQueryDrawerOpen,
@@ -209,8 +210,6 @@ const TaskActions = ({
   assignedToUser,
   setSubmissionModalOpen,
   setSelectedSubmissionTask,
-  setSelectedTask,
-  setNotDoneModalOpen,
 }) => {
   const isCompleted = task.status === "Completed";
   const notDone = task.status === "Not Done";
@@ -282,11 +281,11 @@ const TaskActions = ({
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>View Submission's</p>
+          <p>View Submissions</p>
         </TooltipContent>
       </Tooltip>
 
-      {/* Complete Button */}
+      {/* Complete Button (Normal Direct Complete) */}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -304,6 +303,7 @@ const TaskActions = ({
         </TooltipContent>
       </Tooltip>
 
+      {/* Not Done Button (Triggers Decision Step Check) */}
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -311,10 +311,7 @@ const TaskActions = ({
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-red-600 hover:bg-red-50"
-            onClick={() => {
-              setSelectedTask(task);
-              setNotDoneModalOpen(true);
-            }}
+            onClick={() => handleNotDoneClick(task)}
           >
             <XCircle className="h-4 w-4" />
           </Button>
@@ -820,6 +817,7 @@ const TodayTasksTable = ({
   upcomingRecurringTasks,
   onChecklist,
   onToggleComplete,
+  handleNotDoneClick,
   onViewDescription,
   currentPage,
   itemsPerPage,
@@ -832,8 +830,6 @@ const TodayTasksTable = ({
   setUnreadMap,
   setSubmissionModalOpen,
   setSelectedSubmissionTask,
-  setSelectedTask,
-  setNotDoneModalOpen,
 }) => {
   const combinedTasks = [...(tasks || []), ...(upcomingRecurringTasks || [])];
   const tableColumns =
@@ -846,15 +842,11 @@ const TodayTasksTable = ({
   const renderCellValue = (val) => {
     if (val === null || val === undefined || val === "") return "-";
 
-    // If the value is a boolean (true / false)
     if (typeof val === "boolean") return val ? "Yes" : "No";
 
-    // If the value is an object or array
     if (typeof val === "object") {
-      // Handle Date objects
       if (val instanceof Date) return val.toLocaleDateString();
 
-      // Handle Arrays (e.g. multi-select or checklists)
       if (Array.isArray(val)) {
         return val.length > 0
           ? val
@@ -865,7 +857,6 @@ const TodayTasksTable = ({
           : "-";
       }
 
-      // Fallback for nested plain objects
       try {
         return JSON.stringify(val);
       } catch {
@@ -873,7 +864,6 @@ const TodayTasksTable = ({
       }
     }
 
-    // Convert numbers, strings, etc.
     return String(val);
   };
   return (
@@ -999,7 +989,6 @@ const TodayTasksTable = ({
                     {tableColumns.map(([key]) => {
                       const rawData = task?.submissionData?.[key];
 
-                      // Extract value if submissionData is wrapped in an object like { value: "...", label: "..." }
                       const cellVal =
                         typeof rawData === "object" &&
                         rawData !== null &&
@@ -1180,6 +1169,7 @@ const TodayTasksTable = ({
                           task={task}
                           onChecklist={onChecklist}
                           onToggleComplete={onToggleComplete}
+                          handleNotDoneClick={handleNotDoneClick}
                           handleCompleteClick={handleCompleteClick}
                           setSelectedQueryTask={setSelectedQueryTask}
                           setQueryDrawerOpen={setQueryDrawerOpen}
@@ -1190,8 +1180,6 @@ const TodayTasksTable = ({
                           assignedToUser={assignedToUser}
                           setSubmissionModalOpen={setSubmissionModalOpen}
                           setSelectedSubmissionTask={setSelectedSubmissionTask}
-                          setSelectedTask={setSelectedTask}
-                          setNotDoneModalOpen={setNotDoneModalOpen}
                         />
                       </div>
                     </TableCell>
@@ -1542,56 +1530,20 @@ const FmsTasks = () => {
     setSearchTerm("");
   };
 
-  // --- Decision Gate Task Completion Logic ---
+  // --- 🟢 Complete Task Handler (Normal Standard Completion) ---
   const handleToggleComplete = async (task) => {
-    try {
-      // 🔀 Step 1: Call decision-info API to check if task has a Decision Step
-      const res = await api.get(
-        `/fms-decision/${task._id || task.id}/decision-info`,
-      );
-      const decisionData = res.data?.data;
-
-      if (decisionData?.hasDecision) {
-        setDecisionTask({
-          ...task,
-          decisionYesAction: decisionData.decisionYesAction,
-          triggerFmsTemplate: decisionData.triggerFmsTemplate,
-          linkedForm: decisionData.linkedForm, // OpenForm object if exists
-        });
-        setDecisionChoice(null);
-        setDecisionRemark("");
-        setIsDecisionDialogOpen(true);
-        return;
-      }
-
-      // Standard Completion confirmation modal for non-decision tasks
-      Modal.confirm({
-        title: `Confirm Action`,
-        content: `Are you sure you want to complete this task?`,
-        okText: "Yes",
-        cancelText: "No",
-        centered: true,
-        onOk: async () => {
-          executeStandardCompletion(task);
-        },
-      });
-    } catch (error) {
-      console.error("Decision Info Error:", error);
-      // Fallback to standard completion if info check fails
-      Modal.confirm({
-        title: `Confirm Action`,
-        content: `Are you sure you want to complete this task?`,
-        okText: "Yes",
-        cancelText: "No",
-        centered: true,
-        onOk: async () => {
-          executeStandardCompletion(task);
-        },
-      });
-    }
+    Modal.confirm({
+      title: `Confirm Completion`,
+      content: `Are you sure you want to mark this task as completed?`,
+      okText: "Yes",
+      cancelText: "No",
+      centered: true,
+      onOk: async () => {
+        executeStandardCompletion(task);
+      },
+    });
   };
 
-  // Helper function to execute normal completion
   const executeStandardCompletion = async (task) => {
     setRefreshUI(true);
     const newStatus = task.status !== "Completed";
@@ -1612,13 +1564,12 @@ const FmsTasks = () => {
         ).unwrap();
       }
 
-      toast.success("Task Completed");
+      toast.success("Task Completed Successfully");
     } catch (error) {
       console.error("COMPLETE TASK ERROR:", error);
       const errorMessage =
         error?.response?.data?.message ||
         error?.message ||
-        (typeof error === "string" ? error : null) ||
         "Failed to update status";
 
       toast.error(errorMessage);
@@ -1627,14 +1578,51 @@ const FmsTasks = () => {
     }
   };
 
-  // Execute Backend Decision Submission
+  // --- 🔴 Not Done Handler (Checks for Decision Gate Step) ---
+  const handleNotDoneClick = async (task) => {
+    setSelectedTask(task);
+    try {
+      // 🔀 Step 1: Call decision-info API to check if task has a Decision Step
+      const res = await api.get(
+        `/fms-decision/${task._id || task.id}/decision-info`,
+      );
+      const decisionData = res.data?.data;
+
+      if (decisionData?.hasDecision) {
+        setDecisionTask({
+          ...task,
+          decisionYesAction: decisionData.decisionYesAction,
+          triggerFmsTemplate: decisionData.triggerFmsTemplate,
+          linkedForm: decisionData.linkedForm, // OpenForm object if exists
+        });
+        setDecisionChoice(null);
+        setDecisionRemark("");
+        setIsDecisionDialogOpen(true);
+        return;
+      }
+
+      // Standard Not Done Remark Modal if NO Decision Step exists
+      setRemark("");
+      setNotDoneModalOpen(true);
+    } catch (error) {
+      console.error("Decision Info Check Error:", error);
+      // Fallback to standard Not-Done Remark Modal on error
+      setRemark("");
+      setNotDoneModalOpen(true);
+    }
+  };
+
+  // --- Execute Backend Decision Submission for Not Done ---
   const executeDecisionApi = async (payload) => {
     setRefreshUI(true);
     setIsSubmittingDecision(true);
     try {
       const res = await api.post(
         `/fms-decision/${decisionTask._id || decisionTask.id}/decision`,
-        payload,
+        {
+          ...payload,
+          status: "Not Done", // Ensures status remains 'Not Done'
+        },
       );
 
       if (res.data?.success) {
@@ -1649,7 +1637,6 @@ const FmsTasks = () => {
       setDecisionTask(null);
       setDecisionChoice(null);
       setDecisionRemark("");
-      // setRefreshUI((prev) => !prev);
     } catch (error) {
       console.error("DECISION SUBMIT ERROR:", error);
       toast.error(
@@ -1663,7 +1650,7 @@ const FmsTasks = () => {
     }
   };
 
-  // Submit Handler for Decision Gate Modal
+  // --- Submit Handler for Decision Gate Modal ---
   const handleDecisionSubmit = async () => {
     if (!decisionChoice) {
       toast.error("Please select an option.");
@@ -1681,13 +1668,12 @@ const FmsTasks = () => {
       decisionTask?.decisionYesAction === "trigger_fms" &&
       decisionTask?.linkedForm
     ) {
-      // Close decision dialog and open Embedded PublicOpenForm Modal
       setIsDecisionDialogOpen(false);
       setLinkedFormModalOpen(true);
       return;
     }
 
-    // Standard cases: NO, or YES with Terminate, or YES with Trigger (No form)
+    // Standard cases: NO (Normal Not Done), or YES with Terminate / Trigger (No form)
     executeDecisionApi({
       answer: decisionChoice,
       remark: decisionRemark.trim(),
@@ -1894,8 +1880,9 @@ const FmsTasks = () => {
     );
   }, [selectedTask]);
 
-  const handleMarkNotDone = async (task, remark) => {
-    if (!remark.trim()) {
+  // Standard Mark Not Done Handler for non-decision tasks
+  const handleMarkNotDone = async (task, remarkText) => {
+    if (!remarkText.trim()) {
       toast.error("Please enter a remark.");
       return;
     }
@@ -1905,7 +1892,7 @@ const FmsTasks = () => {
         `/fms/instances/${task.fmsInstanceId}/tasks/${task.taskId}`,
         {
           status: "Not Done",
-          notDoneRemark: remark.trim(),
+          notDoneRemark: remarkText.trim(),
         },
       );
 
@@ -1914,6 +1901,7 @@ const FmsTasks = () => {
       setNotDoneModalOpen(false);
       setRemark("");
       setSelectedTask(null);
+      setRefreshUI((prev) => !prev);
     } catch (err) {
       toast.error(
         err?.response?.data?.error || "Failed to mark task as Not Done.",
@@ -2041,6 +2029,7 @@ const FmsTasks = () => {
                         onEdit={handleEditClick}
                         onChecklist={handleChecklistClick}
                         onToggleComplete={handleToggleComplete}
+                        handleNotDoneClick={handleNotDoneClick}
                         onDelete={handleDeleteClick}
                         onViewDescription={(task) =>
                           handleViewDescription(task.description)
@@ -2056,8 +2045,6 @@ const FmsTasks = () => {
                         setUnreadMap={setUnreadMap}
                         setSubmissionModalOpen={setSubmissionModalOpen}
                         setSelectedSubmissionTask={setSelectedSubmissionTask}
-                        setSelectedTask={setSelectedTask}
-                        setNotDoneModalOpen={setNotDoneModalOpen}
                       />
                     </TooltipProvider>
 
@@ -2079,7 +2066,7 @@ const FmsTasks = () => {
 
       {/* --- DIALOGS --- */}
 
-      {/* 🟢 Decision Step Modal */}
+      {/* 🔴 Decision Step Modal for "Not Done" Action */}
       <Dialog
         open={isDecisionDialogOpen}
         onOpenChange={setIsDecisionDialogOpen}
@@ -2087,13 +2074,13 @@ const FmsTasks = () => {
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-full bg-blue-100 text-blue-600">
+              <div className="p-2 rounded-full bg-red-100 text-red-600">
                 <GitBranch className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle>Decision Step Check</DialogTitle>
+                <DialogTitle>Decision Step (Not Done Action)</DialogTitle>
                 <DialogDescription>
-                  This task requires a decision choice before completion.
+                  This task requires a decision choice when marking as Not Done.
                 </DialogDescription>
               </div>
             </div>
@@ -2118,11 +2105,11 @@ const FmsTasks = () => {
                   onClick={() => setDecisionChoice("yes")}
                   className={`flex items-center justify-center gap-2 p-3 rounded-lg border font-semibold text-sm transition-all ${
                     decisionChoice === "yes"
-                      ? "bg-green-50 border-green-500 text-green-700 ring-2 ring-green-400 shadow-sm"
+                      ? "bg-red-50 border-red-500 text-red-700 ring-2 ring-red-400 shadow-sm"
                       : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                   }`}
                 >
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <CheckCircle2 className="h-4 w-4 text-red-600" />
                   <span>
                     {decisionTask?.decisionYesAction === "terminate"
                       ? "Terminate FMS"
@@ -2134,7 +2121,7 @@ const FmsTasks = () => {
                   </span>
                 </button>
 
-                {/* Dynamic NO Choice Button */}
+                {/* Dynamic NO Choice Button (Normal Not Done) */}
                 <button
                   type="button"
                   onClick={() => setDecisionChoice("no")}
@@ -2145,7 +2132,7 @@ const FmsTasks = () => {
                   }`}
                 >
                   <XCircle className="h-4 w-4 text-slate-600" />
-                  <span>Normal Complete</span>
+                  <span>Normal Not Done</span>
                 </button>
               </div>
             </div>
@@ -2175,7 +2162,7 @@ const FmsTasks = () => {
                   Remark *
                 </Label>
                 <Textarea
-                  placeholder="Enter detailed remark or reason..."
+                  placeholder="Enter reason or remark for Not Done..."
                   value={decisionRemark}
                   onChange={(e) => setDecisionRemark(e.target.value)}
                   rows={3}
@@ -2208,7 +2195,7 @@ const FmsTasks = () => {
               className={
                 decisionChoice === "no"
                   ? "bg-slate-700 hover:bg-slate-800 text-white"
-                  : "bg-green-600 hover:bg-green-700 text-white"
+                  : "bg-red-600 hover:bg-red-700 text-white"
               }
             >
               {isSubmittingDecision ? (
@@ -2228,7 +2215,7 @@ const FmsTasks = () => {
         </DialogContent>
       </Dialog>
 
-      {/* 🟢 OpenForm React Component Modal (Replaces iframe & Auto verifies employeeCode) */}
+      {/* 🟢 OpenForm React Component Modal */}
       <Dialog open={linkedFormModalOpen} onOpenChange={setLinkedFormModalOpen}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4">
           <DialogHeader className="pb-2 border-b">
@@ -2237,7 +2224,7 @@ const FmsTasks = () => {
             </DialogTitle>
             <DialogDescription className="text-xs">
               Complete the form below. Once submitted, the decision task will be
-              completed and the workflow will trigger.
+              marked as Not Done and the workflow action will trigger.
             </DialogDescription>
           </DialogHeader>
 
@@ -2436,6 +2423,7 @@ const FmsTasks = () => {
         )}
       </AntdModal>
 
+      {/* Standard Not Done Remark Modal (for Non-Decision tasks) */}
       <Dialog open={notDoneModalOpen} onOpenChange={setNotDoneModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
