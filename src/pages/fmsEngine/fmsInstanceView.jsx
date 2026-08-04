@@ -394,51 +394,54 @@ export default function FmsPremiumView() {
         >
           {STATUS_COLUMNS.map((col, index) => {
             const Icon = col.icon;
-const columnTasks = tasks.filter((t) => {
-  const taskStatus = String(t.status || "").toLowerCase().trim();
-  const isTaskTerminated = t.isTerminated === true || taskStatus === "terminated";
+            const columnTasks = tasks.filter((t) => {
+              const taskStatus = String(t.status || "")
+                .toLowerCase()
+                .trim();
+              const isTaskTerminated =
+                t.isTerminated === true || taskStatus === "terminated";
 
-  // 🔴 1. TERMINATED COLUMN
-  if (col.key === "terminated") {
-    return isTaskTerminated;
-  }
+              // 🔴 1. TERMINATED COLUMN
+              if (col.key === "terminated") {
+                return isTaskTerminated;
+              }
 
-  // If a task is terminated, exclude it from all other columns
-  if (isTaskTerminated) {
-    return false;
-  }
+              // If a task is terminated, exclude it from all other columns
+              if (isTaskTerminated) {
+                return false;
+              }
 
-  // 🟠 2. PENDING / IN PROGRESS COLUMN
-  if (col.key === "pending") {
-    return (
-      taskStatus === "pending" ||
-      taskStatus === "in progress" ||
-      taskStatus === "inprocess"
-    );
-  }
+              // 🟠 2. PENDING / IN PROGRESS COLUMN
+              if (col.key === "pending") {
+                return (
+                  taskStatus === "pending" ||
+                  taskStatus === "in progress" ||
+                  taskStatus === "inprocess"
+                );
+              }
 
-  // 🟡 3. ON HOLD COLUMN
-  if (col.key === "onhold") {
-    return taskStatus === "onhold" || taskStatus === "on hold";
-  }
+              // 🟡 3. ON HOLD COLUMN
+              if (col.key === "onhold") {
+                return taskStatus === "onhold" || taskStatus === "on hold";
+              }
 
-  // 🔴 4. DELAYED / OVERDUE COLUMNS
-  if (col.key === "delayed") {
-    return taskStatus === "delayed";
-  }
+              // 🔴 4. DELAYED / OVERDUE COLUMNS
+              if (col.key === "delayed") {
+                return taskStatus === "delayed";
+              }
 
-  if (col.key === "overdue") {
-    return taskStatus === "overdue";
-  }
+              if (col.key === "overdue") {
+                return taskStatus === "overdue";
+              }
 
-  // ⚪ 5. STOPPED / NOT DONE COLUMN
-  if (col.key === "stopped") {
-    return taskStatus === "stopped" || taskStatus === "not done";
-  }
+              // ⚪ 5. STOPPED / NOT DONE COLUMN
+              if (col.key === "stopped") {
+                return taskStatus === "stopped" || taskStatus === "not done";
+              }
 
-  // 🟢 6. UPCOMING & COMPLETED COLUMNS (Exact Match)
-  return taskStatus === col.key;
-});
+              // 🟢 6. UPCOMING & COMPLETED COLUMNS (Exact Match)
+              return taskStatus === col.key;
+            });
 
             return (
               <motion.div
