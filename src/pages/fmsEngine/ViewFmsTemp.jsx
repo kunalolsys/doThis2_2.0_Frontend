@@ -136,7 +136,7 @@ const ViewFmsTemp = () => {
   const [editingIndex, setEditingIndex] = useState(null);
   const [newRowIndex, setNewRowIndex] = useState(null);
   const [loadUpdate, setLoadUpdate] = useState(false);
-  const [isAlreadyLaunched, setIsAlreadyLaunched] = useState(false);
+  const [isAlreadyLaunched, setIsAlreadyLaunched] = useState(true);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -347,7 +347,7 @@ const ViewFmsTemp = () => {
     try {
       const res = await api.get(`/fms/templates-details/${id}`);
       const data = res.data.data;
-      setIsAlreadyLaunched(data.isLaunched);
+      // setIsAlreadyLaunched(data.isLaunched);
       setTemplateId(data._id);
       setTemplateFMSId(data.fmsId);
       setTemplateCreated(true);
@@ -609,12 +609,7 @@ const ViewFmsTemp = () => {
         <div className="flex justify-between items-center">
           <div className="flex flex-col">
             <CardTitle className="text-lg font-semibold">
-              {templateCreated
-                ? isAlreadyLaunched
-                  ? "View"
-                  : "Edit"
-                : "Create New"}{" "}
-              FMS Template
+              View FMS Template
             </CardTitle>
 
             {templateCreated && (
@@ -624,7 +619,7 @@ const ViewFmsTemp = () => {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             {templateCreated && (
               <Badge
                 variant="outline"
@@ -637,7 +632,7 @@ const ViewFmsTemp = () => {
                 {isAlreadyLaunched ? "Launched" : "Draft"}
               </Badge>
             )}
-          </div>
+          </div> */}
         </div>
       </CardHeader>
 
