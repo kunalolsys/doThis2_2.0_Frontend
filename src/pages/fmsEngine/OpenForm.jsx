@@ -33,7 +33,7 @@ import { Modal, Select } from "antd";
 
 const { Option } = Select;
 import { fetchTemplates } from "../../redux/slices/fms/fmsSlice";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import api from "../../lib/api";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
@@ -635,11 +635,17 @@ const FieldCard = ({
                       <Plus size={12} /> Add option
                     </Btn>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                  >
                     {(field.options || []).map((opt, oi) => (
                       <div
                         key={oi}
-                        style={{ display: "flex", gap: 6, alignItems: "center" }}
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          alignItems: "center",
+                        }}
                       >
                         <div
                           style={{
@@ -662,7 +668,7 @@ const FieldCard = ({
                         <button
                           onClick={() => {
                             const opts = (field.options || []).filter(
-                              (_, i) => i !== oi
+                              (_, i) => i !== oi,
                             );
                             onChange(index, "options", opts);
                           }}
@@ -735,7 +741,7 @@ const FieldCard = ({
                     <button
                       onClick={() => {
                         const opts = (field.options || []).filter(
-                          (_, i) => i !== oi
+                          (_, i) => i !== oi,
                         );
                         onChange(index, "options", opts);
                       }}
@@ -793,7 +799,11 @@ const PublicFormField = ({ field, value, onChange }) => {
   };
 
   useEffect(() => {
-    if (field.fieldType === "select" && field.optionType === "MASTER" && field.masterSource) {
+    if (
+      field.fieldType === "select" &&
+      field.optionType === "MASTER" &&
+      field.masterSource
+    ) {
       setLoadingMaster(true);
       api
         .get(`/open-forms/master-options/${field.masterSource}`)
@@ -971,6 +981,7 @@ export default function OpenFormBuilder() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
   const [editingFormId, setEditingFormId] = useState(null);
+  const currentUser = useSelector((state) => state.users.currentUser);
 
   const [config, setConfig] = useState({
     formName: "",
@@ -1009,13 +1020,17 @@ export default function OpenFormBuilder() {
 
   useEffect(() => {
     Promise.all([fetchTempl(), fetchForms()]);
-  }, []);
+  }, [currentUser]);
 
   const fetchTempl = async () => {
     try {
       setLoadingTpl(true);
       const res = await dispatch(
-        fetchTemplates({ page: 1, limit: 100000 })
+        fetchTemplates({
+          page: 1,
+          limit: 100000,
+          role: currentUser?.role?.name,
+        }),
       ).unwrap();
       setTemplates(res.data || []);
     } catch {
@@ -1027,7 +1042,9 @@ export default function OpenFormBuilder() {
 
   const fetchForms = async () => {
     try {
-      const res = await api.get("/open-forms");
+      const res = await api.post("/open-forms/get-forms", {
+        role: currentUser?.role?.name, // 👈 Added role in request body
+      });
       setForms(res.data?.data || []);
     } catch {
       /* silent */
@@ -1037,11 +1054,11 @@ export default function OpenFormBuilder() {
   // 🟢 Separate Draft & Published Forms List
   const publishedForms = useMemo(
     () => forms.filter((f) => f.status === "published"),
-    [forms]
+    [forms],
   );
   const draftForms = useMemo(
     () => forms.filter((f) => f.status === "draft"),
-    [forms]
+    [forms],
   );
 
   const addField = (type) =>
@@ -1069,7 +1086,7 @@ export default function OpenFormBuilder() {
       .map((word, index) =>
         index === 0
           ? word.toLowerCase()
-          : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+          : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
       )
       .join("");
   };
@@ -1133,14 +1150,14 @@ export default function OpenFormBuilder() {
         showToast(
           status === "draft"
             ? "Form saved as draft"
-            : "Form updated & published successfully"
+            : "Form updated & published successfully",
         );
       } else {
         await api.post("/open-forms", payload);
         showToast(
           status === "draft"
             ? "Form saved as draft"
-            : "Open form published successfully"
+            : "Open form published successfully",
         );
       }
 
@@ -1178,12 +1195,12 @@ export default function OpenFormBuilder() {
   const handleSubmit = async () => {
     if (!selectedForm) return;
     const missing = selectedForm.fields.filter(
-      (f) => f.isRequired && !submissionData[f.fieldId]
+      (f) => f.isRequired && !submissionData[f.fieldId],
     );
     if (missing.length) {
       showToast(
         `Please fill: ${missing.map((f) => f.label).join(", ")}`,
-        "error"
+        "error",
       );
       return;
     }
@@ -1191,7 +1208,7 @@ export default function OpenFormBuilder() {
       setSubmitting(true);
       const res = await api.post(
         `/open-forms/${selectedForm.slug}/submit`,
-        submissionData
+        submissionData,
       );
       setSubmitSuccess(res.data?.instance?.instanceId || "triggered");
       setSubmissionData({});
@@ -1204,7 +1221,7 @@ export default function OpenFormBuilder() {
 
   const selectedTemplate = useMemo(
     () => templates.find((t) => t._id === config.linkedTemplate),
-    [templates, config.linkedTemplate]
+    [templates, config.linkedTemplate],
   );
 
   const TABS = [
@@ -1255,7 +1272,7 @@ export default function OpenFormBuilder() {
       (form.fields || []).map((f, i) => ({
         ...f,
         id: f.id || f._id || `field_edit_${i}_${Date.now()}`,
-      }))
+      })),
     );
     setEditingFormId(form._id);
     setTab("builder");
@@ -1303,7 +1320,7 @@ export default function OpenFormBuilder() {
         } catch (error) {
           showToast(
             error.response?.data?.message || "Failed to delete form",
-            "error"
+            "error",
           );
         }
       },
@@ -1313,7 +1330,7 @@ export default function OpenFormBuilder() {
   // Reusable Form Card renderer
   const renderFormCard = (form) => {
     const tpl = templates.find(
-      (t) => t._id === (form.linkedTemplate?._id || form.linkedTemplate)
+      (t) => t._id === (form.linkedTemplate?._id || form.linkedTemplate),
     );
     const isDraft = form.status === "draft";
 
@@ -1648,7 +1665,8 @@ export default function OpenFormBuilder() {
                       marginTop: 2,
                     }}
                   >
-                    Build dynamic public forms that auto-launch FMS workflows on submission
+                    Build dynamic public forms that auto-launch FMS workflows on
+                    submission
                   </p>
                 </div>
               </div>
@@ -1815,7 +1833,9 @@ export default function OpenFormBuilder() {
                     )}
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                  >
                     <Toggle
                       checked={config.isActive}
                       onChange={(v) => setConf("isActive", v)}
@@ -2099,7 +2119,9 @@ export default function OpenFormBuilder() {
                     disabled={submitting}
                     style={{ width: "100%", justifyContent: "center" }}
                   >
-                    {submitting ? "Triggering FMS…" : "Submit & Trigger FMS Workflow"}
+                    {submitting
+                      ? "Triggering FMS…"
+                      : "Submit & Trigger FMS Workflow"}
                   </Btn>
                 </div>
               </div>
@@ -2128,7 +2150,10 @@ export default function OpenFormBuilder() {
                 <h3 style={{ fontSize: 16, color: T.muted }}>
                   No published forms yet
                 </h3>
-                <Btn onClick={() => setTab("builder")} style={{ marginTop: 14 }}>
+                <Btn
+                  onClick={() => setTab("builder")}
+                  style={{ marginTop: 14 }}
+                >
                   <Plus size={14} /> Create Form
                 </Btn>
               </div>
@@ -2167,7 +2192,10 @@ export default function OpenFormBuilder() {
                 <h3 style={{ fontSize: 16, color: T.muted }}>
                   No draft forms saved
                 </h3>
-                <Btn onClick={() => setTab("builder")} style={{ marginTop: 14 }}>
+                <Btn
+                  onClick={() => setTab("builder")}
+                  style={{ marginTop: 14 }}
+                >
                   <Plus size={14} /> Create Draft
                 </Btn>
               </div>

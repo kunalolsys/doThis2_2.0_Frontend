@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import api from "../../lib/api";
 import { Select } from "antd";
+import { useSelector } from "react-redux";
 
 // --- Helper Component: Renders Each Response Field Safely ---
 const SubmissionField = ({ fieldKey, field }) => {
@@ -50,7 +51,7 @@ const SubmissionField = ({ fieldKey, field }) => {
             .map((item) =>
               typeof item === "object" && item !== null
                 ? JSON.stringify(item)
-                : String(item ?? "")
+                : String(item ?? ""),
             )
             .filter(Boolean)
             .join(", ")
@@ -83,6 +84,7 @@ export default function OpenFormResponses() {
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const currentUser = useSelector((state) => state.users.currentUser);
 
   // Safe Date Formatter Helper
   const formatDate = (dateString) => {
@@ -102,7 +104,9 @@ export default function OpenFormResponses() {
   const fetchInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const formsRes = await api.get(`/open-forms`);
+      const formsRes = await api.post(`/open-forms/get-forms`, {
+        role: currentUser?.role?.name,
+      });
       const formsList = formsRes.data?.data || [];
       setForms(formsList);
 
@@ -110,8 +114,8 @@ export default function OpenFormResponses() {
         // Aggregate submissions across all registries
         const results = await Promise.allSettled(
           formsList.map((form) =>
-            api.get(`/open-forms/${form._id}/submissions`)
-          )
+            api.get(`/open-forms/${form._id}/submissions`),
+          ),
         );
 
         const combined = results.flatMap((result, index) => {
@@ -140,7 +144,7 @@ export default function OpenFormResponses() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     fetchInitialData();
@@ -156,7 +160,8 @@ export default function OpenFormResponses() {
 
       const name = item?.submittedBy?.name?.toLowerCase() || "";
       const code = item?.submittedBy?.employeeCode?.toLowerCase() || "";
-      const matchesSearch = !query || name.includes(query) || code.includes(query);
+      const matchesSearch =
+        !query || name.includes(query) || code.includes(query);
 
       const isTriggered = item.status === "Triggered";
       const matchesStatus =
@@ -172,7 +177,7 @@ export default function OpenFormResponses() {
   useEffect(() => {
     if (filteredSubmissions.length > 0) {
       const existsInFiltered = filteredSubmissions.some(
-        (sub) => sub?._id === selectedSubmission?._id
+        (sub) => sub?._id === selectedSubmission?._id,
       );
 
       if (!existsInFiltered) {
@@ -192,7 +197,7 @@ export default function OpenFormResponses() {
         label: f.formName || "Untitled Form",
       })),
     ],
-    [forms]
+    [forms],
   );
 
   return (
@@ -272,7 +277,8 @@ export default function OpenFormResponses() {
                 No records located
               </h4>
               <p className="text-xs text-neutral-400 max-w-[260px] mt-1 leading-relaxed">
-                Adjust or reset your lookup constraints or chosen category registry schemas.
+                Adjust or reset your lookup constraints or chosen category
+                registry schemas.
               </p>
             </div>
           ) : (
@@ -332,7 +338,10 @@ export default function OpenFormResponses() {
                     </div>
 
                     <div className="flex-1 text-right flex items-center justify-end gap-2 text-neutral-400 font-mono text-xs">
-                      <Calendar size={12} className="text-neutral-300 shrink-0" />
+                      <Calendar
+                        size={12}
+                        className="text-neutral-300 shrink-0"
+                      />
                       <span>{formatDate(item.createdAt)}</span>
                       <ChevronRight
                         size={14}
@@ -358,7 +367,8 @@ export default function OpenFormResponses() {
                     Metadata Registry Log
                   </span>
                   <h3 className="text-sm font-bold text-neutral-900 tracking-tight mt-0.5 truncate max-w-[320px]">
-                    {selectedSubmission?.submittedBy?.name || "Anonymous Ingress"}
+                    {selectedSubmission?.submittedBy?.name ||
+                      "Anonymous Ingress"}
                   </h3>
                 </div>
 
@@ -398,7 +408,7 @@ export default function OpenFormResponses() {
                   {Object.entries(selectedSubmission?.submissionData || {}).map(
                     ([key, field]) => (
                       <SubmissionField key={key} fieldKey={key} field={field} />
-                    )
+                    ),
                   )}
                 </div>
               </div>
@@ -410,7 +420,9 @@ export default function OpenFormResponses() {
             </div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-neutral-400 text-xs font-medium">
-              <span>Select an entry row log to inspect payload response details.</span>
+              <span>
+                Select an entry row log to inspect payload response details.
+              </span>
             </div>
           )}
         </aside>

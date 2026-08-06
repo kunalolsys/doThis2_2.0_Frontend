@@ -39,6 +39,7 @@ import api from "../../lib/api";
 import dayjs from "dayjs";
 import { DatePicker, Modal, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 const { Text } = Typography;
 const FmsLaunch = () => {
   const navigate = useNavigate();
@@ -52,14 +53,19 @@ const FmsLaunch = () => {
   const [srManagers, setSrManagers] = useState([]);
   const [selectedManager, setSelectedManager] = useState(null);
   const [selectedSrManager, setSelectedSrManager] = useState(null);
+  const currentUser = useSelector((state) => state.users.currentUser);
+
   const fetchTemplates = async () => {
     try {
-      const res = await api.get(`/fms/templates-list-drop/`);
+      const res = await api.post(`/fms/templates-list-drop/`, {
+        role: currentUser?.role?.name,
+      });
       setTemplates(res.data.data || []);
     } catch (err) {
       console.error(err);
       toast.error("Failed to fetch tasks");
     } finally {
+      console.log("object")
     }
   };
   const fetchTasks = async (templateID) => {
@@ -75,7 +81,7 @@ const FmsLaunch = () => {
   };
   useEffect(() => {
     fetchTemplates();
-  }, []);
+  }, [currentUser]);
   useEffect(() => {
     if (selectedTemplate !== "none") {
       fetchTasks(selectedTemplate);

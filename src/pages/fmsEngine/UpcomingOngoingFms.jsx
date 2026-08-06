@@ -51,6 +51,7 @@ import { useDebounce } from "../../lib/debounce";
 import DataPagination from "../../components/ui/commonPagination";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Modal, Input as AntdInput } from "antd";
+import { useSelector } from "react-redux";
 const { TextArea } = AntdInput;
 
 const getStatusBadge = (status) => {
@@ -171,6 +172,8 @@ const UpcomingOngoingFms = () => {
   const [limit, setLimit] = useState(10);
   const [activeTab, setActiveTab] = useState("upcoming");
   const [FMS, setFMS] = useState([]);
+  const currentUser = useSelector((state) => state.users.currentUser);
+
   useEffect(() => {
     if (!source) return;
     setActiveTab(source);
@@ -182,6 +185,7 @@ const UpcomingOngoingFms = () => {
       const payload = {
         search,
         page,
+        role: currentUser?.role?.name,
         limit,
         // If activeTab is terminated, pass isTerminated flag instead of status
         ...(isTerminatedTab
@@ -230,7 +234,7 @@ const UpcomingOngoingFms = () => {
       : [];
   useEffect(() => {
     fetchFMS(debounceSearch, activeTab, page, limit);
-  }, [debounceSearch, page, limit, activeTab]);
+  }, [debounceSearch, page, limit, activeTab, currentUser]);
   const handleTabChange = (value) => {
     setActiveTab(value);
     setPage(1); // reset pagination

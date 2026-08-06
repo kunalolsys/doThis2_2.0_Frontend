@@ -342,6 +342,7 @@ export const getRoleBasedTasks = createAsyncThunk(
         selectedManager,
         selectedSrManager,
         search,
+        taskTypeFilter,
       } = params;
 
       const payload = {
@@ -353,6 +354,7 @@ export const getRoleBasedTasks = createAsyncThunk(
         selectedDoer,
         selectedManager,
         selectedSrManager,
+        taskTypeFilter,
         ...(search && { search }),
 
         filters: {

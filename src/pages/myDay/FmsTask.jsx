@@ -105,6 +105,7 @@ import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { FileTextOutlined } from "@ant-design/icons";
 import { Textarea } from "../../components/ui";
 import PublicOpenForm from "../public-form/PublicOpenForm";
+import dayjs from "dayjs";
 
 // --- Helper: Status Badge ---
 const getStatusBadge = (status) => {
@@ -811,7 +812,7 @@ const FilterBar = ({
   </div>
 );
 
-// --- Helper: Main Table ---
+// --- Helper: Main Table (Crash-Proof & Dynamic) ---
 const TodayTasksTable = ({
   tasks,
   upcomingRecurringTasks,
@@ -831,27 +832,51 @@ const TodayTasksTable = ({
   setSubmissionModalOpen,
   setSelectedSubmissionTask,
 }) => {
-  const combinedTasks = [...(tasks || []), ...(upcomingRecurringTasks || [])];
-  const tableColumns =
-    combinedTasks.length > 0
-      ? Object.entries(combinedTasks[0]?.submissionData || {}).filter(
-          ([_, field]) =>
-            typeof field === "object" ? field?.isTableColumn : true,
-        )
-      : [];
-  const renderCellValue = (val) => {
+  // 1. Safely combine tasks
+  const combinedTasks = useMemo(
+    () => [...(tasks || []), ...(upcomingRecurringTasks || [])],
+    [tasks, upcomingRecurringTasks]
+  );
+
+  // 2. Scan ALL tasks dynamically to build unique dynamic submission columns
+  const tableColumns = useMemo(() => {
+    const columnsMap = new Map();
+
+    combinedTasks.forEach((task) => {
+      if (task?.submissionData && typeof task.submissionData === "object") {
+        Object.entries(task.submissionData).forEach(([key, field]) => {
+          if (field && typeof field === "object") {
+            if (field.isTableColumn === true) {
+              const columnLabel = field.label || formatLabel(key);
+              columnsMap.set(key, { label: columnLabel, fieldType: field.fieldType });
+            }
+          }
+        });
+      }
+    });
+
+    return Array.from(columnsMap.entries()); // [[key, { label, fieldType }], ...]
+  }, [combinedTasks]);
+
+  // 3. Robust Cell Formatter to catch objects, booleans, dates, and edge cases
+  const renderCellValue = (val, fieldType) => {
     if (val === null || val === undefined || val === "") return "-";
 
     if (typeof val === "boolean") return val ? "Yes" : "No";
 
+    if (fieldType === "date" && val) {
+      const parsedDate = dayjs(val);
+      return parsedDate.isValid() ? parsedDate.format("DD MMM YYYY") : String(val);
+    }
+
     if (typeof val === "object") {
-      if (val instanceof Date) return val.toLocaleDateString();
+      if (val instanceof Date) return dayjs(val).format("DD MMM YYYY");
 
       if (Array.isArray(val)) {
         return val.length > 0
           ? val
               .map((item) =>
-                typeof item === "object" ? JSON.stringify(item) : String(item),
+                typeof item === "object" ? JSON.stringify(item) : String(item)
               )
               .join(", ")
           : "-";
@@ -866,6 +891,7 @@ const TodayTasksTable = ({
 
     return String(val);
   };
+
   return (
     <div className="overflow-x-auto border rounded-lg bg-white">
       <Table>
@@ -873,15 +899,17 @@ const TodayTasksTable = ({
           <TableRow>
             <TableHead>Sr. No.</TableHead>
             <TableHead>Task Title</TableHead>
-            {tableColumns.map(([key, field]) => (
-              <TableHead key={key}>
-                {typeof field === "object" && field?.label
-                  ? field.label
-                  : key
-                      .replace(/([A-Z])/g, " $1")
-                      .replace(/^./, (str) => str.toUpperCase())}
+
+            {/* ⚡ Dynamic Submission Data Headers */}
+            {tableColumns.map(([key, colMeta]) => (
+              <TableHead
+                key={key}
+                className="font-semibold text-blue-700 whitespace-nowrap"
+              >
+                {colMeta.label}
               </TableHead>
             ))}
+
             <TableHead>Description</TableHead>
             <TableHead>Due Date & Time</TableHead>
             <TableHead>Frequency</TableHead>
@@ -890,24 +918,27 @@ const TodayTasksTable = ({
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
+
         <TableBody>
           {combinedTasks.length > 0 ? (
             combinedTasks.map((task, index) => {
-              const assignedByUser = allUsers.find(
-                (u) => String(u._id) === String(task.assignedBy?._id),
-              );
+              const assignedByUser =
+                allUsers?.find(
+                  (u) => String(u._id) === String(task?.assignedBy?._id)
+                ) || null;
 
-              const assignedToUser = allUsers.find(
-                (u) => String(u._id) === String(task.assignedTo?._id),
-              );
+              const assignedToUser =
+                allUsers?.find(
+                  (u) => String(u._id) === String(task?.assignedTo?._id)
+                ) || null;
 
               return (
-                <React.Fragment key={task._id}>
+                <React.Fragment key={task?._id || index}>
                   <TableRow
                     className={`
-                    ${task.isOverdue ? "bg-red-50" : ""}
-                    ${task.isReopen ? "bg-yellow-50 border-l-4 border-yellow-500" : ""}
-                  `}
+                      ${task?.isOverdue ? "bg-red-50" : ""}
+                      ${task?.isReopen ? "bg-yellow-50 border-l-4 border-yellow-500" : ""}
+                    `}
                   >
                     <TableCell>
                       {(currentPage - 1) * itemsPerPage + index + 1}
@@ -916,9 +947,9 @@ const TodayTasksTable = ({
                     <TableCell className="font-medium">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span>{task.title}</span>
+                          <span>{task?.title || "-"}</span>
 
-                          {task.isReopen && (
+                          {task?.isReopen && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
                               <RotateCcw className="h-3 w-3" />
                               Reopened
@@ -926,7 +957,7 @@ const TodayTasksTable = ({
                           )}
                         </div>
 
-                        {task.reopenedReason && (
+                        {task?.reopenedReason && (
                           <div>
                             <Popover
                               trigger="click"
@@ -944,7 +975,7 @@ const TodayTasksTable = ({
                                       </h4>
 
                                       <p className="text-xs text-gray-500">
-                                        {task.reopenedAt
+                                        {task?.reopenedAt
                                           ? formatDate(task.reopenedAt)
                                           : "-"}
                                       </p>
@@ -961,7 +992,7 @@ const TodayTasksTable = ({
                                     </div>
                                   </div>
 
-                                  {task.reopenedBy?.name && (
+                                  {task?.reopenedBy?.name && (
                                     <div className="text-xs text-gray-500">
                                       Reopened By:
                                       <span className="ml-1 font-medium text-gray-700">
@@ -979,26 +1010,32 @@ const TodayTasksTable = ({
                           </div>
                         )}
 
-                        {task.isReopen && task.reopenedAt && (
+                        {task?.isReopen && task?.reopenedAt && (
                           <span className="text-[11px] text-gray-500">
                             Reopened on {formatDate(task.reopenedAt)}
                           </span>
                         )}
                       </div>
                     </TableCell>
-                    {tableColumns.map(([key]) => {
+
+                    {/* ⚡ Safely Extract Dynamic Submission Data Values */}
+                    {tableColumns.map(([key, colMeta]) => {
                       const rawData = task?.submissionData?.[key];
 
-                      const cellVal =
-                        typeof rawData === "object" &&
-                        rawData !== null &&
-                        "value" in rawData
-                          ? rawData.value
-                          : rawData;
+                      let cellVal = "-";
+                      if (rawData && typeof rawData === "object") {
+                        cellVal =
+                          rawData.value !== undefined ? rawData.value : "-";
+                      } else if (rawData !== undefined && rawData !== null) {
+                        cellVal = rawData;
+                      }
 
                       return (
-                        <TableCell key={key}>
-                          {renderCellValue(cellVal)}
+                        <TableCell
+                          key={key}
+                          className="whitespace-nowrap font-medium text-gray-700"
+                        >
+                          {renderCellValue(cellVal, colMeta.fieldType)}
                         </TableCell>
                       );
                     })}
@@ -1008,21 +1045,21 @@ const TodayTasksTable = ({
                         variant="link"
                         className="p-0 h-auto text-blue-600"
                         onClick={() => onViewDescription(task)}
-                        disabled={!task.description}
+                        disabled={!task?.description}
                       >
                         View
                       </Button>
                     </TableCell>
 
                     <TableCell>
-                      {task.dueDate ? formatDate(task.dueDate) : "-"}
+                      {task?.dueDate ? formatDate(task.dueDate) : "-"}
                     </TableCell>
-                    <TableCell>{task.frequency ?? "-"}</TableCell>
+                    <TableCell>{task?.frequency ?? "-"}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       {(() => {
-                        if (task.status === "Completed") return "-";
+                        if (task?.status === "Completed") return "-";
 
-                        if (task.status === "Not Done") {
+                        if (task?.status === "Not Done") {
                           return (
                             <div className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-100 px-3 py-2">
                               <Lock className="h-4 w-4 text-slate-500" />
@@ -1038,20 +1075,20 @@ const TodayTasksTable = ({
                           );
                         }
 
-                        const dueStatus = getDueStatus(task.dueDate);
+                        const dueStatus = getDueStatus(task?.dueDate);
 
                         if (!dueStatus) return "-";
                         return (
                           <div
                             className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm
-                                    transition-all duration-300 hover:-translate-y-1 hover:shadow-lg
-                                    ${
-                                      dueStatus.type === "overdue"
-                                        ? "border-l-4 border-l-red-500"
-                                        : dueStatus.type === "today"
-                                          ? "border-l-4 border-l-amber-500"
-                                          : "border-l-4 border-l-emerald-500"
-                                    }`}
+                              transition-all duration-300 hover:-translate-y-1 hover:shadow-lg
+                              ${
+                                dueStatus.type === "overdue"
+                                  ? "border-l-4 border-l-red-500"
+                                  : dueStatus.type === "today"
+                                    ? "border-l-4 border-l-amber-500"
+                                    : "border-l-4 border-l-emerald-500"
+                              }`}
                           >
                             <div className="mr-3 relative flex h-3 w-3 items-center justify-center">
                               {(dueStatus.type === "overdue" ||
@@ -1059,38 +1096,38 @@ const TodayTasksTable = ({
                                 dueStatus.type === "upcoming") && (
                                 <span
                                   className={`absolute inline-flex h-full w-full rounded-full opacity-75
-                                            ${
-                                              dueStatus.type === "overdue"
-                                                ? "bg-red-500 animate-ping"
-                                                : dueStatus.type === "today"
-                                                  ? "bg-amber-500 animate-ping"
-                                                  : "bg-emerald-500 animate-ping"
-                                            }`}
+                                    ${
+                                      dueStatus.type === "overdue"
+                                        ? "bg-red-500 animate-ping"
+                                        : dueStatus.type === "today"
+                                          ? "bg-amber-500 animate-ping"
+                                          : "bg-emerald-500 animate-ping"
+                                    }`}
                                 />
                               )}
 
                               <span
                                 className={`relative inline-flex h-3 w-3 rounded-full
-                                          ${
-                                            dueStatus.type === "overdue"
-                                              ? "bg-red-500"
-                                              : dueStatus.type === "today"
-                                                ? "bg-amber-500"
-                                                : "bg-emerald-500"
-                                          }`}
+                                  ${
+                                    dueStatus.type === "overdue"
+                                      ? "bg-red-500"
+                                      : dueStatus.type === "today"
+                                        ? "bg-amber-500"
+                                        : "bg-emerald-500"
+                                  }`}
                               />
                             </div>
 
                             <div>
                               <p
                                 className={`text-xs font-semibold
-                                          ${
-                                            dueStatus.type === "overdue"
-                                              ? "text-red-700"
-                                              : dueStatus.type === "today"
-                                                ? "text-amber-700"
-                                                : "text-emerald-700"
-                                          }`}
+                                  ${
+                                    dueStatus.type === "overdue"
+                                      ? "text-red-700"
+                                      : dueStatus.type === "today"
+                                        ? "text-amber-700"
+                                        : "text-emerald-700"
+                                  }`}
                               >
                                 {dueStatus.type === "overdue"
                                   ? "Overdue"
@@ -1114,8 +1151,8 @@ const TodayTasksTable = ({
 
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        {getStatusBadge(task.status)}{" "}
-                        {task.status === "Not Done" && task.notDoneRemark && (
+                        {getStatusBadge(task?.status)}{" "}
+                        {task?.status === "Not Done" && task?.notDoneRemark && (
                           <div>
                             <Popover
                               trigger="click"
@@ -1144,7 +1181,7 @@ const TodayTasksTable = ({
                                     </div>
                                   </div>
 
-                                  {task.notDoneBy?.name && (
+                                  {task?.notDoneBy?.name && (
                                     <div className="border-t pt-2 text-xs text-gray-500">
                                       Marked by{" "}
                                       <span className="font-semibold text-gray-800">
@@ -1163,6 +1200,7 @@ const TodayTasksTable = ({
                         )}
                       </div>
                     </TableCell>
+
                     <TableCell>
                       <div className="flex items-center">
                         <TaskActions
@@ -1174,7 +1212,7 @@ const TodayTasksTable = ({
                           setSelectedQueryTask={setSelectedQueryTask}
                           setQueryDrawerOpen={setQueryDrawerOpen}
                           setRaiseQueryModalOpen={setRaiseQueryModalOpen}
-                          unreadCount={unreadMap[task.conversationId] || 0}
+                          unreadCount={unreadMap[task?.conversationId] || 0}
                           setUnreadMap={setUnreadMap}
                           assignedByUser={assignedByUser}
                           assignedToUser={assignedToUser}
@@ -1190,7 +1228,7 @@ const TodayTasksTable = ({
           ) : (
             <TableRow>
               <TableCell
-                colSpan={14}
+                colSpan={8 + tableColumns.length}
                 className="text-center py-8 text-gray-500"
               >
                 No tasks found for this filter

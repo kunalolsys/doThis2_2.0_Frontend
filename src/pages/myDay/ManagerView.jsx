@@ -25,6 +25,8 @@ import {
   MessageCircle,
   MessageSquarePlus,
   RotateCcw,
+  Layers,
+  Zap,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 
@@ -90,8 +92,6 @@ import TaskChat from "../../components/TaskChat.jsx";
 import { useSocket } from "../../context/SocketContext.jsx";
 import { Popover } from "antd";
 
-// --- Helper Components ---
-
 // Priority Badge
 const PriorityBadge = ({ priority }) => {
   const config = {
@@ -151,39 +151,7 @@ const getStatusBadge = (status) => {
   }
 };
 
-// Enhanced View Link
-// const ViewLink = ({ file }) => {
-//   if (!file) {
-//     return <span className="text-gray-500 text-xs">NA</span>;
-//   }
-
-//   const handleAttachmentDownload = (attachmentFile) => {
-//     const apiBaseUrl =
-//       import.meta.env.VITE_API_BASE_URL || "https://backend.v2.dothis2.com/api/v1";
-//     const serverBaseUrl = apiBaseUrl.replace("/api/v1", "");
-//     const attachmentUrl = `${serverBaseUrl}/download/${attachmentFile}`;
-
-//     const link = document.createElement("a");
-//     link.href = attachmentUrl;
-//     link.setAttribute("download", attachmentFile);
-//     document.body.appendChild(link);
-//     link.click();
-//     document.body.removeChild(link);
-//   };
-
-//   return (
-//     <Button
-//       variant="link"
-//       className="p-0 h-auto text-blue-600"
-//       onClick={() => handleAttachmentDownload(file)}
-//     >
-//       <Download className="mr-1 h-3 w-3" />
-//       Download
-//     </Button>
-//   );
-// };
-
-// Enhanced Today's Task Actions
+// Today's Task Actions
 const TodayTaskActions = ({
   activeTab,
   task,
@@ -193,7 +161,6 @@ const TodayTaskActions = ({
   setQueryDrawerOpen,
   unreadCount,
   setUnreadMap,
-  // ✅ REOPEN PROPS
   setReopenTask,
   setReopenModalOpen,
 }) => {
@@ -201,9 +168,10 @@ const TodayTaskActions = ({
     task.checklist && Array.isArray(task.checklist) ? task.checklist : [];
   const form =
     task.createdForm && Array.isArray(task.createdForm) ? task.createdForm : [];
-  const isCompleteActiveTab = activeTab == "completed";
+  const isCompleteActiveTab = activeTab === "completed";
   const alreadyReopened = task?.isReopen;
-  const fmsType = task.taskType == "FmsInstanceTask";
+  const fmsType = task.taskType === "FmsInstanceTask";
+
   return (
     <TooltipProvider>
       <div className="flex gap-1">
@@ -250,10 +218,7 @@ const TodayTaskActions = ({
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-8 w-8 rounded-full  cursor-pointer
-        text-blue-600 bg-blue-50 
-        hover:bg-blue-100 hover:text-blue-700 
-        transition-all duration-200"
+                  className="h-8 w-8 rounded-full cursor-pointer text-blue-600 bg-blue-50 hover:bg-blue-100 hover:text-blue-700 transition-all duration-200"
                   onClick={() => {
                     setSelectedQueryTask(task);
                     setQueryDrawerOpen(true);
@@ -268,13 +233,7 @@ const TodayTaskActions = ({
                 </Button>
 
                 {unreadCount > 0 && (
-                  <span
-                    className="absolute -top-1 -right-1 
-          min-w-[16px] h-[16px] px-1 
-          flex items-center justify-center 
-          text-[10px] font-bold text-white 
-          bg-red-500 rounded-full shadow"
-                  >
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full shadow">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
@@ -332,7 +291,7 @@ const TaskProgress = ({ completed, total }) => {
 
 // Stats Cards Component
 const StatsCards = ({ allTaskCounts, selectedStat, onStatClick }) => {
-  if (!allTaskCounts) return;
+  if (!allTaskCounts) return null;
   const getCardClass = (type, color) => `
     cursor-pointer transition-all duration-200 transform hover:scale-105
     ${selectedStat === type ? `ring-2 ring-${color}-500 shadow-lg` : ""}
@@ -415,24 +374,6 @@ const StatsCards = ({ allTaskCounts, selectedStat, onStatClick }) => {
           </div>
         </CardContent>
       </Card>
-      {/* <Card
-        className={`${getCardClass("dueToday", "purple")} bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200`}
-        onClick={() => onStatClick("dueToday")}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-purple-600">Due Today</p>
-              <p className="text-2xl font-bold text-purple-700">
-                {allTaskCounts.dueToday}
-              </p>
-            </div>
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Clock className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </CardContent>
-      </Card> */}
     </div>
   );
 };
@@ -458,10 +399,6 @@ const FilterBar = ({
 }) => {
   const handleFilterChange = (setter, value) => {
     setter(value);
-    // // Logic to reset other filters so only one user filter is active at a time
-    // if (setter !== setSelectedDoer) setSelectedDoer("all");
-    // if (setter !== setSelectedManager) setSelectedManager("all");
-    // if (setter !== setSelectedSrManager) setSelectedSrManager("all");
   };
 
   const userRole = currentUser?.role?.name;
@@ -481,7 +418,6 @@ const FilterBar = ({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2 flex-[2]">
-        {/* All Sr. Managers Filter - Visible to Admin, Owner */}
         {isAdminOrOwner && (
           <Select
             value={selectedSrManager}
@@ -504,7 +440,6 @@ const FilterBar = ({
             </SelectContent>
           </Select>
         )}
-        {/* All Managers Filter - Visible to Admin, Owner, Sr. Manager */}
         {(isAdminOrOwner || isSrManager) && (
           <Select
             value={selectedManager}
@@ -525,7 +460,6 @@ const FilterBar = ({
             </SelectContent>
           </Select>
         )}
-        {/* All Doers Filter - Always visible */}
         <Select
           value={selectedDoer}
           onValueChange={(val) => handleFilterChange(setSelectedDoer, val)}
@@ -583,7 +517,6 @@ const FilterBar = ({
   );
 };
 
-// --- Helper: Pagination ---
 const Pagination = ({
   totalItems,
   itemsPerPage,
@@ -657,7 +590,7 @@ const ManagerView = () => {
     totalTasks,
   } = useSelector((state) => state.myTasks);
   const { currentUser } = useSelector((state) => state.users);
-  const { isConnected, socket, events } = useSocket();
+  const { isConnected, socket } = useSocket();
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -670,11 +603,16 @@ const ManagerView = () => {
   const [selectedSrManager, setSelectedSrManager] = useState("all");
   const [selectedAssignor, setSelectedAssignor] = useState("all");
   const [activeTab, setActiveTab] = useState("today");
+
+  // ⚡ SUB-TAB FILTER ("all" | "dothis" | "fms")
+  const [engineViewTab, setEngineViewTab] = useState("all");
+
   const [selectedStatFilter, setSelectedStatFilter] = useState(null);
   useEffect(() => {
     if (!source) return;
     setSelectedStatFilter(source);
   }, [source]);
+
   const [localCurrentPage, setLocalCurrentPage] = useState(1);
   const [localItemsPerPage, setLocalItemsPerPage] = useState(10);
   const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
@@ -684,7 +622,7 @@ const ManagerView = () => {
   const [managers, setManagers] = useState([]);
   const [srManagers, setSrManagers] = useState([]);
 
-  // Dialog states for new actions
+  // Dialog states
   const [isChecklistDialogOpen, setIsChecklistDialogOpen] = useState(false);
   const [selectedTaskForChecklist, setSelectedTaskForChecklist] =
     useState(null);
@@ -695,12 +633,14 @@ const ManagerView = () => {
   const [queryDrawerOpen, setQueryDrawerOpen] = useState(false);
   const [selectedQueryTask, setSelectedQueryTask] = useState(null);
   const [unreadMap, setUnreadMap] = useState({});
-  //**reopened task */
+
+  // Reopen state
   const [reopenModalOpen, setReopenModalOpen] = useState(false);
   const [reopenTask, setReopenTask] = useState(null);
   const [reopenReason, setReopenReason] = useState("");
   const [reopenLoading, setReopenLoading] = useState(false);
   const [refreshTaskAfterReopen, setRefreshTaskAfterReopen] = useState(false);
+
   const handleReopenTask = async () => {
     if (!reopenReason.trim()) {
       toast.error("Please enter reopen reason");
@@ -718,26 +658,16 @@ const ManagerView = () => {
       setReopenModalOpen(false);
       setReopenTask(null);
       setReopenReason("");
-      setReopenModalOpen(false);
-      setReopenTask(null);
-      setReopenReason("");
 
-      // ✅ RESET FILTERS
       setActiveTab("today");
       setSelectedStatFilter("total");
       setSelectedFilterStatus("all");
-
-      // ✅ RESET PAGINATION + SEARCH
       setLocalCurrentPage(1);
       setSearchTerm("");
 
-      // ✅ TRIGGER REFRESH
       setRefreshTaskAfterReopen((prev) => !prev);
-
       fetchTasksForDashboard();
     } catch (error) {
-      console.log(error);
-
       toast.error(error?.response?.data?.message || "Failed to reopen task");
     } finally {
       setReopenLoading(false);
@@ -757,6 +687,7 @@ const ManagerView = () => {
       }
     };
   }, [socket, selectedQueryTask?.conversationId]);
+
   useEffect(() => {
     if (!socket) return;
 
@@ -773,6 +704,7 @@ const ManagerView = () => {
       socket.off("unread-count", handleUnread);
     };
   }, [socket]);
+
   const getViewHeading = () => {
     if (!currentUser || !currentUser.role) return "View";
     const roleName = currentUser.role.name;
@@ -791,19 +723,12 @@ const ManagerView = () => {
   };
   const viewHeading = getViewHeading();
 
-  // --- Initial Data Load (Task Counts) ---
   useEffect(() => {
     if (currentUser?._id) {
-      const fetchCountsParams = {
-        view: "manager",
-        assignorId: currentUser._id,
-      };
-      // dispatch(fetchTaskCounts(fetchCountsParams));
-      setSelectedAssignor(currentUser._id); // Set the current user as the default assignor
+      setSelectedAssignor(currentUser._id);
     }
   }, [currentUser, dispatch]);
 
-  //**Fetch counts for stats */
   const [allTaskCounts, setAllTaskCounts] = useState(null);
 
   const fetchTasksForDashboard = async () => {
@@ -819,11 +744,11 @@ const ManagerView = () => {
       console.log(error);
     }
   };
+
   useEffect(() => {
     fetchTasksForDashboard();
   }, [currentUser, reopenLoading, refreshTaskAfterReopen]);
 
-  // --- Fetch Users for Filters ---
   const [allUsers, setAllUsers] = useState([]);
   useEffect(() => {
     const fetchUsers = async () => {
@@ -831,14 +756,11 @@ const ManagerView = () => {
         const response = await api.get("/setup/users/allUsers");
         const users = response.data?.data || [];
         setAllUsers(users);
-        // ✅ FILTER BY ROLE
+
         const doers = users.filter((u) => u.role?.name === "Member");
-
         const managers = users.filter((u) => u.role?.name === "Manager");
-
         const srManagers = users.filter((u) => u.role?.name === "Sr. Manager");
 
-        // ✅ SET STATE
         setDoers(doers);
         setManagers(managers);
         setSrManagers(srManagers);
@@ -853,12 +775,9 @@ const ManagerView = () => {
     }
   }, [currentUser]);
 
-  // --- HANDLER: Stats Card Click ---
   const handleStatClick = (statType) => {
-    // Update UI filters
     if (statType === "dueToday" || statType === "overdue") {
       setSelectedStatFilter(statType);
-      // Set the status filter to match the stat card clicked
       const statusMap = { dueToday: "Due Today", overdue: "Overdue" };
       setSelectedFilterStatus(statusMap[statType]);
     } else if (statType === "completed") {
@@ -873,15 +792,16 @@ const ManagerView = () => {
     }
     setLocalCurrentPage(1);
     setSearchTerm("");
-    // Sync visual tab
+
     if (statType === "completed") setActiveTab("completed");
     else if (
       statType === "overdue" ||
       statType === "dueToday" ||
-      statType == "total"
+      statType === "total"
     )
       setActiveTab("today");
   };
+
   const debouncedSearch = useDebounce(searchTerm);
 
   const getDepartmentIds = (department) => {
@@ -897,13 +817,14 @@ const ManagerView = () => {
     }
   };
   const departmentId = getDepartmentIds(currentUser?.department);
-  // --- Fetch Trigger ---
+
+  // ⚡ SERVER-SIDE FETCH TRIGGER PASSING taskTypeFilter
   useEffect(() => {
     if (currentUser?._id) {
       dispatch(
         getRoleBasedTasks({
           userId: currentUser._id,
-          role: currentUser.role?.name, // ✅ REQUIRED
+          role: currentUser.role?.name,
           departmentId: departmentId,
           page: localCurrentPage,
           limit: localItemsPerPage,
@@ -911,11 +832,9 @@ const ManagerView = () => {
           selectedManager,
           selectedSrManager,
           search: debouncedSearch,
+          taskTypeFilter: engineViewTab, // 👈 PASSES SUB-TAB TO BACKEND
           filters: {
-            // 📊 STAT FILTER
             stat: selectedStatFilter || null,
-
-            // 📌 TAB FILTER
             taskCategory: selectedStatFilter
               ? null
               : activeTab === "today"
@@ -925,19 +844,17 @@ const ManagerView = () => {
                   : activeTab === "completed"
                     ? "completed"
                     : null,
-
-            // 📊 STATUS
             status:
               selectedFilterStatus === "all" ? null : selectedFilterStatus,
           },
         }),
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentUser,
     dispatch,
     activeTab,
+    engineViewTab, // Refetch when sub-tab changes
     selectedStatFilter,
     selectedFilterStatus,
     selectedDoer,
@@ -950,27 +867,24 @@ const ManagerView = () => {
     refreshTaskAfterReopen,
   ]);
 
-  // --- Client-side Search Function (backup) ---
-  const handleClientSideSearch = (tasks, term) => {
-    if (!term || !term.trim()) return tasks;
-    const searchTermLower = term.toLowerCase().trim();
-    return tasks.filter((task) => {
-      const taskId = (task.TaskId || "").toLowerCase();
-      const title = (task.title || "").toLowerCase();
-      const description = (task.description || "").toLowerCase();
-      return (
-        taskId.includes(searchTermLower) ||
-        title.includes(searchTermLower) ||
-        description.includes(searchTermLower)
-      );
-    });
-  };
+  // ⚡ DYNAMIC HEADERS FOR FMS SUBMISSION DATA (isTableColumn === true)
+  const dynamicFmsHeaders = useMemo(() => {
+    const headersMap = new Map();
 
-  const allowedRoles = ["Admin", "Owner", "Sr. Manager", "Manager"];
-  const hasAccess =
-    currentUser &&
-    currentUser.role &&
-    allowedRoles.includes(currentUser.role.name);
+    if (!Array.isArray(fetchedTasks)) return [];
+
+    fetchedTasks.forEach((task) => {
+      if (task.taskType === "FmsInstanceTask" && task.submissionData) {
+        Object.values(task.submissionData).forEach((field) => {
+          if (field && field.isTableColumn === true && field.label) {
+            headersMap.set(field.label, field.label);
+          }
+        });
+      }
+    });
+
+    return Array.from(headersMap.values());
+  }, [fetchedTasks]);
 
   if (!currentUser) {
     return (
@@ -980,23 +894,6 @@ const ManagerView = () => {
     );
   }
 
-  // if (!hasAccess) {
-  //   return (
-  //     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-  //       <Card className="p-8 shadow-lg text-center">
-  //         <CardTitle className="text-red-600 mb-4">Access Denied</CardTitle>
-  //         <CardDescription>
-  //           You do not have permission to view this page.
-  //         </CardDescription>
-  //         <Button onClick={() => navigate("/")} className="mt-4">
-  //           Go to Home
-  //         </Button>
-  //       </Card>
-  //     </div>
-  //   );
-  // }
-
-  // --- Handlers ---
   const handleTabChange = (value) => {
     setActiveTab(value);
     setSelectedStatFilter(null);
@@ -1063,7 +960,7 @@ const ManagerView = () => {
     }
   };
 
-  // --- Common Table Headers for all tabs ---
+  // --- Dynamic Table Headers ---
   const CommonTableHeaders = () => (
     <TableHeader>
       <TableRow>
@@ -1071,15 +968,26 @@ const ManagerView = () => {
         <TableHead>Task Id</TableHead>
         <TableHead>Task Title</TableHead>
         <TableHead>Description</TableHead>
+
+        {/* ⚡ RENDER DYNAMIC HEADERS FOR FMS SUBMISSION DATA (ONLY IN FMS SUB-TAB) */}
+        {engineViewTab === "fms" &&
+          dynamicFmsHeaders.map((headerLabel) => (
+            <TableHead
+              key={headerLabel}
+              className="font-semibold text-blue-700 whitespace-nowrap"
+            >
+              {headerLabel}
+            </TableHead>
+          ))}
+
         <TableHead>Assigned By</TableHead>
         <TableHead>Assigned To</TableHead>
         <TableHead>Type</TableHead>
         <TableHead>Attachment</TableHead>
-        <TableHead>Start Date & Time</TableHead>{" "}
+        <TableHead>Start Date & Time</TableHead>
         <TableHead>Due Date & Time</TableHead>
         <TableHead>Time left</TableHead>
         <TableHead>Status</TableHead>
-        {/* Keeping Actions for functionality, though not in the strict list */}
         <TableHead>Actions</TableHead>
       </TableRow>
     </TableHeader>
@@ -1095,45 +1003,32 @@ const ManagerView = () => {
       Array.isArray(allUsers) && allUsers.length > 0
         ? allUsers.find((u) => u._id === task.assignedTo?._id)
         : null;
+
     return (
       <TableRow
         key={task._id}
         className={`
-                          ${task.isOverdue ? "bg-red-50" : ""}
-                          ${task.isReopen ? "bg-yellow-50 border-l-4 border-yellow-500" : ""}
-                        `}
+          ${task.isOverdue ? "bg-red-50" : ""}
+          ${task.isReopen ? "bg-yellow-50 border-l-4 border-yellow-500" : ""}
+        `}
       >
         <TableCell>
           {(localCurrentPage - 1) * localItemsPerPage + index + 1}
         </TableCell>
         <TableCell>{task.TaskId || "-"}</TableCell>
-        {/* <TableCell className="font-medium">{task.title}</TableCell> */}
         <TableCell className="font-medium">
           <div className="flex flex-col gap-1">
-            {/* TITLE + BADGE */}
             <div className="flex items-center gap-2 flex-wrap">
               <span>{task.title}</span>
 
               {task.isReopen && (
-                <span
-                  className="
-            inline-flex items-center gap-1
-            px-2 py-0.5
-            rounded-full
-            text-[10px]
-            font-semibold
-            bg-yellow-100
-            text-yellow-800
-            border border-yellow-300
-          "
-                >
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300">
                   <RotateCcw className="h-3 w-3" />
                   Reopened
                 </span>
               )}
             </div>
 
-            {/* VIEW REASON ALWAYS NEXT LINE */}
             {task.reopenedReason && (
               <div>
                 <Popover
@@ -1150,7 +1045,6 @@ const ManagerView = () => {
                           <h4 className="font-semibold text-sm">
                             Reopened Task
                           </h4>
-
                           <p className="text-xs text-gray-500">
                             {task.reopenedAt
                               ? formatDate(task.reopenedAt)
@@ -1163,19 +1057,7 @@ const ManagerView = () => {
                         <p className="text-xs font-medium text-gray-500 mb-1">
                           Reason
                         </p>
-
-                        <div
-                          className="
-                    text-sm
-                    bg-gray-50
-                    border
-                    rounded-lg
-                    p-3
-                    whitespace-pre-wrap
-                    break-words
-                    text-gray-700
-                  "
-                        >
+                        <div className="text-sm bg-gray-50 border rounded-lg p-3 whitespace-pre-wrap break-words text-gray-700">
                           {task.reopenedReason}
                         </div>
                       </div>
@@ -1191,15 +1073,7 @@ const ManagerView = () => {
                     </div>
                   }
                 >
-                  <button
-                    className="
-              text-[11px]
-              text-blue-600
-              cursor-pointer
-              hover:text-blue-800
-              hover:underline
-            "
-                  >
+                  <button className="text-[11px] text-blue-600 cursor-pointer hover:text-blue-800 hover:underline">
                     View Reason
                   </button>
                 </Popover>
@@ -1223,6 +1097,34 @@ const ManagerView = () => {
             View
           </Button>
         </TableCell>
+
+        {/* ⚡ RENDER DYNAMIC CELLS FOR FMS SUBMISSION DATA */}
+        {engineViewTab === "fms" &&
+          dynamicFmsHeaders.map((headerLabel) => {
+            const matchedField = task.submissionData
+              ? Object.values(task.submissionData).find(
+                  (f) =>
+                    f && f.isTableColumn === true && f.label === headerLabel,
+                )
+              : null;
+
+            const rawVal = matchedField?.value;
+            let displayVal = rawVal ?? "-";
+
+            if (matchedField?.fieldType === "date" && rawVal) {
+              displayVal = dayjs(rawVal).format("DD MMM YYYY");
+            }
+
+            return (
+              <TableCell
+                key={headerLabel}
+                className="font-medium text-gray-700 whitespace-nowrap"
+              >
+                {String(displayVal)}
+              </TableCell>
+            );
+          })}
+
         <TableCell>
           <div className="flex flex-row gap-1">
             <span className="text-sm font-medium text-gray-900">
@@ -1230,25 +1132,23 @@ const ManagerView = () => {
             </span>
             {assignedByUser?.name && (
               <span
-                className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
-      ${
-        assignedByUser.role?.name === "Admin"
-          ? "bg-red-100 text-red-700"
-          : assignedByUser.role?.name === "Owner"
-            ? "bg-purple-100 text-purple-700"
-            : assignedByUser.role?.name === "Sr. Manager"
-              ? "bg-blue-100 text-blue-700"
-              : assignedByUser.role?.name === "Manager"
-                ? "bg-green-100 text-green-700"
-                : "bg-gray-100 text-gray-700"
-      }
-    `}
+                className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium ${
+                  assignedByUser.role?.name === "Admin"
+                    ? "bg-red-100 text-red-700"
+                    : assignedByUser.role?.name === "Owner"
+                      ? "bg-purple-100 text-purple-700"
+                      : assignedByUser.role?.name === "Sr. Manager"
+                        ? "bg-blue-100 text-blue-700"
+                        : assignedByUser.role?.name === "Manager"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-700"
+                }`}
               >
                 {assignedByUser.role?.name}
               </span>
             )}
           </div>
-        </TableCell>{" "}
+        </TableCell>
         <TableCell>
           <div className="flex flex-row gap-1">
             <span className="text-sm font-medium text-gray-900">
@@ -1257,26 +1157,23 @@ const ManagerView = () => {
 
             {assignedToUser?.name && (
               <span
-                className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
-      ${
-        assignedToUser.role?.name === "Admin"
-          ? "bg-red-100 text-red-700"
-          : assignedToUser.role?.name === "Owner"
-            ? "bg-purple-100 text-purple-700"
-            : assignedToUser.role?.name === "Sr. Manager"
-              ? "bg-blue-100 text-blue-700"
-              : assignedToUser.role?.name === "Manager"
-                ? "bg-green-100 text-green-700"
-                : "bg-gray-100 text-gray-700"
-      }
-    `}
+                className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium ${
+                  assignedToUser.role?.name === "Admin"
+                    ? "bg-red-100 text-red-700"
+                    : assignedToUser.role?.name === "Owner"
+                      ? "bg-purple-100 text-purple-700"
+                      : assignedToUser.role?.name === "Sr. Manager"
+                        ? "bg-blue-100 text-blue-700"
+                        : assignedToUser.role?.name === "Manager"
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-700"
+                }`}
               >
                 {assignedToUser.role?.name}
               </span>
             )}
           </div>
-        </TableCell>{" "}
-        {/* <TableCell>{task.taskType || "-"}</TableCell> */}
+        </TableCell>
         <TableCell>
           <span
             className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -1301,7 +1198,6 @@ const ManagerView = () => {
           ) : (
             "NA"
           )}
-          {/* <ViewLink file={task.attachmentFile} /> */}
         </TableCell>
         <TableCell>
           {task.startDate ? formatDate(task.startDate) : "-"}
@@ -1312,13 +1208,11 @@ const ManagerView = () => {
             const dueStatus = getDueStatus(task.dueDate);
 
             if (!dueStatus) return "-";
-            if (task.status == "Completed") return;
+            if (task.status === "Completed") return;
 
             return (
               <div
-                className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm
-                transition-all duration-300 hover:-translate-y-1 hover:shadow-lg
-                ${
+                className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
                   dueStatus.type === "overdue"
                     ? "border-l-4 border-l-red-500"
                     : dueStatus.type === "today"
@@ -1326,46 +1220,41 @@ const ManagerView = () => {
                       : "border-l-4 border-l-emerald-500"
                 }`}
               >
-                {/* Animated Status Dot */}
                 <div className="mr-3 relative flex h-3 w-3 items-center justify-center">
                   {(dueStatus.type === "overdue" ||
                     dueStatus.type === "today" ||
                     dueStatus.type === "upcoming") && (
                     <span
-                      className={`absolute inline-flex h-full w-full rounded-full opacity-75
-                                            ${
-                                              dueStatus.type === "overdue"
-                                                ? "bg-red-500 animate-ping"
-                                                : dueStatus.type === "today"
-                                                  ? "bg-amber-500 animate-ping"
-                                                  : "bg-emerald-500 animate-ping"
-                                            }`}
+                      className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                        dueStatus.type === "overdue"
+                          ? "bg-red-500 animate-ping"
+                          : dueStatus.type === "today"
+                            ? "bg-amber-500 animate-ping"
+                            : "bg-emerald-500 animate-ping"
+                      }`}
                     />
                   )}
 
                   <span
-                    className={`relative inline-flex h-3 w-3 rounded-full
-                      ${
-                        dueStatus.type === "overdue"
-                          ? "bg-red-500"
-                          : dueStatus.type === "today"
-                            ? "bg-amber-500"
-                            : "bg-emerald-500"
-                      }`}
+                    className={`relative inline-flex h-3 w-3 rounded-full ${
+                      dueStatus.type === "overdue"
+                        ? "bg-red-500"
+                        : dueStatus.type === "today"
+                          ? "bg-amber-500"
+                          : "bg-emerald-500"
+                    }`}
                   />
                 </div>
 
-                {/* Content */}
                 <div>
                   <p
-                    className={`text-xs font-semibold
-                      ${
-                        dueStatus.type === "overdue"
-                          ? "text-red-700"
-                          : dueStatus.type === "today"
-                            ? "text-amber-700"
-                            : "text-emerald-700"
-                      }`}
+                    className={`text-xs font-semibold ${
+                      dueStatus.type === "overdue"
+                        ? "text-red-700"
+                        : dueStatus.type === "today"
+                          ? "text-amber-700"
+                          : "text-emerald-700"
+                    }`}
                   >
                     {dueStatus.type === "overdue"
                       ? "Overdue"
@@ -1378,21 +1267,12 @@ const ManagerView = () => {
                     {dueStatus.text}
                   </p>
                 </div>
-
-                {/* Shine Effect */}
-                <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
-                  <span className="absolute -left-full top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 hover:left-full" />
-                </span>
               </div>
             );
           })()}
         </TableCell>
-        {/* <TableCell className={task.delay ? "text-red-600" : ""}>
-          {task.delay || "-"}
-        </TableCell> */}
         <TableCell>{getStatusBadge(task.status)}</TableCell>
         <TableCell>
-          {/* {activeTab === "today" && ( */}
           <TodayTaskActions
             activeTab={activeTab}
             task={task}
@@ -1405,19 +1285,82 @@ const ManagerView = () => {
             setReopenTask={setReopenTask}
             setReopenModalOpen={setReopenModalOpen}
           />
-          {/* )} */}
         </TableCell>
       </TableRow>
     );
   };
 
+  const renderTableContent = () => (
+    <div className="space-y-4">
+      {/* ⚡ SUB-TAB ENGINE FILTER BUTTONS */}
+      <div className="flex items-center gap-2 border-b pb-3 pt-1">
+        <Button
+          variant={engineViewTab === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setEngineViewTab("all");
+            setLocalCurrentPage(1);
+          }}
+          className="rounded-full text-xs font-medium cursor-pointer"
+        >
+          All Tasks
+        </Button>
+        <Button
+          variant={engineViewTab === "dothis" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setEngineViewTab("dothis");
+            setLocalCurrentPage(1);
+          }}
+          className="rounded-full text-xs font-medium cursor-pointer flex items-center gap-1.5"
+        >
+          <Layers className="h-3.5 w-3.5" />
+          Delegation & Recurring
+        </Button>
+        <Button
+          variant={engineViewTab === "fms" ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            setEngineViewTab("fms");
+            setLocalCurrentPage(1);
+          }}
+          className="rounded-full text-xs font-medium cursor-pointer flex items-center gap-1.5"
+        >
+          <Zap className="h-3.5 w-3.5" />
+          FMS Engine Tasks
+        </Button>
+      </div>
+
+      <div className="overflow-x-auto">
+        <Table>
+          <CommonTableHeaders />
+          <TableBody>
+            {fetchedTasks.length > 0 ? (
+              fetchedTasks.map((task, index) => renderCommonRow(task, index))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={
+                    13 +
+                    (engineViewTab === "fms" ? dynamicFmsHeaders.length : 0)
+                  }
+                  className="text-center py-8 text-gray-500"
+                >
+                  No tasks found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 py-4">
-      <div className="shadow-xl border-0 overflow-hidden rounded-xl ">
-        {" "}
-        <div className=" p-4 py-4">
+      <div className="shadow-xl border-0 overflow-hidden rounded-xl bg-white">
+        <div className="p-4 py-4">
           <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-4 border-y border-white/30 rounded-xl">
-            {" "}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
               <div>
                 <div className="text-2xl font-bold">{viewHeading}</div>
@@ -1473,104 +1416,20 @@ const ManagerView = () => {
             )}
             {status !== "loading" && (
               <>
-                {/* --- Today's Task Tab --- */}
-                <TabsContent value="today" className="mt-4">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <CommonTableHeaders />
-                      <TableBody>
-                        {fetchedTasks.length > 0 ? (
-                          fetchedTasks.map((task, index) =>
-                            renderCommonRow(task, index),
-                          )
-                        ) : (
-                          <TableRow>
-                            <TableCell
-                              colSpan={12}
-                              className="text-center py-8 text-gray-500"
-                            >
-                              No tasks found.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                <TabsContent value="today" className="">
+                  {renderTableContent()}
                 </TabsContent>
 
-                {/* --- Upcoming Tasks Tab --- */}
-                <TabsContent value="upcoming" className="mt-4">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <CommonTableHeaders />
-                      <TableBody>
-                        {fetchedTasks.length > 0 ? (
-                          fetchedTasks.map((task, index) =>
-                            renderCommonRow(task, index),
-                          )
-                        ) : (
-                          <TableRow>
-                            <TableCell
-                              colSpan={12}
-                              className="text-center py-8 text-gray-500"
-                            >
-                              No upcoming tasks.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                <TabsContent value="upcoming" className="">
+                  {renderTableContent()}
                 </TabsContent>
 
-                {/* --- Completed Tasks Tab --- */}
-                <TabsContent value="completed" className="mt-4">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <CommonTableHeaders />
-                      <TableBody>
-                        {fetchedTasks.length > 0 ? (
-                          fetchedTasks.map((task, index) =>
-                            renderCommonRow(task, index),
-                          )
-                        ) : (
-                          <TableRow>
-                            <TableCell
-                              colSpan={12}
-                              className="text-center py-8 text-gray-500"
-                            >
-                              No completed tasks.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                <TabsContent value="completed" className="">
+                  {renderTableContent()}
                 </TabsContent>
 
-                {/* --- Escalated Tasks Tab --- */}
-                <TabsContent value="escalated" className="mt-4">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <CommonTableHeaders />
-                      <TableBody>
-                        {fetchedTasks.length > 0 ? (
-                          fetchedTasks.map((task, index) =>
-                            renderCommonRow(task, index),
-                          )
-                        ) : (
-                          <TableRow>
-                            <TableCell
-                              colSpan={12}
-                              className="text-center py-8 text-gray-500"
-                            >
-                              No escalated tasks.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                <TabsContent value="escalated" className="">
+                  {renderTableContent()}
                 </TabsContent>
 
                 <Pagination
@@ -1588,53 +1447,6 @@ const ManagerView = () => {
       </div>
 
       {/* --- DIALOGS --- */}
-      {/* <Dialog
-        open={isChecklistDialogOpen}
-        onOpenChange={setIsChecklistDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Checklist: {selectedTaskForChecklist?.title}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4 max-h-60 overflow-y-auto">
-            {checklistItems.length > 0 ? (
-              <ul className="space-y-2">
-                {checklistItems.map((item, index) => (
-                  <li
-                    key={index}
-                    className="flex items-center p-2 bg-gray-50 rounded-md border"
-                  >
-                    <Checkbox
-                      id={`chk-${index}`}
-                      checked={item.isCompleted}
-                      disabled
-                      className="mr-3"
-                    />
-                    <label
-                      className={`text-sm ${item.isCompleted ? "line-through text-gray-500" : ""}`}
-                    >
-                      {typeof item === "object"
-                        ? item.text || item.title
-                        : item}
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-gray-500 text-center">
-                No checklist items for this task.
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsChecklistDialogOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog> */}
       <Dialog
         open={isChecklistDialogOpen}
         onOpenChange={setIsChecklistDialogOpen}
@@ -1650,7 +1462,6 @@ const ManagerView = () => {
             {checklistItems?.length > 0 ? (
               <ul className="space-y-2">
                 {checklistItems.map((item, index) => {
-                  // ✅ Normalize item
                   const isObject = typeof item === "object";
 
                   const text = isObject
@@ -1700,6 +1511,7 @@ const ManagerView = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       <Dialog
         open={isFillFormDialogOpen}
         onOpenChange={setIsFillFormDialogOpen}
@@ -1712,7 +1524,6 @@ const ManagerView = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            {/* User Info */}
             <div className="grid grid-cols-2 gap-3">
               <Input
                 label="Name"
@@ -1726,7 +1537,6 @@ const ManagerView = () => {
               />
             </div>
 
-            {/* Dynamic Form Fields */}
             {selectedTaskForForm?.createdForm?.length > 0 && (
               <div className="border rounded-lg p-4 space-y-4">
                 <h3 className="font-semibold text-sm text-gray-600">
@@ -1743,13 +1553,11 @@ const ManagerView = () => {
                         {formatLabel(field.fieldName)}
                       </Label>
 
-                      {/* TEXT / NUMBER */}
                       {(field.fieldType === "text" ||
                         field.fieldType === "number") && (
                         <Input value={value || "-"} readOnly />
                       )}
 
-                      {/* TEXTAREA */}
                       {field.fieldType === "textarea" && (
                         <textarea
                           className="w-full border rounded-md p-2 text-sm bg-gray-50"
@@ -1758,7 +1566,6 @@ const ManagerView = () => {
                         />
                       )}
 
-                      {/* DATE */}
                       {field.fieldType === "date" && (
                         <Input
                           value={
@@ -1768,7 +1575,6 @@ const ManagerView = () => {
                         />
                       )}
 
-                      {/* DROPDOWN */}
                       {field.fieldType === "dropdown" && (
                         <Input
                           value={
@@ -1781,7 +1587,6 @@ const ManagerView = () => {
                         />
                       )}
 
-                      {/* CHECKBOX */}
                       {field.fieldType === "checkbox" && (
                         <div className="flex items-center gap-2 text-sm">
                           <input type="checkbox" checked={!!value} readOnly />
@@ -1789,7 +1594,6 @@ const ManagerView = () => {
                         </div>
                       )}
 
-                      {/* FILE */}
                       {field.fieldType === "file" &&
                         (value ? (
                           <a
@@ -1837,6 +1641,7 @@ const ManagerView = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       <Dialog open={reopenModalOpen} onOpenChange={setReopenModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -1851,10 +1656,7 @@ const ManagerView = () => {
               value={reopenReason}
               onChange={(e) => setReopenReason(e.target.value)}
               placeholder="Enter reopen reason..."
-              className="
-          w-full border rounded-lg p-3 outline-none
-          focus:ring-2 focus:ring-yellow-500
-        "
+              className="w-full border rounded-lg p-3 outline-none focus:ring-2 focus:ring-yellow-500"
             />
           </div>
 
@@ -1877,13 +1679,12 @@ const ManagerView = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       {queryDrawerOpen && selectedQueryTask && (
         <TaskChat
           task={selectedQueryTask}
           open={queryDrawerOpen}
-          // onClose={() => setQueryDrawerOpen(false)}
           onClose={() => {
-            // ✅ reset unread count when closing
             if (selectedQueryTask?.conversationId) {
               setUnreadMap((prev) => ({
                 ...prev,
