@@ -127,6 +127,7 @@ export const getFilterFMSTasks = createAsyncThunk(
 
       const {
         userId,
+        role,
         page = 1,
         limit = 10,
         dateRange,
@@ -137,6 +138,7 @@ export const getFilterFMSTasks = createAsyncThunk(
 
       const payload = {
         userId,
+        role,
         page,
         limit,
         creatorOrAssignorId,
@@ -307,10 +309,11 @@ export const getMyFMSTaskStats = createAsyncThunk(
     try {
       const url = "/tasks/myFMSTask-stats";
 
-      const { userId, creatorOrAssignorId } = params;
+      const { userId, role, creatorOrAssignorId } = params;
 
       const payload = {
         userId,
+        role,
         creatorOrAssignorId,
       };
 

@@ -482,7 +482,6 @@ const FilterBar = ({
 
       <div className="flex flex-col sm:flex-row gap-2 flex-[2]">
         {/* All Sr. Managers Filter - Visible to Admin, Owner */}
-        {isAdminOrOwner && (
           <Select
             value={selectedSrManager}
             onValueChange={(val) =>
@@ -503,9 +502,7 @@ const FilterBar = ({
               ))}
             </SelectContent>
           </Select>
-        )}
         {/* All Managers Filter - Visible to Admin, Owner, Sr. Manager */}
-        {(isAdminOrOwner || isSrManager) && (
           <Select
             value={selectedManager}
             onValueChange={(val) => handleFilterChange(setSelectedManager, val)}
@@ -524,7 +521,6 @@ const FilterBar = ({
               ))}
             </SelectContent>
           </Select>
-        )}
         {/* All Doers Filter - Always visible */}
         <Select
           value={selectedDoer}

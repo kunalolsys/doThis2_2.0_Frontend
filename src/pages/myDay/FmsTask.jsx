@@ -1379,10 +1379,16 @@ const FmsTasks = () => {
     let mounted = true;
     if (currentUser?._id) {
       setIsFetching(true);
-      dispatch(getMyFMSTaskStats({ userId: currentUser._id }));
+      dispatch(
+        getMyFMSTaskStats({
+          userId: currentUser._id,
+          role: currentUser.role?.name,
+        }),
+      );
       dispatch(
         getFilterFMSTasks({
           userId: currentUser._id,
+          role: currentUser.role?.name, // ✅ REQUIRED
           page: localCurrentPage,
           limit: localItemsPerPage,
           dateRange,
@@ -1704,6 +1710,7 @@ const FmsTasks = () => {
     dispatch(
       getFilterFMSTasks({
         userId: currentUser._id,
+        role: currentUser.role?.name, // ✅ REQUIRED
         page: localCurrentPage,
         limit: localItemsPerPage,
         search: debouncedSearch || undefined,
@@ -1739,6 +1746,7 @@ const FmsTasks = () => {
       dispatch(
         getFilterFMSTasks({
           userId: currentUser._id,
+          role: currentUser.role?.name, // ✅ REQUIRED
           page: localCurrentPage,
           limit: localItemsPerPage,
           search: debouncedSearch || undefined,
@@ -1926,6 +1934,7 @@ const FmsTasks = () => {
                 dispatch(
                   getFilterFMSTasks({
                     userId: currentUser._id,
+                    role: currentUser.role?.name, // ✅ REQUIRED
                     page: localCurrentPage,
                     limit: localItemsPerPage,
                     search: debouncedSearch || undefined,
