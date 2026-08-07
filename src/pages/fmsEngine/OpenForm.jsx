@@ -1556,7 +1556,44 @@ export default function OpenFormBuilder() {
       </div>
     );
   };
-
+  // 🔴 Collect all template IDs linked in existing forms (excluding current editing form)
+  const linkedTemplateIds = useMemo(() => {
+    return forms
+      .map((f) => {
+        // Exclude current editing form so you can keep its selected template
+        if (editingFormId && f._id === editingFormId) return null;
+        return (
+          f.linkedTemplate?._id || f.linkedTemplate?.id || f.linkedTemplate
+        );
+      })
+      .filter(Boolean);
+  }, [forms, editingFormId]);
+  // 🔄 Helper function to clear form state and start fresh
+  const resetFormBuilder = useCallback(() => {
+    setEditingFormId(null);
+    setConfig({
+      formName: "",
+      description: "",
+      linkedTemplate: "",
+      allowMultipleSubmissions: true,
+      isActive: true,
+    });
+    setFields([
+      {
+        id: `field_fullName_${Date.now()}`,
+        fieldId: "fullName",
+        label: "Full Name",
+        fieldType: "text",
+        placeholder: "Enter your full name",
+        isRequired: true,
+        isTableColumn: true,
+        optionType: "STATIC",
+        masterSource: null,
+        options: [],
+        order: 1,
+      },
+    ]);
+  }, []);
   return (
     <div
       style={{
@@ -1672,6 +1709,18 @@ export default function OpenFormBuilder() {
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
+              {/* ➕ Create New Form Button */}
+              <Btn
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  resetFormBuilder();
+                  setTab("builder");
+                }}
+              >
+                <Plus size={14} /> Create New Form
+              </Btn>
+
               <Btn
                 variant="secondary"
                 size="sm"
@@ -1792,11 +1841,34 @@ export default function OpenFormBuilder() {
                       size="large"
                       allowClear
                     >
-                      {templates.map((t) => (
-                        <Option key={t._id} value={t._id}>
-                          {t.templateName}
-                        </Option>
-                      ))}
+                      {templates.map((t) => {
+                        const isLinked = linkedTemplateIds.includes(t._id);
+                        return (
+                          <Option key={t._id} value={t._id} disabled={isLinked}>
+                            <div
+                              style={{
+                                display: "flex",
+                                justify: "space-between",
+                                alignItems: "center",
+                              }}
+                            >
+                              <span>{t.templateName}</span>
+                              {isLinked && (
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    color: T.amber,
+                                    fontWeight: 600,
+                                    marginLeft: 8,
+                                  }}
+                                >
+                                  (Already Linked)
+                                </span>
+                              )}
+                            </div>
+                          </Option>
+                        );
+                      })}
                     </Select>
                     {selectedTemplate && (
                       <div
