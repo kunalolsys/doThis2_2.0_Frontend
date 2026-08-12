@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
 import api from "../../../lib/api";
 
 const initialState = {
@@ -40,10 +39,11 @@ export const fetchDepartments = createAsyncThunk(
 
 export const addDepartment = createAsyncThunk(
   "departments/addDepartment",
-  async (department, { rejectWithValue }) => {
+  async (departmentData, { rejectWithValue }) => {
     try {
-      const response = await api.post(`/setup/departments`, department);
-      return response.data.department;
+      // departmentData contains { name, workingWeekDays }
+      const response = await api.post(`/setup/departments`, departmentData);
+      return response.data.department || response.data.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
     }
@@ -52,11 +52,17 @@ export const addDepartment = createAsyncThunk(
 
 export const updateDepartment = createAsyncThunk(
   "departments/updateDepartment",
-  async (department) => {
-    const response = await api.put(`/setup/departments/${department._id}`, {
-      name: department.name,
-    });
-    return response.data.data;
+  async (departmentData, { rejectWithValue }) => {
+    try {
+      const { _id, name, workingWeekDays } = departmentData;
+      const response = await api.put(`/setup/departments/${_id}`, {
+        name,
+        workingWeekDays,
+      });
+      return response.data.data || response.data.department;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
   },
 );
 
@@ -71,6 +77,7 @@ export const deleteDepartment = createAsyncThunk(
     }
   },
 );
+
 export const exportDepts = createAsyncThunk(
   "departments/exportDepartments",
   async (params = {}, { rejectWithValue }) => {
@@ -88,12 +95,14 @@ export const exportDepts = createAsyncThunk(
     }
   },
 );
+
 const departmentSlice = createSlice({
   name: "departments",
   initialState,
   reducers: {},
   extraReducers: (builder) => {
     builder
+      // Fetch Departments
       .addCase(fetchDepartments.pending, (state) => {
         state.status = "loading";
       })
@@ -104,12 +113,28 @@ const departmentSlice = createSlice({
       })
       .addCase(fetchDepartments.rejected, (state, action) => {
         state.status = "failed";
-        state.error = action.error.message;
+        state.error = action.payload;
+      })
+
+      // Add Department
+      .addCase(addDepartment.pending, (state) => {
+        state.status = "loading";
       })
       .addCase(addDepartment.fulfilled, (state, action) => {
-        state.departments.push(action.payload);
+        state.status = "succeeded";
+        state.departments.unshift(action.payload);
+      })
+      .addCase(addDepartment.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
+      })
+
+      // Update Department
+      .addCase(updateDepartment.pending, (state) => {
+        state.status = "loading";
       })
       .addCase(updateDepartment.fulfilled, (state, action) => {
+        state.status = "succeeded";
         const index = state.departments.findIndex(
           (dept) => dept._id === action.payload._id,
         );
@@ -117,10 +142,24 @@ const departmentSlice = createSlice({
           state.departments[index] = action.payload;
         }
       })
+      .addCase(updateDepartment.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
+      })
+
+      // Delete Department
+      .addCase(deleteDepartment.pending, (state) => {
+        state.status = "loading";
+      })
       .addCase(deleteDepartment.fulfilled, (state, action) => {
+        state.status = "succeeded";
         state.departments = state.departments.filter(
           (dept) => dept._id !== action.payload,
         );
+      })
+      .addCase(deleteDepartment.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
       });
   },
 });

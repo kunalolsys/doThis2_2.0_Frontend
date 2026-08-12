@@ -396,6 +396,11 @@ const FilterBar = ({
   selectedSrManager,
   setSelectedSrManager,
   currentUser,
+  selectedTemplate,
+  setSelectedTemplate,
+  templates,
+  loading,
+  engineViewTab,
 }) => {
   const handleFilterChange = (setter, value) => {
     setter(value);
@@ -494,6 +499,29 @@ const FilterBar = ({
             <SelectItem value="Reopened">Re-opened</SelectItem>
           </SelectContent>
         </Select>
+        {engineViewTab == "fms" && (
+          <Select
+            value={selectedTemplate}
+            onValueChange={(val) => setSelectedTemplate(val)}
+            disabled={loading}
+          >
+            <SelectTrigger className="w-full bg-white">
+              <SelectValue
+                placeholder={loading ? "Loading..." : "All Templates"}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="font-semibold text-blue-700">
+                All Templates
+              </SelectItem>
+              {templates.map((template) => (
+                <SelectItem key={template._id} value={template._id}>
+                  {template.templateName} ({template.fmsId})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {showExport && (
@@ -640,7 +668,41 @@ const ManagerView = () => {
   const [reopenReason, setReopenReason] = useState("");
   const [reopenLoading, setReopenLoading] = useState(false);
   const [refreshTaskAfterReopen, setRefreshTaskAfterReopen] = useState(false);
+  const [templates, setTemplates] = useState([]);
+  const [selectedTemplate, setSelectedTemplate] = useState("all");
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    const fetchTemplates = async () => {
+      if (!currentUser?._id) return;
 
+      setLoading(true);
+      try {
+        // Send POST request with role & filter context matching getRoleBasedTasks
+        const response = await api.post("/fms/assigned-templates", {
+          userId: currentUser._id,
+          role: currentUser.role?.name,
+          selectedDoer,
+          selectedManager,
+          selectedSrManager,
+        });
+
+        if (response.data?.success) {
+          setTemplates(response.data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching role-based templates:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTemplates();
+  }, [currentUser, selectedDoer, selectedManager, selectedSrManager]);
+
+  const handleFilterChange = (setter, val) => {
+    setter(val);
+    // Add additional filtering logic here if needed
+  };
   const handleReopenTask = async () => {
     if (!reopenReason.trim()) {
       toast.error("Please enter reopen reason");
@@ -832,6 +894,7 @@ const ManagerView = () => {
           selectedManager,
           selectedSrManager,
           search: debouncedSearch,
+          selectedTemplate,
           taskTypeFilter: engineViewTab, // 👈 PASSES SUB-TAB TO BACKEND
           filters: {
             stat: selectedStatFilter || null,
@@ -864,6 +927,7 @@ const ManagerView = () => {
     localItemsPerPage,
     debouncedSearch,
     reopenLoading,
+    selectedTemplate,
     refreshTaskAfterReopen,
   ]);
 
@@ -1407,6 +1471,11 @@ const ManagerView = () => {
               selectedAssignor={selectedAssignor}
               setSelectedAssignor={setSelectedAssignor}
               currentUser={currentUser}
+              selectedTemplate={selectedTemplate}
+              setSelectedTemplate={setSelectedTemplate}
+              templates={templates}
+              loading={loading}
+              engineViewTab={engineViewTab}
             />
 
             {status === "loading" && (

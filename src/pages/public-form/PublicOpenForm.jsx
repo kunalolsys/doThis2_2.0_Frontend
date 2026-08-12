@@ -55,12 +55,32 @@ const DynamicSelectField = ({ field, value, onChange, error, commonStyle }) => {
           },
         })
         .then((res) => {
-          // Normalize response structure (support array or res.data.data)
-          const optionsList = Array.isArray(res.data)
+          // 1. Normalize array structure
+          const rawList = Array.isArray(res.data)
             ? res.data
-            : res.data || res.data?.options || [];
+            : res.data?.data || res.data?.options || [];
 
-          setMasterOptions(optionsList);
+          // 2. Extract string values and eliminate empty / null / blank strings
+          const cleanOptions = rawList
+            .map((item) => {
+              if (typeof item === "string") return item.trim();
+              if (typeof item === "object" && item !== null) {
+                return (
+                  item.vendor_name ||
+                  item.vendorName ||
+                  item.name ||
+                  item.dtenName ||
+                  ""
+                ).trim();
+              }
+              return "";
+            })
+            .filter((name) => name !== ""); // 🛑 Filter out empty options
+
+          // 3. Keep unique values only
+          const uniqueOptions = [...new Set(cleanOptions)];
+
+          setMasterOptions(uniqueOptions);
         })
         .catch((err) => {
           console.error(`Failed to load options for ${field.label}:`, err);

@@ -31,6 +31,7 @@ export const createHoliday = createAsyncThunk(
   "holidays/createHoliday",
   async (holidayData, { rejectWithValue }) => {
     try {
+      // holidayData includes { name, date, description, isGlobal, applicableDepartments }
       const response = await api.post("/setup/holiday", holidayData);
       return response.data.data.holiday;
     } catch (error) {
@@ -82,6 +83,7 @@ export const exportHolidaysRecord = createAsyncThunk(
     }
   },
 );
+
 const holidaySlice = createSlice({
   name: "holidays",
   initialState: {
@@ -111,18 +113,20 @@ const holidaySlice = createSlice({
         state.status = "failed";
         state.error = action.payload;
       })
+
       // Create Holiday
       .addCase(createHoliday.pending, (state) => {
         state.status = "loading";
       })
       .addCase(createHoliday.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.holidays.push(action.payload);
+        state.holidays.unshift(action.payload);
       })
       .addCase(createHoliday.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload;
       })
+
       // Update Holiday
       .addCase(updateHoliday.pending, (state) => {
         state.status = "loading";
@@ -140,6 +144,7 @@ const holidaySlice = createSlice({
         state.status = "failed";
         state.error = action.payload;
       })
+
       // Delete Holiday
       .addCase(deleteHoliday.pending, (state) => {
         state.status = "loading";

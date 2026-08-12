@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   ChevronUp,
   ChevronDown,
@@ -9,15 +9,14 @@ import {
   Trash2,
   ListTodo,
   ClipboardList,
-  Users as UsersIcon, // Renamed to avoid conflict
+  Calendar as CalendarIcon,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useDispatch } from "react-redux";
 import api from "../lib/api";
-import { fetchTasks } from "../redux/slices/task/taskSlice"; // Assuming fetchTasks is needed here
 
-import { cn, frequencyMap } from "./utils";
+import { frequencyMap } from "./utils";
 import {
   Card,
   CardHeader,
@@ -30,14 +29,13 @@ import {
   Textarea,
   Checkbox,
   Select,
-  SelectContext,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
   RadioGroup,
   RadioGroupItem,
-} from "./ui/index.jsx"; // Import specific UI components needed
+} from "./ui/index.jsx";
 import dayjs from "dayjs";
 import { DatePicker, Select as AntdSelect, TimePicker } from "antd";
 import AttachmentUpload from "./attachmentsUpload.jsx";
@@ -55,11 +53,10 @@ const CreateTaskForm = ({
   const role = Cookies.get("role");
 
   // Form States
-  const [date, setDate] = useState(); // Unused in final form logic, remove?
-  const [startDate, setStartDate] = useState();
-  const [taskEndDateOffset, setTaskEndDateOffset] = useState("1"); // New state for task end date offset
+  const [date, setDate] = useState();
+  const [startDate, setStartDate] = useState(); // Global Start Date (Used when 1 Department is selected)
+  const [taskEndDateOffset, setTaskEndDateOffset] = useState("1");
   const [isDependent, setIsDependent] = useState(false);
-  const [dependentDueDate, setDependentDueDate] = useState(); // Unused, remove?
   const [parentTask, setParentTask] = useState("");
   const [parentTaskSearch, setParentTaskSearch] = useState("");
   const [startTimeSetting, setStartTimeSetting] =
@@ -74,30 +71,28 @@ const CreateTaskForm = ({
   const [repeatAfter, setRepeatAfter] = useState("2");
 
   const [taskEndTime, setTaskEndTime] = useState(null);
-  // Checklist State
   const [checklist, setChecklist] = useState([]);
   const [checklistItem, setChecklistItem] = useState("");
 
-  // --- Assignee States ---
-  const [openDepartments, setOpenDepartments] = useState(new Set());
-  const [selectedDepartments, setSelectedDepartments] = useState(new Set());
-  const [isAssignDropdownOpen, setIsAssignDropdownOpen] = useState(false);
-
-  // Basic Fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [attachmentFile, setAttachmentFile] = useState([]);
   const [attachmentFileList, setAttachmentFileList] = useState([]);
 
-  // UI/Loading States
-  const [loading, setLoading] = useState(false); // For form submission
+  const [loading, setLoading] = useState(false);
   const [isFormCollapsed, setIsFormCollapsed] = useState(false);
 
-  // Memoized filtered tasks for the parent task dropdown
+  // 🟢 Dynamic Rows: Each row carries its own Department, Users, and specific StartDate
+  const [assignmentRows, setAssignmentRows] = useState([
+    {
+      departmentId: "",
+      users: [],
+      startDate: null,
+    },
+  ]);
+
   const filteredParentTasks = useMemo(() => {
-    if (!parentTaskSearch) {
-      return allTasks;
-    }
+    if (!parentTaskSearch) return allTasks;
     const lowercasedSearch = parentTaskSearch.toLowerCase();
     return allTasks.filter(
       (task) =>
@@ -122,91 +117,38 @@ const CreateTaskForm = ({
     setChecklist(newList);
   };
 
-  useEffect(() => {
-    if (startDate && date && startDate > date) {
-      setDate(undefined);
-      toast.info(
-        "Due date has been cleared because it was before the new start date.",
-      );
-    }
-  }, [startDate, date]);
-
-  // useEffect(() => {
-  //   if (startDate && recurrenceEndDate && startDate > recurrenceEndDate) {
-  //     setRecurrenceEndDate(undefined);
-  //     toast.info(
-  //       "Recurrence end date has been cleared because it was before the new start date.",
-  //     );
-  //   }
-  // }, [startDate, recurrenceEndDate]);
-
-  // --- Assignee Dropdown Logic ---
-  const assignDropdownRef = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (
-        assignDropdownRef.current &&
-        !assignDropdownRef.current.contains(event.target)
-      ) {
-        setIsAssignDropdownOpen(false);
+  // 🟢 HELPER: Get Department Working Schedule (Custom or Fallback Global)
+  const getDeptWorkingSchedule = (deptId) => {
+    if (deptId) {
+      const deptObj = departments.find((d) => String(d._id) === String(deptId));
+      if (deptObj && deptObj.workingWeekDays) {
+        return deptObj.workingWeekDays;
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [assignDropdownRef]);
+    return workingWeeks;
+  };
 
-  // Handle Department Expand/Collapse
-  const handleDeptExpand = (deptId) => {
-    setOpenDepartments((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(deptId)) {
-        newSet.delete(deptId);
-      } else {
-        newSet.add(deptId);
+  // 🟢 HELPER: Check Holiday for Specific Department
+  const isHolidayForDept = (dateString, deptId) => {
+    return holidays.some((h) => {
+      const isDateMatch = dayjs(h.date).format("YYYY-MM-DD") === dateString;
+      if (!isDateMatch) return false;
+
+      if (h.isGlobal) return true;
+
+      if (deptId && Array.isArray(h.applicableDepartments)) {
+        return h.applicableDepartments.some(
+          (d) => String(d._id || d) === String(deptId),
+        );
       }
-      return newSet;
+      return false;
     });
   };
 
-  const dateChangeHandler = (e, setter) => {
-    const dateString = e.target.value;
-    if (!dateString) {
-      setter(undefined);
-      return;
-    }
-    const [year, month, day] = dateString.split("-").map(Number);
-    const newDate = new Date(year, month - 1, day);
-
-    if (newDate.getDay() === 0) {
-      // Sunday
-      toast.error("Sundays are not allowed. Please select another date.");
-      e.target.value = "";
-      setter(undefined);
-      return;
-    }
-
-    const holiday = holidays.find((h) => h.date.startsWith(dateString));
-    if (holiday) {
-      toast.error(
-        `Selected date is a holiday: ${holiday.name}. Please select another date.`,
-      );
-      e.target.value = "";
-      setter(undefined);
-      return;
-    }
-    setter(newDate);
-  };
-  const [assignmentRows, setAssignmentRows] = useState([
-    {
-      departmentId: "",
-      users: [],
-    },
-  ]);
   const selectedUsers = assignmentRows.flatMap((r) => r.users || []);
+
   const addAssignmentRow = () => {
     const selectedUsers = assignmentRows.flatMap((r) => r.users || []);
-
     const availableUsers = users.filter((u) => !selectedUsers.includes(u._id));
 
     if (availableUsers.length === 0) {
@@ -214,8 +156,12 @@ const CreateTaskForm = ({
       return;
     }
 
-    setAssignmentRows((prev) => [...prev, { departmentId: "", users: [] }]);
+    setAssignmentRows((prev) => [
+      ...prev,
+      { departmentId: "", users: [], startDate: null },
+    ]);
   };
+
   const isDepartmentFullySelected = (deptId) => {
     const deptUsers = users.filter(
       (u) =>
@@ -229,10 +175,9 @@ const CreateTaskForm = ({
 
     return deptUsers.length > 0 && selectedUsers.length >= deptUsers.length;
   };
-  const removeAssignmentRow = (index) => {
-    // Always keep one row
-    if (assignmentRows.length === 1) return;
 
+  const removeAssignmentRow = (index) => {
+    if (assignmentRows.length === 1) return;
     setAssignmentRows((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -243,7 +188,8 @@ const CreateTaskForm = ({
           ? {
               ...row,
               departmentId,
-              users: [], // reset users when department changes
+              users: [],
+              startDate: null,
             }
           : row,
       ),
@@ -263,54 +209,65 @@ const CreateTaskForm = ({
     );
   };
 
-  // --- Handle Form Submission (Create) ---
+  const updateRowStartDate = (index, dateVal) => {
+    setAssignmentRows((prev) =>
+      prev.map((row, i) =>
+        i === index ? { ...row, startDate: dateVal } : row,
+      ),
+    );
+  };
+
+  // --- Handle Form Submission ---
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // ─────────────────────────────────────────────
-    // VALIDATION
-    // ─────────────────────────────────────────────
     if (!title.trim()) {
       toast.error("Title is required");
       return;
     }
 
     const hasUsers = assignmentRows.some((row) => row.users.length > 0);
-
     if (!hasUsers) {
       toast.error("Please select at least one user");
       return;
     }
 
-    // validate each row
-    for (const row of assignmentRows) {
+    const isMultiDept = assignmentRows.length > 1;
+
+    // Validate rows
+    for (const [idx, row] of assignmentRows.entries()) {
       if (!row.departmentId) {
-        toast.error("Please select department");
+        toast.error(`Please select department for Row ${idx + 1}`);
+        return;
+      }
+      if (row.users.length === 0) {
+        toast.error(`Please select users for Row ${idx + 1}`);
         return;
       }
 
-      if (row.users.length === 0) {
-        toast.error("Please select users");
+      // Check per-department Start Date if multiple departments are added
+      if (!isDependent && isMultiDept && !row.startDate) {
+        const deptObj = departments.find((d) => d._id === row.departmentId);
+        toast.error(
+          `Please select Start Date for ${deptObj?.name || `Row ${idx + 1}`}`,
+        );
         return;
       }
+    }
+
+    // Check single Start Date if only 1 department is selected
+    if (!isDependent && !isMultiDept && !startDate) {
+      toast.error("Start Date is required.");
+      return;
     }
 
     if (!isDependent && !isRecurrent && !taskEndDateOffset) {
       toast.error("Task end day is required");
       return;
     }
-    // if (!isDependent && !isRecurrent && !taskEndTime) {
-    //   toast.error("Task end time is required");
-    //   return;
-    // }
 
     if (!description.trim()) {
       toast.error("Description is required");
-      return;
-    }
-
-    if (!isDependent && !startDate) {
-      toast.error("A Start Date is required for non-dependent tasks.");
       return;
     }
 
@@ -323,57 +280,30 @@ const CreateTaskForm = ({
       toast.error("X Value is required for dependent tasks.");
       return;
     }
-    if (isRecurrent && repeatAfter.trim() == "") {
-      toast.error("Repeat after (days) value is required for Bi-weekly tasks.");
-      return;
-    }
-    if (
-      isRecurrent &&
-      recurrenceFrequency == "bi-weekly" &&
-      weeklyTwiceRecurrenceDay.trim() == ""
-    ) {
-      toast.error("Select Day of the Week.");
-      return;
-    }
+
     setLoading(true);
 
     try {
-      // ─────────────────────────────────────────────
-      // LOOP THROUGH EACH DEPARTMENT ROW
-      // ─────────────────────────────────────────────
       for (const row of assignmentRows) {
-        // skip invalid rows
-        if (!row.departmentId || row.users.length === 0) {
-          continue;
-        }
+        if (!row.departmentId || row.users.length === 0) continue;
 
         const formData = new FormData();
 
-        // ─────────────────────────────────────────────
-        // MAIN DATA
-        // ─────────────────────────────────────────────
         formData.append("assignedTo", JSON.stringify(row.users));
-
         formData.append("departmentOfAssignToUser", row.departmentId);
-
         formData.append("title", title.trim());
-
         formData.append("description", description.trim());
 
-        // ─────────────────────────────────────────────
-        // START DATE
-        // ─────────────────────────────────────────────
-        if (startDate) {
-          formData.append("startDate", startDate);
+        // 🟢 Pick row-specific date for multi-dept, or single global date for single dept
+        const effectiveStartDate = isMultiDept ? row.startDate : startDate;
+
+        if (effectiveStartDate) {
+          formData.append("startDate", effectiveStartDate);
         } else {
           const todayStr = new Date().toLocaleDateString("en-CA");
-
           formData.append("startDate", todayStr);
         }
 
-        // ─────────────────────────────────────────────
-        // TASK END DAYS
-        // ─────────────────────────────────────────────
         if (!isRecurrent && taskEndDateOffset) {
           formData.append("taskEndDays", taskEndDateOffset);
         }
@@ -381,25 +311,16 @@ const CreateTaskForm = ({
           formData.append("taskEndTime", taskEndTime);
         }
 
-        // ─────────────────────────────────────────────
-        // CHECKLIST
-        // ─────────────────────────────────────────────
         if (checklist.length > 0) {
           formData.append("checklist", JSON.stringify(checklist));
         }
 
-        // ─────────────────────────────────────────────
-        // ATTACHMENTS
-        // ─────────────────────────────────────────────
         if (attachmentFile && attachmentFile.length > 0) {
           attachmentFile.forEach((file) => {
             formData.append("attachmentFile", file);
           });
         }
 
-        // ─────────────────────────────────────────────
-        // RECURRENT FLAGS
-        // ─────────────────────────────────────────────
         formData.append("isRecurrent", String(isRecurrent));
 
         if (isRecurrent) {
@@ -425,40 +346,25 @@ const CreateTaskForm = ({
           }
         }
 
-        // ─────────────────────────────────────────────
-        // DEPENDENCY
-        // ─────────────────────────────────────────────
         formData.append("isDependent", String(isDependent));
 
         if (isDependent) {
-          if (parentTask) {
-            formData.append("parentTask", parentTask);
-          }
-
-          if (startTimeSetting) {
+          if (parentTask) formData.append("parentTask", parentTask);
+          if (startTimeSetting)
             formData.append("startTimeSetting", startTimeSetting);
-          }
-
           if (frequencyType) {
             formData.append(
               "isDependentFrequency",
               frequencyType === "days" ? "T+X in days" : "T-X in hours",
             );
           }
+          if (xValue !== "") formData.append("xValue", xValue);
 
-          if (xValue !== "") {
-            formData.append("xValue", xValue);
-          }
-
-          // IMPORTANT
           if (startTimeSetting === "actual-to-planned") {
             formData.delete("startDate");
           }
         }
 
-        // ─────────────────────────────────────────────
-        // API CALL
-        // ─────────────────────────────────────────────
         await api.post("/tasks", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
@@ -466,96 +372,39 @@ const CreateTaskForm = ({
         });
       }
 
-      // ─────────────────────────────────────────────
       // RESET FORM
-      // ─────────────────────────────────────────────
       setTitle("");
-
-      setAssignmentRows([
-        {
-          departmentId: "",
-          users: [],
-        },
-      ]);
-
+      setAssignmentRows([{ departmentId: "", users: [], startDate: null }]);
       setDescription("");
-
       setDate(null);
-
       setStartDate(null);
-
       setChecklist([]);
-
       setAttachmentFile([]);
-
       setAttachmentFileList([]);
-
       setIsRecurrent(false);
-
       setIsDependent(false);
-
       setParentTask("");
-
       setStartTimeSetting("planned-to-planned");
-
       setXValue("");
-
       setRecurrenceEndDate(null);
-
       setWeeklyRecurrenceDays([]);
       setWeeklyTwiceRecurrenceDay("");
-
-      setDependentDueDate(null);
-
       setTaskEndDateOffset("1");
       setTaskEndTime(null);
 
       onTaskCreated();
-
       toast.success("Tasks assigned successfully!");
     } catch (err) {
       console.error("Submission Error:", err);
-
       const msg =
         err.response?.data?.message || err.message || "Failed to create task";
-
       toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedDeptIds = Array.from(selectedDepartments);
-
-  // 🔥 Build user → departments map
-  const userMap = new Map();
-
-  users.forEach((u) => {
-    const userDeptIds = u.department?.map((d) => String(d._id)) || [];
-
-    const matchedDepts = userDeptIds.filter((id) =>
-      selectedDeptIds.includes(id),
-    );
-
-    if (matchedDepts.length > 0) {
-      if (!userMap.has(u._id)) {
-        userMap.set(u._id, {
-          ...u,
-          deptNames: [],
-        });
-      }
-
-      matchedDepts.forEach((deptId) => {
-        const deptName = departments.find(
-          (d) => String(d._id) === deptId,
-        )?.name;
-
-        if (deptName) {
-          userMap.get(u._id).deptNames.push(deptName);
-        }
-      });
-    }
-  });
+  const isMultiDepartment = assignmentRows.length > 1;
 
   return (
     <Card className="m-4 shadow-xl bg-white/80 backdrop-blur-sm border-0 hover:shadow-2xl transition-all duration-500 group">
@@ -587,14 +436,12 @@ const CreateTaskForm = ({
       {!isFormCollapsed && (
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            {/* Row 1: Title & Assignee */}
+            {/* Task Title & Dynamic Assignee Rows */}
             <div className="space-y-4">
-              {/* Task Title */}
               <div className="space-y-2">
                 <Label htmlFor="task-title">
                   Task Title <span className="text-red-500">*</span>
                 </Label>
-
                 <Input
                   id="task-title"
                   value={title}
@@ -616,17 +463,27 @@ const CreateTaskForm = ({
 
                   return inDepartment && !alreadySelectedElsewhere;
                 });
+
+                const deptObj = departments.find(
+                  (d) => d._id === row.departmentId,
+                );
+
                 return (
                   <div
                     key={index}
-                    className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end border rounded-xl p-4 bg-slate-50"
+                    className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end border rounded-xl p-4 bg-slate-50 relative"
                   >
                     {/* Department */}
-                    <div className="md:col-span-4 space-y-2">
+                    <div
+                      className={
+                        isMultiDepartment && !isDependent
+                          ? "md:col-span-3 space-y-2"
+                          : "md:col-span-4 space-y-2"
+                      }
+                    >
                       <Label>
                         Department <span className="text-red-500">*</span>
                       </Label>
-
                       <AntdSelect
                         showSearch
                         placeholder="Select Department"
@@ -637,17 +494,22 @@ const CreateTaskForm = ({
                         options={departments.map((d) => ({
                           value: d._id,
                           label: d.name,
-                          disabled: isDepartmentFullySelected(d._id), // ✅ ONLY ADD THIS
+                          disabled: isDepartmentFullySelected(d._id),
                         }))}
                       />
                     </div>
 
                     {/* Users */}
-                    <div className="md:col-span-6 space-y-2">
+                    <div
+                      className={
+                        isMultiDepartment && !isDependent
+                          ? "md:col-span-4 space-y-2"
+                          : "md:col-span-6 space-y-2"
+                      }
+                    >
                       <Label>
                         Users <span className="text-red-500">*</span>
                       </Label>
-
                       <AntdSelect
                         mode="multiple"
                         showSearch
@@ -664,7 +526,70 @@ const CreateTaskForm = ({
                       />
                     </div>
 
-                    {/* Delete Button */}
+                    {/* 🟢 DYNAMIC PER-DEPARTMENT START DATE (Only visible when >1 departments are added) */}
+                    {isMultiDepartment && !isDependent && (
+                      <div className="md:col-span-3 space-y-2">
+                        <Label className="text-xs text-blue-700 font-semibold flex items-center gap-1">
+                          <CalendarIcon className="w-3.5 h-3.5 text-blue-600" />
+                          Start Date ({deptObj?.name || "Dept"}){" "}
+                          <span className="text-red-500">*</span>
+                        </Label>
+                        <DatePicker
+                          disabled={!row.departmentId}
+                          className="w-full h-10 hover:shadow-md transition-all duration-200"
+                          format="DD MMM YYYY"
+                          value={row.startDate ? dayjs(row.startDate) : null}
+                          onChange={(date) => {
+                            if (!date) {
+                              updateRowStartDate(index, null);
+                              return;
+                            }
+
+                            const selected = dayjs(date);
+                            const selectedDateStr =
+                              selected.format("YYYY-MM-DD");
+
+                            // 1. Holiday Check
+                            if (
+                              isHolidayForDept(
+                                selectedDateStr,
+                                row.departmentId,
+                              )
+                            ) {
+                              toast.error(
+                                `Selected date is a holiday for ${deptObj?.name || "this department"}. Please select another date.`,
+                              );
+                              updateRowStartDate(index, null);
+                              return;
+                            }
+
+                            // 2. Working Day Check
+                            const dayName = selected
+                              .format("dddd")
+                              .toLowerCase();
+                            const activeSchedule = getDeptWorkingSchedule(
+                              row.departmentId,
+                            );
+
+                            if (!activeSchedule?.[dayName]) {
+                              toast.error(
+                                `Selected day (${dayName}) is not a working day for ${deptObj?.name}.`,
+                              );
+                              updateRowStartDate(index, null);
+                              return;
+                            }
+
+                            updateRowStartDate(index, selectedDateStr);
+                          }}
+                          disabledDate={(current) => {
+                            const today = dayjs().startOf("day");
+                            return current && current < today;
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Delete Row Button */}
                     <div className="md:col-span-2">
                       <Button
                         type="button"
@@ -690,12 +615,12 @@ const CreateTaskForm = ({
                   className="w-full border-dashed"
                 >
                   <Plus className="w-4 h-4 mr-2" />
-                  Add Another Department{" "}
+                  Add Another Department
                 </Button>
               )}
             </div>
 
-            {/* Row 2: Description */}
+            {/* Description */}
             <div className="space-y-2">
               <Label htmlFor="task-description">
                 Task Description <span className="text-red-500">*</span>
@@ -710,7 +635,7 @@ const CreateTaskForm = ({
               />
             </div>
 
-            {/* Checklist Section */}
+            {/* Checklist */}
             <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-2 text-base font-semibold text-gray-700">
@@ -779,7 +704,7 @@ const CreateTaskForm = ({
               </div>
             </div>
 
-            {/* Row 3: Dependency Logic */}
+            {/* Dependency Toggle */}
             <div className="space-y-2 pt-2">
               <Label>Is this task dependent on another Task?</Label>
               <RadioGroup
@@ -787,9 +712,7 @@ const CreateTaskForm = ({
                 onValueChange={(val) => {
                   const isDep = val === "yes";
                   setIsDependent(isDep);
-                  if (isDep) {
-                    setIsRecurrent(false); // Dependent tasks cannot be recurrent
-                  }
+                  if (isDep) setIsRecurrent(false);
                   if (!isDep) {
                     setParentTask("");
                     setStartTimeSetting(null);
@@ -820,75 +743,74 @@ const CreateTaskForm = ({
               </RadioGroup>
             </div>
 
-            {/* Row 4: Conditional Fields */}
+            {/* Conditional Date / Dependency Fields */}
             {!isDependent ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Start Date */}
-                <div className="space-y-2">
-                  <Label>
-                    Start Date <span className="text-red-500">*</span>
-                  </Label>
-                  <DatePicker
-                    className="w-full h-10 hover:shadow-md transition-all duration-200"
-                    format="DD MMM YYYY"
-                    value={startDate ? dayjs(startDate) : null}
-                    onChange={(date) => {
-                      if (!date) return;
+                {/* 🟢 Standard Single Start Date Picker (Only visible when 1 Department is selected) */}
+                {!isMultiDepartment && (
+                  <div className="space-y-2">
+                    <Label>
+                      Start Date <span className="text-red-500">*</span>
+                    </Label>
+                    <DatePicker
+                      className="w-full h-10 hover:shadow-md transition-all duration-200"
+                      format="DD MMM YYYY"
+                      value={startDate ? dayjs(startDate) : null}
+                      onChange={(date) => {
+                        if (!date) {
+                          setStartDate(null);
+                          return;
+                        }
 
-                      const selected = dayjs(date);
-                      const selectedDate = selected.format("YYYY-MM-DD");
+                        const selected = dayjs(date);
+                        const selectedDate = selected.format("YYYY-MM-DD");
+                        const primaryDeptId = assignmentRows[0]?.departmentId;
 
-                      // 🟡 1. Check Holiday
-                      const holiday = holidays.find(
-                        (h) =>
-                          dayjs(h.date).format("YYYY-MM-DD") === selectedDate,
-                      );
+                        // Check Holiday
+                        if (isHolidayForDept(selectedDate, primaryDeptId)) {
+                          toast.error(
+                            `Selected date is a holiday for your department. Please select another date.`,
+                          );
+                          setStartDate(null);
+                          return;
+                        }
 
-                      if (holiday) {
-                        toast.error(
-                          `Selected date is a holiday: ${holiday.name}. Please select another date.`,
-                        );
-                        setStartDate(null);
-                        return;
-                      }
+                        // Check Working Day
+                        const dayName = selected.format("dddd").toLowerCase();
+                        const activeSchedule =
+                          getDeptWorkingSchedule(primaryDeptId);
 
-                      // 🟡 2. Check Working Day
-                      const dayName = selected.format("dddd").toLowerCase();
-                      // e.g. "monday"
+                        if (!activeSchedule?.[dayName]) {
+                          toast.error(
+                            `Selected day (${dayName}) is not a working day for the assigned department.`,
+                          );
+                          setStartDate(null);
+                          return;
+                        }
 
-                      if (!workingWeeks?.[dayName]) {
-                        toast.error(
-                          `Selected day (${dayName}) is not a working day. Please choose a valid day.`,
-                        );
-                        setStartDate(null);
-                        return;
-                      }
+                        setStartDate(selectedDate);
+                      }}
+                      disabledDate={(current) => {
+                        const today = dayjs().startOf("day");
+                        return current && current < today;
+                      }}
+                    />
+                  </div>
+                )}
 
-                      // ✅ Valid date
-                      setStartDate(selectedDate);
-                    }}
-                    disabledDate={(current) => {
-                      const today = dayjs().startOf("day");
-                      return current && current < today;
-                    }} // Disable past dates
-                  />
-                  {/* <Input
-                  type="date"
-                  value={startDate ? format(startDate, 'yyyy-MM-dd') : ''}
-                  onChange={(e) => dateChangeHandler(e, setStartDate)}
-                  className="hover:shadow-md transition-all duration-200"
-                  // min={new Date().toLocaleDateString('en-CA')}
-                /> */}
-                </div>
-
-                {/* How many days Task Ended */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Task End Offset & Time */}
+                <div
+                  className={
+                    isMultiDepartment
+                      ? "md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4"
+                      : "grid grid-cols-1 md:grid-cols-2 gap-4"
+                  }
+                >
                   <div className="space-y-2">
                     <Label className={isRecurrent ? "text-gray-400" : ""}>
                       Task End After (Days){" "}
                       {!isRecurrent && <span className="text-red-500">*</span>}
                     </Label>
-
                     <Input
                       type="number"
                       disabled={isRecurrent}
@@ -902,10 +824,8 @@ const CreateTaskForm = ({
 
                   <div className="space-y-2">
                     <Label className={isRecurrent ? "text-gray-400" : ""}>
-                      Task End Time{" "}
-                      {/* {!isRecurrent && <span className="text-red-500">*</span>} */}
+                      Task End Time
                     </Label>
-
                     <TimePicker
                       className="w-full h-10"
                       disabled={isRecurrent}
@@ -919,15 +839,9 @@ const CreateTaskForm = ({
                     />
                   </div>
                 </div>
+
                 <div className="space-y-2">
                   <Label>Attachment (Optional)</Label>
-                  {/* <Input
-                    type="file"
-                    onChange={(e) =>
-                      setAttachmentFile(e.target.files?.[0] || null)
-                    }
-                    className="cursor-pointer"
-                  /> */}
                   <AttachmentUpload
                     setFiles={setAttachmentFile}
                     fileList={attachmentFileList}
@@ -946,7 +860,7 @@ const CreateTaskForm = ({
                     value={parentTask}
                     onValueChange={(value) => {
                       setParentTask(value);
-                      setParentTaskSearch(""); // Clear search on selection
+                      setParentTaskSearch("");
                     }}
                   >
                     <SelectTrigger className="bg-white w-full text-left justify-between font-normal">
@@ -988,7 +902,7 @@ const CreateTaskForm = ({
                           />
                         </div>
                       </div>
-                      <div className="">
+                      <div>
                         {filteredParentTasks.length > 0 ? (
                           filteredParentTasks
                             .filter((item) => item.status !== "Completed")
@@ -1048,8 +962,7 @@ const CreateTaskForm = ({
                 <div className="space-y-2">
                   <Label>
                     Frequency <span className="text-red-500">*</span>
-                  </Label>{" "}
-                  {/* Lag Type*/}
+                  </Label>
                   <Select
                     value={frequencyType}
                     onValueChange={setFrequencyType}
@@ -1074,7 +987,6 @@ const CreateTaskForm = ({
                     value={xValue}
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, "");
-
                       if (value === "" || Number(value) > 0) {
                         setXValue(value);
                       }
@@ -1083,30 +995,10 @@ const CreateTaskForm = ({
                     className="bg-white"
                   />
                 </div>
-                {/* <div className="space-y-2">
-                  <Label>
-                    How many days Task Ended{" "}
-                    <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={taskEndDateOffset}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/\D/g, "");
-
-                      if (value === "" || Number(value) >= 1) {
-                        setTaskEndDateOffset(value);
-                      }
-                    }}
-                    placeholder="E.g., 1 for same day, 2 for next day"
-                    className="hover:shadow-md transition-all duration-200 bg-white"
-                  />
-                </div> */}
               </div>
             )}
 
-            {/* Row 5: Recurrence Toggle */}
+            {/* Recurrence Toggle */}
             <div className="flex flex-col gap-4 mt-2 border-t pt-4">
               {!isDependent && (
                 <div className="flex items-center space-x-2">
@@ -1115,9 +1007,7 @@ const CreateTaskForm = ({
                     checked={isRecurrent}
                     onChange={(e) => {
                       setIsRecurrent(e.target.checked);
-                      if (e.target.checked) {
-                        setDate(null);
-                      }
+                      if (e.target.checked) setDate(null);
                     }}
                   />
                   <Label
@@ -1140,12 +1030,9 @@ const CreateTaskForm = ({
                       value={recurrenceFrequency}
                       onValueChange={(value) => {
                         setRecurrenceFrequency(value);
-                        if (value !== "weekly") {
-                          setWeeklyRecurrenceDays([]);
-                        }
-                        if (value !== "bi-weekly") {
+                        if (value !== "weekly") setWeeklyRecurrenceDays([]);
+                        if (value !== "bi-weekly")
                           setWeeklyTwiceRecurrenceDay("");
-                        }
                       }}
                     >
                       <SelectTrigger>
@@ -1163,6 +1050,7 @@ const CreateTaskForm = ({
                       </SelectContent>
                     </Select>
                   </div>
+
                   <div className="space-y-2">
                     <Label>End Date</Label>
                     <DatePicker
@@ -1177,13 +1065,10 @@ const CreateTaskForm = ({
                       }
                       disabledDate={(current) => {
                         if (!current) return false;
-
                         const now = dayjs();
-
                         if (startDate) {
                           return current.isBefore(dayjs(startDate), "day");
                         }
-
                         return current.isBefore(now, "day");
                       }}
                       onChange={(date) => {
@@ -1198,10 +1083,7 @@ const CreateTaskForm = ({
                           return;
                         }
 
-                        // Store date + time
-                        setRecurrenceEndDate(date.toISOString()); // Recommended for backend
-                        // OR
-                        // setRecurrenceEndDate(date.format("DD MMM YYYY hh:mm A"));
+                        setRecurrenceEndDate(date.toISOString());
                       }}
                     />
                   </div>
@@ -1246,21 +1128,14 @@ const CreateTaskForm = ({
                       </div>
                     </div>
                   )}
+
                   {recurrenceFrequency === "bi-weekly" && (
                     <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Select Day of the Week</Label>
-
                         <RadioGroup
                           value={weeklyTwiceRecurrenceDay}
                           onValueChange={(value) => {
-                            if (!workingWeeks?.[value]) {
-                              toast.error(
-                                `${value.charAt(0).toUpperCase() + value.slice(1)} is not a working day`,
-                              );
-                              return;
-                            }
-
                             setWeeklyTwiceRecurrenceDay(value);
                           }}
                           className="flex flex-wrap gap-4 pt-2"
@@ -1292,44 +1167,31 @@ const CreateTaskForm = ({
 
                       <div className="space-y-2">
                         <Label>
-                          Repeat After (Days)
+                          Repeat After (Days){" "}
                           <span className="text-red-500">*</span>
                         </Label>
-
                         <Input
                           type="text"
                           inputMode="numeric"
                           value={repeatAfter}
                           onChange={(e) => {
                             const value = e.target.value.replace(/\D/g, "");
-
                             if (value === "") {
                               setRepeatAfter("");
                               return;
                             }
-
                             const num = Number(value);
-
                             if (num < 1 || num > 6) {
                               toast.error(
                                 "Repeat After must be between 1 and 6 days.",
                               );
                               return;
                             }
-
                             setRepeatAfter(value);
                           }}
                           placeholder="Enter value"
                           className="bg-white"
                         />
-                        <p className="text-xs text-muted-foreground">
-                          <strong>Note:</strong> Specify a value between{" "}
-                          <strong>1</strong> and <strong>6</strong> to define
-                          the interval, in days, between the first and second
-                          occurrence. <strong>1</strong> the next day, and{" "}
-                          <strong>6</strong> six days after the selected
-                          weekday, within the same week.
-                        </p>
                       </div>
                     </div>
                   )}

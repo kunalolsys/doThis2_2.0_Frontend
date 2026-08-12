@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useContext, useRef, useMemo } from "react";
 import {
   ChevronUp,
   ChevronDown,
@@ -89,6 +89,7 @@ import dayjs from "dayjs";
 import { DatePicker, Upload } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import { useDebounce } from "../lib/debounce.js";
+
 const AttachmentTab = ({ editFileList, setEditFileList, handleRemove }) => {
   const isImage = (file) => {
     return (
@@ -306,6 +307,51 @@ const TaskTable = ({
   const [activeTab, setActiveTab] = useState("basic");
   const [editFileList, setEditFileList] = useState([]);
   const [removedFiles, setRemovedFiles] = useState([]);
+
+  // 🟢 HELPER: Get Department Custom Working Schedule for Assigned User
+  const getDeptWorkingSchedule = (assignedUserId) => {
+    if (assignedUserId) {
+      const userObj = users.find(
+        (u) => String(u._id) === String(assignedUserId),
+      );
+      const userDeptId = Array.isArray(userObj?.department)
+        ? userObj.department[0]?._id || userObj.department[0]
+        : userObj?.department?._id || userObj?.department;
+
+      if (userDeptId) {
+        const deptObj = departments.find(
+          (d) => String(d._id) === String(userDeptId),
+        );
+        if (deptObj && deptObj.workingWeekDays) {
+          return deptObj.workingWeekDays;
+        }
+      }
+    }
+    return workingWeeks;
+  };
+
+  // 🟢 HELPER: Check if a date is a holiday for Assigned User's Department
+  const isHolidayForDept = (dateString, assignedUserId) => {
+    const userObj = users.find((u) => String(u._id) === String(assignedUserId));
+    const userDeptId = Array.isArray(userObj?.department)
+      ? userObj.department[0]?._id || userObj.department[0]
+      : userObj?.department?._id || userObj?.department;
+
+    return holidays.some((h) => {
+      const isDateMatch = dayjs(h.date).format("YYYY-MM-DD") === dateString;
+      if (!isDateMatch) return false;
+
+      if (h.isGlobal) return true;
+
+      if (userDeptId && Array.isArray(h.applicableDepartments)) {
+        return h.applicableDepartments.some(
+          (d) => String(d._id || d) === String(userDeptId),
+        );
+      }
+      return false;
+    });
+  };
+
   const loadAttachments = async () => {
     try {
       if (
@@ -1956,7 +2002,7 @@ const TaskTable = ({
                           )}
                           {columns.find((c) => c.key === "title")?.visible && (
                             <TableCell
-                              className="font-medium whitespace-nowrap truncate w-full"
+                              className="font-medium whitespace-nowrap truncate max-w-[200px]"
                               title={task.title}
                             >
                               {task.title}
@@ -2183,7 +2229,10 @@ const TaskTable = ({
                                       size="icon"
                                       className="h-8 w-8 text-blue-600 hover:bg-blue-50"
                                       onClick={() => handleEditClick(task)}
-                                      disabled={task.status == "Completed" ||task?.recurringRefId}
+                                      disabled={
+                                        task.status == "Completed" ||
+                                        task?.recurringRefId
+                                      }
                                     >
                                       <FilePenLine className="h-4 w-4" />
                                     </Button>
@@ -2265,6 +2314,7 @@ const TaskTable = ({
                                       </TooltipContent>
                                     </Tooltip>
                                   )}
+
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button
@@ -2343,150 +2393,146 @@ const TaskTable = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {
-                    !tasksLoading &&
-                      currentRecurringTasks.length > 0 &&
-                      currentRecurringTasks.map((task, i) => {
-                        const assignedByUser = allUsers.find(
-                          (u) => String(u._id) === String(task.assignedBy?._id),
-                        );
+                  {!tasksLoading &&
+                    currentRecurringTasks.length > 0 &&
+                    currentRecurringTasks.map((task, i) => {
+                      const assignedByUser = allUsers.find(
+                        (u) => String(u._id) === String(task.assignedBy?._id),
+                      );
 
-                        const assignedToUser = allUsers.find(
-                          (u) => String(u._id) === String(task.assignedTo?._id),
-                        );
-                        return (
-                          <TableRow
-                            key={task._id || i}
-                            className="hover:bg-slate-50"
-                          >
+                      const assignedToUser = allUsers.find(
+                        (u) => String(u._id) === String(task.assignedTo?._id),
+                      );
+                      return (
+                        <TableRow
+                          key={task._id || i}
+                          className="hover:bg-slate-50"
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedRecurringTaskIds.includes(
+                                task._id,
+                              )}
+                              onChange={() =>
+                                toggleRecurringTaskSelection(task._id)
+                              }
+                            />
+                          </TableCell>
+                          {recurringColumns.find((c) => c.key === "sr")
+                            ?.visible && (
                             <TableCell>
-                              <Checkbox
-                                checked={selectedRecurringTaskIds.includes(
-                                  task._id,
-                                )}
-                                onChange={() =>
-                                  toggleRecurringTaskSelection(task._id)
-                                }
-                              />
+                              {indexOfFirstRecurringTask + i + 1}
                             </TableCell>
-                            {recurringColumns.find((c) => c.key === "sr")
-                              ?.visible && (
-                              <TableCell>
-                                {indexOfFirstRecurringTask + i + 1}
-                              </TableCell>
-                            )}
-                            {recurringColumns.find((c) => c.key === "taskId")
-                              ?.visible && (
-                              <TableCell className="font-medium whitespace-nowrap">
-                                {task.TaskId || "-"}
-                              </TableCell>
-                            )}
-                            {recurringColumns.find((c) => c.key === "title")
-                              ?.visible && (
-                              <TableCell
-                                className="font-medium whitespace-nowrap truncate w-full"
-                                title={task.title}
+                          )}
+                          {recurringColumns.find((c) => c.key === "taskId")
+                            ?.visible && (
+                            <TableCell className="font-medium whitespace-nowrap">
+                              {task.TaskId || "-"}
+                            </TableCell>
+                          )}
+                          {recurringColumns.find((c) => c.key === "title")
+                            ?.visible && (
+                            <TableCell
+                              className="font-medium whitespace-nowrap truncate max-w-[200px]"
+                              title={task.title}
+                            >
+                              {task.title}
+                            </TableCell>
+                          )}
+                          {recurringColumns.find((c) => c.key === "description")
+                            ?.visible && (
+                            <TableCell>
+                              <Button
+                                variant="link"
+                                size="sm"
+                                onClick={() =>
+                                  onViewDescription(task.description)
+                                }
                               >
-                                {task.title}
-                              </TableCell>
-                            )}
-                            {recurringColumns.find(
-                              (c) => c.key === "description",
-                            )?.visible && (
-                              <TableCell>
-                                <Button
-                                  variant="link"
-                                  size="sm"
-                                  onClick={() =>
-                                    onViewDescription(task.description)
-                                  }
-                                >
-                                  View
-                                </Button>
-                              </TableCell>
-                            )}
-                            {recurringColumns.find((c) => c.key === "frequency")
-                              ?.visible && (
-                              <TableCell>
-                                <Badge
-                                  variant="outline"
-                                  className="bg-blue-50 text-blue-700 whitespace-nowrap"
-                                >
-                                  {task.frequency || "Custom"}
-                                </Badge>
-                              </TableCell>
-                            )}
-                            {recurringColumns.find((c) => c.key === "weekDays")
-                              ?.visible && (
-                              <TableCell>
-                                {(() => {
-                                  const frequency =
-                                    task.frequency?.toLowerCase();
+                                View
+                              </Button>
+                            </TableCell>
+                          )}
+                          {recurringColumns.find((c) => c.key === "frequency")
+                            ?.visible && (
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className="bg-blue-50 text-blue-700 whitespace-nowrap"
+                              >
+                                {task.frequency || "Custom"}
+                              </Badge>
+                            </TableCell>
+                          )}
+                          {recurringColumns.find((c) => c.key === "weekDays")
+                            ?.visible && (
+                            <TableCell>
+                              {(() => {
+                                const frequency = task.frequency?.toLowerCase();
 
-                                  let days;
+                                let days;
 
-                                  if (frequency === "weekly") {
-                                    days = task.weekDays;
-                                  } else if (frequency === "bi-weekly") {
-                                    days = task.weekStartDay;
-                                  } else {
-                                    return "-";
-                                  }
-                                  if (typeof days === "string") {
-                                    try {
-                                      days = JSON.parse(days);
-                                    } catch (e) {
-                                      return days;
-                                    }
-                                  }
-                                  if (Array.isArray(days) && days.length > 0) {
-                                    if (
-                                      typeof days[0] === "object" &&
-                                      days[0] !== null
-                                    ) {
-                                      return days
-                                        .map((d) => d.label || d.value || d.day)
-                                        .join(", ");
-                                    }
-                                    return days.join(", ");
-                                  }
+                                if (frequency === "weekly") {
+                                  days = task.weekDays;
+                                } else if (frequency === "bi-weekly") {
+                                  days = task.weekStartDay;
+                                } else {
                                   return "-";
-                                })()}
-                              </TableCell>
-                            )}
-                            {recurringColumns.find((c) => c.key === "startDate")
-                              ?.visible && (
-                              <TableCell className="whitespace-nowrap">
-                                {task.startDate
-                                  ? format(
-                                      new Date(task.startDate),
-                                      "dd MMM yyyy, hh:mm a",
-                                    )
-                                  : "-"}
-                              </TableCell>
-                            )}
-                            {recurringColumns.find((c) => c.key === "endDate")
-                              ?.visible && (
-                              <TableCell className="whitespace-nowrap">
-                                {task.endDate
-                                  ? format(
-                                      new Date(task.endDate),
-                                      "dd MMM yyyy, hh:mm a",
-                                    )
-                                  : "-"}
-                              </TableCell>
-                            )}
-                            {recurringColumns.find(
-                              (c) => c.key === "assignedBy",
-                            )?.visible && (
-                              <TableCell className="w-100">
-                                <div className="flex flex-row gap-1 w-50">
-                                  <span className="text-sm font-medium text-gray-900">
-                                    {task.assignedBy?.name || "-"}
-                                  </span>
-                                  {assignedByUser?.name && (
-                                    <span
-                                      className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
+                                }
+                                if (typeof days === "string") {
+                                  try {
+                                    days = JSON.parse(days);
+                                  } catch (e) {
+                                    return days;
+                                  }
+                                }
+                                if (Array.isArray(days) && days.length > 0) {
+                                  if (
+                                    typeof days[0] === "object" &&
+                                    days[0] !== null
+                                  ) {
+                                    return days
+                                      .map((d) => d.label || d.value || d.day)
+                                      .join(", ");
+                                  }
+                                  return days.join(", ");
+                                }
+                                return "-";
+                              })()}
+                            </TableCell>
+                          )}
+                          {recurringColumns.find((c) => c.key === "startDate")
+                            ?.visible && (
+                            <TableCell className="whitespace-nowrap">
+                              {task.startDate
+                                ? format(
+                                    new Date(task.startDate),
+                                    "dd MMM yyyy, hh:mm a",
+                                  )
+                                : "-"}
+                            </TableCell>
+                          )}
+                          {recurringColumns.find((c) => c.key === "endDate")
+                            ?.visible && (
+                            <TableCell className="whitespace-nowrap">
+                              {task.endDate
+                                ? format(
+                                    new Date(task.endDate),
+                                    "dd MMM yyyy, hh:mm a",
+                                  )
+                                : "-"}
+                            </TableCell>
+                          )}
+                          {recurringColumns.find((c) => c.key === "assignedBy")
+                            ?.visible && (
+                            <TableCell className="w-100">
+                              <div className="flex flex-row gap-1 w-50">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {task.assignedBy?.name || "-"}
+                                </span>
+                                {assignedByUser?.name && (
+                                  <span
+                                    className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
       ${
         assignedByUser.role?.name === "Admin"
           ? "bg-red-100 text-red-700"
@@ -2499,26 +2545,25 @@ const TaskTable = ({
                 : "bg-gray-100 text-gray-700"
       }
     `}
-                                    >
-                                      {assignedByUser.role?.name}
-                                    </span>
-                                  )}
-                                </div>
-                              </TableCell>
-                            )}
-
-                            {recurringColumns.find(
-                              (c) => c.key === "assignedTo",
-                            )?.visible && (
-                              <TableCell className="w-100">
-                                <div className="flex flex-row gap-1 w-50">
-                                  <span className="text-sm font-medium text-gray-900">
-                                    {task.assignedTo?.name || "-"}
+                                  >
+                                    {assignedByUser.role?.name}
                                   </span>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
 
-                                  {assignedToUser?.name && (
-                                    <span
-                                      className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
+                          {recurringColumns.find((c) => c.key === "assignedTo")
+                            ?.visible && (
+                            <TableCell className="w-100">
+                              <div className="flex flex-row gap-1 w-50">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {task.assignedTo?.name || "-"}
+                                </span>
+
+                                {assignedToUser?.name && (
+                                  <span
+                                    className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
       ${
         assignedToUser.role?.name === "Admin"
           ? "bg-red-100 text-red-700"
@@ -2531,24 +2576,23 @@ const TaskTable = ({
                 : "bg-gray-100 text-gray-700"
       }
     `}
-                                    >
-                                      {assignedToUser.role?.name}
-                                    </span>
-                                  )}
-                                </div>
-                              </TableCell>
-                            )}
-                            {/* <TableCell className="whitespace-nowrap">
+                                  >
+                                    {assignedToUser.role?.name}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
+                          {/* <TableCell className="whitespace-nowrap">
                             {task.assignedTo?.name || "Unassigned"}
                           </TableCell> */}
-                            {recurringColumns.find(
-                              (c) => c.key === "department",
-                            )?.visible && (
-                              <TableCell className="whitespace-nowrap">
-                                {task.departmentOfAssignToUser?.name || "-"}
-                              </TableCell>
-                            )}
-                            {/* <TableCell className="text-center">
+                          {recurringColumns.find((c) => c.key === "department")
+                            ?.visible && (
+                            <TableCell className="whitespace-nowrap">
+                              {task.departmentOfAssignToUser?.name || "-"}
+                            </TableCell>
+                          )}
+                          {/* <TableCell className="text-center">
                           {task.attachmentFile ? (
                             <Button
                               variant="link"
@@ -2563,149 +2607,133 @@ const TaskTable = ({
                             "No"
                           )}
                         </TableCell> */}
-                            {recurringColumns.find((c) => c.key === "status")
-                              ?.visible && (
-                              <TableCell className="text-center">
-                                {getStatusBadge(task.status)}
-                              </TableCell>
-                            )}
-                            {recurringColumns.find((c) => c.key === "action")
-                              ?.visible && (
-                              <TableCell className="flex items-center gap-1">
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                                        onClick={() => handleEditClick(task)}
-                                      >
-                                        <FilePenLine className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Edit Task</p>
-                                    </TooltipContent>
-                                  </Tooltip>
+                          {recurringColumns.find((c) => c.key === "status")
+                            ?.visible && (
+                            <TableCell className="text-center">
+                              {getStatusBadge(task.status)}
+                            </TableCell>
+                          )}
+                          {recurringColumns.find((c) => c.key === "action")
+                            ?.visible && (
+                            <TableCell className="flex items-center gap-1">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                                      onClick={() => handleEditClick(task)}
+                                    >
+                                      <FilePenLine className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Edit Task</p>
+                                  </TooltipContent>
+                                </Tooltip>
 
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-gray-600 hover:bg-gray-50"
-                                        onClick={() =>
-                                          handleChecklistClick(task)
-                                        }
-                                        disabled={
-                                          task.status == "Completed" ||
-                                          !task.checklist ||
-                                          task.checklist.length === 0
-                                        }
-                                      >
-                                        <ClipboardList className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>View Checklist</p>
-                                    </TooltipContent>
-                                  </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-gray-600 hover:bg-gray-50"
+                                      onClick={() => handleChecklistClick(task)}
+                                      disabled={
+                                        task.status == "Completed" ||
+                                        !task.checklist ||
+                                        task.checklist.length === 0
+                                      }
+                                    >
+                                      <ClipboardList className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>View Checklist</p>
+                                  </TooltipContent>
+                                </Tooltip>
 
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-8 w-8 text-green-600 hover:bg-green-50"
-                                        onClick={() =>
-                                          handleToggleComplete(task)
-                                        }
-                                        disabled={
-                                          task.status == "Completed" ||
-                                          task.status == "Upcoming" ||
-                                          (task.checklist &&
-                                            task.checklist.length > 0)
-                                        }
-                                      >
-                                        <CheckCircle className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Mark as Complete</p>
-                                    </TooltipContent>
-                                  </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-green-600 hover:bg-green-50"
+                                      onClick={() => handleToggleComplete(task)}
+                                      disabled={
+                                        task.status == "Completed" ||
+                                        task.status == "Upcoming" ||
+                                        (task.checklist &&
+                                          task.checklist.length > 0)
+                                      }
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Mark as Complete</p>
+                                  </TooltipContent>
+                                </Tooltip>
 
-                                  {currentUser &&
-                                    (currentUser.role?.name === "Admin" ||
-                                      currentUser.role === "Admin" ||
-                                      currentUser._id ===
-                                        (task.createdBy?._id ||
-                                          task.createdBy)) && (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            disabled={
-                                              assignedByUser?._id ===
-                                                assignedToUser?._id ||
-                                              task.status === "Completed"
-                                            }
-                                            className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
-                                            onClick={() =>
-                                              openReassignDialog(task)
-                                            }
-                                          >
-                                            <Users className="h-4 w-4" />
-                                          </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>Re-assign User</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    )}
+                                {currentUser &&
+                                  (currentUser.role?.name === "Admin" ||
+                                    currentUser.role === "Admin" ||
+                                    currentUser._id ===
+                                      (task.createdBy?._id ||
+                                        task.createdBy)) && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          disabled={
+                                            assignedByUser?._id ===
+                                              assignedToUser?._id ||
+                                            task.status === "Completed"
+                                          }
+                                          className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
+                                          onClick={() =>
+                                            openReassignDialog(task)
+                                          }
+                                        >
+                                          <Users className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Re-assign User</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
 
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        disabled={
-                                          currentUser &&
-                                          currentUser.role &&
-                                          !["Owner", "Admin"].includes(
-                                            currentUser.role.name,
-                                          )
-                                        }
-                                        className="h-8 w-8 text-red-600 hover:bg-red-50"
-                                        onClick={() => handleDeleteClick(task)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Delete Task</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        );
-                      })
-
-                    // : (
-                    //   <TableRow>
-                    //     <TableCell
-                    //       colSpan={12}
-                    //       className="text-center py-8 text-gray-500"
-                    //     >
-                    //       No recurring tasks found.
-                    //     </TableCell>
-                    //   </TableRow>
-                    // )
-                  }
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      disabled={
+                                        currentUser &&
+                                        currentUser.role &&
+                                        !["Owner", "Admin"].includes(
+                                          currentUser.role.name,
+                                        )
+                                      }
+                                      size="icon"
+                                      className="h-8 w-8 text-red-600 hover:bg-red-50"
+                                      onClick={() => handleDeleteClick(task)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Delete Task</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
               </Table>
               {tasksLoading ? (
@@ -2820,51 +2848,46 @@ const TaskTable = ({
                       <DatePicker
                         format="DD MMM YYYY"
                         value={editStartDate ? dayjs(editStartDate) : null}
-                        // onChange={(date) =>
-                        //   setEditStartDate(date ? date.toDate() : null)
-                        // }
                         onChange={(date) => {
                           if (!date) return;
 
                           const selected = dayjs(date);
-                          const selectedDate = selected.format("YYYY-MM-DD");
+                          const selectedDateStr = selected.format("YYYY-MM-DD");
 
-                          const holiday = holidays.find(
-                            (h) =>
-                              dayjs(h.date).format("YYYY-MM-DD") ===
-                              selectedDate,
+                          // 🟢 1. Check Department Holiday for assigned user
+                          const isHolidayHit = isHolidayForDept(
+                            selectedDateStr,
+                            editAssignedTo,
                           );
-
-                          if (holiday) {
+                          if (isHolidayHit) {
                             toast.error(
-                              `Selected date is a holiday: ${holiday.name}. Please select another date.`,
+                              `Selected date is a holiday for the assigned user's department. Please select another date.`,
                             );
                             setEditStartDate(null);
                             return;
                           }
 
+                          // 🟢 2. Check Working Day for assigned user's department
                           const dayName = selected.format("dddd").toLowerCase();
+                          const activeSchedule =
+                            getDeptWorkingSchedule(editAssignedTo);
 
-                          if (!workingWeeks?.[dayName]) {
+                          if (!activeSchedule?.[dayName]) {
                             toast.error(
-                              `Selected day (${dayName}) is not a working day. Please choose a valid day.`,
+                              `Selected day (${dayName}) is not a working day for the assigned department. Please choose a valid day.`,
                             );
                             setEditStartDate(null);
                             return;
                           }
 
-                          // ✅ Valid date
-                          setEditStartDate(selectedDate);
+                          setEditStartDate(selectedDateStr);
+                        }}
+                        disabledDate={(current) => {
+                          const today = dayjs().startOf("day");
+                          return current && current < today;
                         }}
                         style={{ width: "100%", height: "40px" }}
                       />
-                      {/* <Input
-                    type="date"
-                    value={
-                      editStartDate ? format(editStartDate, "yyyy-MM-dd") : ""
-                    }
-                    onChange={(e) => dateChangeHandler(e, setEditStartDate)}
-                  /> */}
                     </div>
                     <div className="space-y-2">
                       <Label>Frequency</Label>
@@ -2917,17 +2940,6 @@ const TaskTable = ({
                         }
                         style={{ width: "100%", height: "40px" }}
                       />
-                      {/* <Input
-                    type="date"
-                    value={
-                      editRecurrenceEndDate
-                        ? format(editRecurrenceEndDate, "yyyy-MM-dd")
-                        : ""
-                    }
-                    onChange={(e) =>
-                      dateChangeHandler(e, setEditRecurrenceEndDate)
-                    }
-                  /> */}
                     </div>
                     {editRecurrenceFrequency === "weekly" && (
                       <div className="md:col-span-3 space-y-2">
@@ -2977,54 +2989,46 @@ const TaskTable = ({
                       <DatePicker
                         format="DD MMM YYYY"
                         value={editStartDate ? dayjs(editStartDate) : null}
-                        // onChange={(date) =>
-                        //   setEditStartDate(date ? date.toDate() : null)
-                        // }
                         onChange={(date) => {
                           if (!date) return;
 
                           const selected = dayjs(date);
-                          const selectedDate = selected.format("YYYY-MM-DD");
+                          const selectedDateStr = selected.format("YYYY-MM-DD");
 
-                          // 🟡 1. Check Holiday
-                          const holiday = holidays.find(
-                            (h) =>
-                              dayjs(h.date).format("YYYY-MM-DD") ===
-                              selectedDate,
+                          // 🟢 1. Check Department Holiday for assigned user
+                          const isHolidayHit = isHolidayForDept(
+                            selectedDateStr,
+                            editAssignedTo,
                           );
-
-                          if (holiday) {
+                          if (isHolidayHit) {
                             toast.error(
-                              `Selected date is a holiday: ${holiday.name}. Please select another date.`,
+                              `Selected date is a holiday for the assigned user's department. Please select another date.`,
                             );
                             setEditStartDate(null);
                             return;
                           }
 
-                          // 🟡 2. Check Working Day
+                          // 🟢 2. Check Working Day against Department Custom Schedule
                           const dayName = selected.format("dddd").toLowerCase();
-                          // e.g. "monday"
+                          const activeSchedule =
+                            getDeptWorkingSchedule(editAssignedTo);
 
-                          if (!workingWeeks?.[dayName]) {
+                          if (!activeSchedule?.[dayName]) {
                             toast.error(
-                              `Selected day (${dayName}) is not a working day. Please choose a valid day.`,
+                              `Selected day (${dayName}) is not a working day for the assigned department. Please choose a valid day.`,
                             );
                             setEditStartDate(null);
                             return;
                           }
 
-                          // ✅ Valid date
-                          setEditStartDate(selectedDate);
+                          setEditStartDate(selectedDateStr);
+                        }}
+                        disabledDate={(current) => {
+                          const today = dayjs().startOf("day");
+                          return current && current < today;
                         }}
                         style={{ width: "100%", height: "40px" }}
                       />
-                      {/* <Input
-                    type="date"
-                    value={
-                      editStartDate ? format(editStartDate, "yyyy-MM-dd") : ""
-                    }
-                    onChange={(e) => dateChangeHandler(e, setEditStartDate)}
-                  /> */}
                     </div>
                     {editingTask && editingTask.recurringRefId == null ? (
                       <>
@@ -3032,7 +3036,6 @@ const TaskTable = ({
                           <Label>How many days Task Ended</Label>
                           <Input
                             type="number"
-                            // Removed taskEndDateOffset from here - check original
                             value={taskEndDateOffset}
                             onChange={(e) =>
                               setTaskEndDateOffset(e.target.value)
@@ -3049,7 +3052,6 @@ const TaskTable = ({
 
                           <TimePicker
                             className="w-full h-10"
-                            // disabled={isRecurrent}
                             format="hh:mm A"
                             use12Hours
                             value={
@@ -3091,17 +3093,6 @@ const TaskTable = ({
                           }}
                           style={{ width: "100%", height: "40px" }}
                         />
-                        {/* <Input
-                    type="date"
-                    value={
-                      editRecurrenceEndDate
-                        ? format(editRecurrenceEndDate, "yyyy-MM-dd")
-                        : ""
-                    }
-                    onChange={(e) =>
-                      dateChangeHandler(e, setEditRecurrenceEndDate)
-                    }
-                  /> */}
                       </div>
                     )}
                     <div className="space-y-2">
@@ -3119,10 +3110,6 @@ const TaskTable = ({
                           Upload Files
                         </AntButton>
                       </Upload> */}
-                      {/* <Input
-                    type="file"
-                    onChange={(e) => setEditAttachment(e.target.files?.[0])}
-                  /> */}
                     </div>
                   </div>
                 )}
@@ -3189,9 +3176,7 @@ const TaskTable = ({
             >
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit} /* disabled={loading} */>
-              {/* {loading ? 'Saving...' : 'Save Changes'} */ "Save Changes"}
-            </Button>
+            <Button onClick={handleSaveEdit}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -3295,9 +3280,7 @@ const TaskTable = ({
             <Button variant="outline" onClick={() => setIsReassignOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleReassignSubmit} /* disabled={loading} */>
-              {/* {loading ? 'Reassigning...' : 'Reassign'} */ "Reassign"}
-            </Button>
+            <Button onClick={handleReassignSubmit}>Reassign</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -3405,10 +3388,7 @@ const TaskTable = ({
             </Button>
             <Button
               onClick={handleCompleteTaskFromChecklist}
-              disabled={
-                !checklistItems || checklistItems.length === 0
-                // || !checklistItems.every((item) => item.isCompleted)
-              }
+              disabled={!checklistItems || checklistItems.length === 0}
             >
               Complete Task
             </Button>
