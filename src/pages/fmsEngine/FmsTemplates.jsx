@@ -518,6 +518,10 @@ const FmsTemplates = () => {
                     <TableHead className="font-semibold text-sm p-3">
                       CREATED BY
                     </TableHead>
+                    {/* 🟢 NEW COLUMN HEADER */}
+                    <TableHead className="font-semibold text-sm p-3">
+                      LINKED WITH FORM
+                    </TableHead>
                     <TableHead className="font-semibold text-sm p-3">
                       LAUNCHED
                     </TableHead>
@@ -530,7 +534,7 @@ const FmsTemplates = () => {
                   {Array.isArray(fmsTemplates) && fmsTemplates.length > 0 ? (
                     fmsTemplates.map((template) => (
                       <TableRow
-                        key={template.id}
+                        key={template.id || template._id}
                         className="hover:bg-gray-50 transition-colors duration-200"
                       >
                         <TableCell className="font-medium p-3 text-sm">
@@ -555,28 +559,51 @@ const FmsTemplates = () => {
                               {template.tasks?.length || 0}
                             </span>
                           </div>
-                        </TableCell>{" "}
-                        <TableCell className="p-3 text-sm">
-                          {template.user.name}
                         </TableCell>
+                        <TableCell className="p-3 text-sm">
+                          {template.user?.name || "—"}
+                        </TableCell>
+
+                        {/* 🟢 NEW CELL: LINKED WITH FORM BADGE */}
+                        <TableCell className="p-3 text-sm">
+                          <span
+                            className={cn(
+                              "px-2 py-0.5 text-xs rounded-md font-medium",
+                              template.isLinkedWithForm
+                                ? "bg-purple-100 text-purple-700 border border-purple-200"
+                                : "bg-gray-100 text-gray-600 border border-gray-200",
+                            )}
+                          >
+                            {template.isLinkedWithForm ? "Yes" : "No"}
+                          </span>
+                        </TableCell>
+
+                        {/* 🟢 UPDATED CELL: DYNAMIC LAUNCHED STATUS LABEL */}
                         <TableCell className="p-3 text-sm">
                           <div className="flex items-center gap-2">
                             <span
                               className={cn(
                                 "px-2 py-0.5 text-xs rounded-md font-medium",
-                                template.isLaunched
-                                  ? "bg-green-100 text-green-700"
-                                  : "bg-yellow-100 text-yellow-700",
+                                template.isLinkedWithForm
+                                  ? "bg-blue-100 text-blue-700"
+                                  : template.isLaunched
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-yellow-100 text-yellow-700",
                               )}
                             >
-                              {template.isLaunched ? "Launched" : "Draft"}
+                              {template.isLinkedWithForm
+                                ? "Form Linked"
+                                : template.isLaunched
+                                  ? "Launched"
+                                  : "Draft"}
                             </span>
                           </div>
                         </TableCell>
+
                         <TableCell className="p-3">
                           <div className="flex gap-2">
                             <div className="flex items-center gap-2">
-                              {/* Eye (View) Icon — Always Visible for Everyone */}
+                              {/* Eye (View) Icon — Always Visible */}
                               <Link
                                 to={`/fms-engine/view-template/${template._id}`}
                                 className="h-8 w-8 bg-green-100 text-green-600 rounded-md flex items-center justify-center hover:bg-green-200 transition-colors duration-200"
@@ -585,7 +612,7 @@ const FmsTemplates = () => {
                                 <Eye className="h-4 w-4" />
                               </Link>
 
-                              {/* Edit Icon — Only Visible to Admin */}
+                              {/* Edit Icon — Visible to Admin */}
                               {role === "Admin" && (
                                 <Link
                                   to={`/fms-engine/edit-template/${template._id}`}
@@ -596,7 +623,8 @@ const FmsTemplates = () => {
                                 </Link>
                               )}
                             </div>
-                            {(role == "Sr. Manager" || role == "Admin") && (
+
+                            {(role === "Sr. Manager" || role === "Admin") && (
                               <Popconfirm
                                 title="Delete Template"
                                 description="Are you sure you want to delete this template?"
@@ -623,7 +651,7 @@ const FmsTemplates = () => {
                   ) : (
                     <TableRow className="hover:bg-gray-50 transition-colors duration-200">
                       <TableCell
-                        colSpan={9} // 👈 adjust based on total columns
+                        colSpan={10} // Adjusted for 10 total columns
                         className="p-3 text-sm text-center text-gray-500"
                       >
                         No templates found.
