@@ -64,10 +64,11 @@ const initialTask = {
   checklistItems: [],
   isDependent: "no",
   dependentOn: "",
-  frequency: "Daily",
+  frequency: "None", // Default to None for Row 1 optionality
+  linkedWithForm: "no", // 🟢 NEW FIELD
   value: "",
   startTime: "none",
-  decisionStep: false, // ✅ Set boolean default
+  decisionStep: false,
   decisionYesAction: "",
   triggerFmsTemplate: "",
   formFields: [],
@@ -89,12 +90,12 @@ const mapTasksToUI = (apiTasks) => {
     isDependent: task.isDependent ? "yes" : "no",
     dependentOn: task.dependentOn || "",
 
-    frequency: task.frequency || "Daily",
+    frequency: task.frequency || "None",
+    linkedWithForm: task.linkedWithForm ? "yes" : "no", // 🟢 Map linkedWithForm from API
     value: task.xValue ?? "",
 
     startTime: task.startTimeSetting || "none",
 
-    // ✅ FIX 1: Explicitly preserve boolean value from API
     decisionStep: Boolean(task.decisionStep),
     decisionYesAction: task.decisionYesAction || "",
     triggerFmsTemplate:
@@ -250,7 +251,7 @@ const CreateNewFmsTem = () => {
             validationErrors.push(`Row ${row}: Assigned user required`);
           }
 
-          if (!task.frequency) {
+          if (index !== 0 && (!task.frequency || task.frequency === "None")) {
             validationErrors.push(`Row ${row}: Frequency required`);
           }
 
@@ -288,7 +289,6 @@ const CreateNewFmsTem = () => {
         const payload = tasks
           .filter((task) => !task.isFromAPI)
           .map((task) => {
-            // ✅ FIX 2: Strict boolean evaluation for onSubmit
             const isDecisionStep =
               task.decisionStep === true || task.decisionStep === "yes";
 
@@ -298,13 +298,14 @@ const CreateNewFmsTem = () => {
               description: task.description,
               departmentOfAssignToUser: task.dept,
               assignedTo: task.doer,
-              frequency: task.frequency,
+              frequency: task.frequency || "None",
+              linkedWithForm: task.linkedWithForm === "yes", // 🟢 Convert to Boolean for Backend
               xValue: task.value,
               isDependent:
                 task.isDependent === "yes" || task.isDependent === true,
               dependentOn: task.dependentOn,
               startTimeSetting:
-                task.startTime == "none" ? undefined : task.startTime,
+                task.startTime === "none" ? undefined : task.startTime,
               decisionStep: isDecisionStep,
               decisionYesAction: isDecisionStep ? task.decisionYesAction : null,
               triggerFmsTemplate:
@@ -348,7 +349,6 @@ const CreateNewFmsTem = () => {
     try {
       const res = await api.get(`/fms/templates-details/${id}`);
       const data = res.data.data;
-      // setIsAlreadyLaunched(data.isLaunched);
       setStatus(data.isLaunched);
       setTemplateId(data._id);
       setTemplateFMSId(data.fmsId);
@@ -375,7 +375,7 @@ const CreateNewFmsTem = () => {
     try {
       const res = await api.post(`/fms/templates/${id}/tasks-list`, {
         search,
-        departmentId: departmentId == "all" ? undefined : departmentId,
+        departmentId: departmentId === "all" ? undefined : departmentId,
       });
       const tasksData = res.data.data || [];
       const formattedTasks = mapTasksToUI(tasksData);
@@ -401,7 +401,6 @@ const CreateNewFmsTem = () => {
     fetchTasks(debounceSearch, deptFilter);
   }, [id, loadUpdate, debounceSearch, deptFilter]);
 
-  // ✅ FIX 3: Prevent useEffect re-render from overriding state variables
   useEffect(() => {
     if (!templateFMSId) return;
 
@@ -481,7 +480,6 @@ const CreateNewFmsTem = () => {
   const handleDeleteTask = async (index) => {
     const taskToDelete = tasks[index];
 
-    // 🛑 DEPENDENCY CHECK: Block deletion if another task in the list depends on this task
     if (taskToDelete?.taskId) {
       const dependentChildTasks = tasks.filter(
         (t) => t.isDependent === "yes" && t.dependentOn === taskToDelete.taskId,
@@ -499,14 +497,12 @@ const CreateNewFmsTem = () => {
       }
     }
 
-    // If it's a new task (not saved in backend yet)
     if (!taskToDelete._id) {
       removeTask(index);
       toast.success("Task removed");
       return;
     }
 
-    // Delete existing task from API
     try {
       await api.delete(
         `/fms/templates/${templateId}/tasks/${taskToDelete.taskId}`,
@@ -535,6 +531,12 @@ const CreateNewFmsTem = () => {
     newTasks[index][field] = value;
     if (field === "dept") {
       newTasks[index].doer = "";
+    }
+
+    if (field === "linkedWithForm" && value === "no") {
+      if (newTasks[index].frequency?.startsWith("Form Event")) {
+        newTasks[index].frequency = "None";
+      }
     }
 
     if (field === "decisionStep" && (value === false || value === "no")) {
@@ -581,7 +583,6 @@ const CreateNewFmsTem = () => {
     try {
       const task = tasks[index];
 
-      // ✅ FIX 4: Correct Boolean resolution in handleSave
       const isDecisionStep =
         task.decisionStep === true || task.decisionStep === "yes";
 
@@ -591,11 +592,13 @@ const CreateNewFmsTem = () => {
         description: task.description,
         departmentOfAssignToUser: task.dept,
         assignedTo: task.doer,
-        frequency: task.frequency,
+        frequency: task.frequency || "None",
+        linkedWithForm: task.linkedWithForm === "yes", // 🟢 Boolean conversion
         xValue: task.value,
         isDependent: task.isDependent === "yes" || task.isDependent === true,
         dependentOn: task.dependentOn,
-        startTimeSetting: task.startTime == "none" ? undefined : task.startTime,
+        startTimeSetting:
+          task.startTime === "none" ? undefined : task.startTime,
         decisionStep: isDecisionStep,
         decisionYesAction: isDecisionStep ? task.decisionYesAction : null,
         triggerFmsTemplate:
@@ -617,7 +620,7 @@ const CreateNewFmsTem = () => {
       }
 
       setEditingIndex(null);
-      await fetchTasks(searchTerm, deptFilter); // ✅ Refetch updated state
+      await fetchTasks(searchTerm, deptFilter);
     } catch (error) {
       console.log(error);
       toast.error(error.response?.data?.message || "Failed to update task");
@@ -859,7 +862,11 @@ const CreateNewFmsTem = () => {
                         <TableHead className="w-[180px]">
                           Start Time Setting
                         </TableHead>
-                        <TableHead className="w-[140px]">Frequency</TableHead>
+                        {/* 🟢 NEW COLUMN HEADER */}
+                        <TableHead className="w-[140px]">
+                          Link with Form?
+                        </TableHead>
+                        <TableHead className="w-[160px]">Frequency</TableHead>
                         <TableHead className="w-[100px]">Value</TableHead>
                         <TableHead className="w-[140px]">
                           Decision Step?
@@ -878,7 +885,7 @@ const CreateNewFmsTem = () => {
                     <TableBody>
                       {loadingTasks ? (
                         <TableRow>
-                          <TableCell colSpan={15} className="text-center">
+                          <TableCell colSpan={16} className="text-center">
                             <div className="flex justify-center items-center h-32">
                               <Spin />
                             </div>
@@ -1036,7 +1043,7 @@ const CreateNewFmsTem = () => {
                               <TableCell>
                                 <Select
                                   disabled={
-                                    !isEditable || task.isDependent == "no"
+                                    !isEditable || task.isDependent === "no"
                                   }
                                   value={task.startTime}
                                   onValueChange={(v) =>
@@ -1058,6 +1065,27 @@ const CreateNewFmsTem = () => {
                                   </SelectContent>
                                 </Select>
                               </TableCell>
+
+                              {/* 🟢 NEW CELL: Link with Form? */}
+                              <TableCell>
+                                <Select
+                                  disabled={!isEditable}
+                                  value={task.linkedWithForm || "no"}
+                                  onValueChange={(v) =>
+                                    handleTaskChange(index, "linkedWithForm", v)
+                                  }
+                                >
+                                  <SelectTrigger className="w-[80px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="no">No</SelectItem>
+                                    <SelectItem value="yes">Yes</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+
+                              {/* 🟢 FREQUENCY CELL */}
                               <TableCell>
                                 <Select
                                   disabled={!isEditable}
@@ -1065,13 +1093,18 @@ const CreateNewFmsTem = () => {
                                   onValueChange={(v) =>
                                     handleTaskChange(index, "frequency", v)
                                   }
-                                  className="w-[70px]"
                                 >
-                                  <SelectTrigger>
+                                  <SelectTrigger className="w-[140px]">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {task.isDependent == "no" && (
+                                    {index === 0 && (
+                                      <SelectItem value="None">
+                                        None (Standard)
+                                      </SelectItem>
+                                    )}
+
+                                    {task.isDependent === "no" && (
                                       <>
                                         <SelectItem value="Anytime">
                                           Anytime
@@ -1091,9 +1124,22 @@ const CreateNewFmsTem = () => {
                                         <SelectItem value="Start+X in hours">
                                           Start+X in hours
                                         </SelectItem>
+
+                                        {/* Form Event options available when Linked With Form */}
+                                        {task.linkedWithForm === "yes" && (
+                                          <>
+                                            <SelectItem value="Form Event+X in days">
+                                              Form Event+X in days
+                                            </SelectItem>
+                                            <SelectItem value="Form Event+X in hours">
+                                              Form Event+X in hours
+                                            </SelectItem>
+                                          </>
+                                        )}
                                       </>
                                     )}
-                                    {task.isDependent == "yes" && (
+
+                                    {task.isDependent === "yes" && (
                                       <>
                                         <SelectItem value="Task+X in days">
                                           Task+X in days
@@ -1103,9 +1149,10 @@ const CreateNewFmsTem = () => {
                                         </SelectItem>
                                       </>
                                     )}
-                                    {formik.values.fmsDuration ==
+
+                                    {formik.values.fmsDuration ===
                                       "Fixed Period" &&
-                                      task.isDependent == "no" && (
+                                      task.isDependent === "no" && (
                                         <>
                                           <SelectItem value="Event+X in days">
                                             Event+X in days
@@ -1124,6 +1171,8 @@ const CreateNewFmsTem = () => {
                                   </SelectContent>
                                 </Select>
                               </TableCell>
+
+                              {/* 🟢 VALUE CELL */}
                               <TableCell>
                                 <Input
                                   disabled={
@@ -1131,7 +1180,8 @@ const CreateNewFmsTem = () => {
                                     task.frequency === "Anytime" ||
                                     task.frequency === "Daily" ||
                                     task.frequency === "Weekly" ||
-                                    task.frequency === "Monthly"
+                                    task.frequency === "Monthly" ||
+                                    task.frequency === "None"
                                   }
                                   className="w-16"
                                   value={task.value}
@@ -1154,7 +1204,7 @@ const CreateNewFmsTem = () => {
                                     handleTaskChange(
                                       index,
                                       "decisionStep",
-                                      v === "yes", // ✅ Saves as strict boolean
+                                      v === "yes",
                                     )
                                   }
                                   className="w-[80px]"

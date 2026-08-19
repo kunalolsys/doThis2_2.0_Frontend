@@ -64,10 +64,11 @@ const initialTask = {
   checklistItems: [],
   isDependent: "no",
   dependentOn: "",
-  frequency: "Daily",
+  frequency: "None",
+  linkedWithForm: "no", // 🟢 Linked with Form state
   value: "",
   startTime: "none",
-  decisionStep: false, // ✅ Set boolean default
+  decisionStep: false,
   decisionYesAction: "",
   triggerFmsTemplate: "",
   formFields: [],
@@ -89,12 +90,12 @@ const mapTasksToUI = (apiTasks) => {
     isDependent: task.isDependent ? "yes" : "no",
     dependentOn: task.dependentOn || "",
 
-    frequency: task.frequency || "Daily",
+    frequency: task.frequency || "None",
+    linkedWithForm: task.linkedWithForm ? "yes" : "no", // 🟢 Map linkedWithForm from API
     value: task.xValue ?? "",
 
     startTime: task.startTimeSetting || "none",
 
-    // ✅ FIX 1: Explicitly preserve boolean value from API
     decisionStep: Boolean(task.decisionStep),
     decisionYesAction: task.decisionYesAction || "",
     triggerFmsTemplate:
@@ -249,7 +250,7 @@ const ViewFmsTemp = () => {
             validationErrors.push(`Row ${row}: Assigned user required`);
           }
 
-          if (!task.frequency) {
+          if (index !== 0 && (!task.frequency || task.frequency === "None")) {
             validationErrors.push(`Row ${row}: Frequency required`);
           }
 
@@ -287,7 +288,6 @@ const ViewFmsTemp = () => {
         const payload = tasks
           .filter((task) => !task.isFromAPI)
           .map((task) => {
-            // ✅ FIX 2: Strict boolean evaluation for onSubmit
             const isDecisionStep =
               task.decisionStep === true || task.decisionStep === "yes";
 
@@ -297,7 +297,8 @@ const ViewFmsTemp = () => {
               description: task.description,
               departmentOfAssignToUser: task.dept,
               assignedTo: task.doer,
-              frequency: task.frequency,
+              frequency: task.frequency || "None",
+              linkedWithForm: task.linkedWithForm === "yes",
               xValue: task.value,
               isDependent:
                 task.isDependent === "yes" || task.isDependent === true,
@@ -347,7 +348,6 @@ const ViewFmsTemp = () => {
     try {
       const res = await api.get(`/fms/templates-details/${id}`);
       const data = res.data.data;
-      // setIsAlreadyLaunched(data.isLaunched);
       setTemplateId(data._id);
       setTemplateFMSId(data.fmsId);
       setTemplateCreated(true);
@@ -399,7 +399,6 @@ const ViewFmsTemp = () => {
     fetchTasks(debounceSearch, deptFilter);
   }, [id, loadUpdate, debounceSearch, deptFilter]);
 
-  // ✅ FIX 3: Prevent useEffect re-render from overriding state variables
   useEffect(() => {
     if (!templateFMSId) return;
 
@@ -512,6 +511,12 @@ const ViewFmsTemp = () => {
       newTasks[index].doer = "";
     }
 
+    if (field === "linkedWithForm" && value === "no") {
+      if (newTasks[index].frequency?.startsWith("Form Event")) {
+        newTasks[index].frequency = "None";
+      }
+    }
+
     if (field === "decisionStep" && (value === false || value === "no")) {
       newTasks[index].decisionYesAction = "";
       newTasks[index].triggerFmsTemplate = "";
@@ -556,7 +561,6 @@ const ViewFmsTemp = () => {
     try {
       const task = tasks[index];
 
-      // ✅ FIX 4: Correct Boolean resolution in handleSave
       const isDecisionStep =
         task.decisionStep === true || task.decisionStep === "yes";
 
@@ -566,7 +570,8 @@ const ViewFmsTemp = () => {
         description: task.description,
         departmentOfAssignToUser: task.dept,
         assignedTo: task.doer,
-        frequency: task.frequency,
+        frequency: task.frequency || "None",
+        linkedWithForm: task.linkedWithForm === "yes",
         xValue: task.value,
         isDependent: task.isDependent === "yes" || task.isDependent === true,
         dependentOn: task.dependentOn,
@@ -592,7 +597,7 @@ const ViewFmsTemp = () => {
       }
 
       setEditingIndex(null);
-      await fetchTasks(searchTerm, deptFilter); // ✅ Refetch updated state
+      await fetchTasks(searchTerm, deptFilter);
     } catch (error) {
       console.log(error);
       toast.error(error.response?.data?.message || "Failed to update task");
@@ -618,21 +623,6 @@ const ViewFmsTemp = () => {
               </span>
             )}
           </div>
-
-          {/* <div className="flex items-center gap-2">
-            {templateCreated && (
-              <Badge
-                variant="outline"
-                className={`capitalize px-2 py-1 text-xs font-medium ${
-                  isAlreadyLaunched
-                    ? "bg-green-50 text-green-600 border-green-200"
-                    : "bg-yellow-50 text-yellow-600 border-yellow-200"
-                }`}
-              >
-                {isAlreadyLaunched ? "Launched" : "Draft"}
-              </Badge>
-            )}
-          </div> */}
         </div>
       </CardHeader>
 
@@ -829,7 +819,11 @@ const ViewFmsTemp = () => {
                         <TableHead className="w-[180px]">
                           Start Time Setting
                         </TableHead>
-                        <TableHead className="w-[140px]">Frequency</TableHead>
+                        {/* 🟢 VIEW LINK WITH FORM COLUMN */}
+                        <TableHead className="w-[140px]">
+                          Link with Form?
+                        </TableHead>
+                        <TableHead className="w-[160px]">Frequency</TableHead>
                         <TableHead className="w-[100px]">Value</TableHead>
                         <TableHead className="w-[140px]">
                           Decision Step?
@@ -842,13 +836,12 @@ const ViewFmsTemp = () => {
                         </TableHead>
                         <TableHead className="w-[140px]">Checklist</TableHead>
                         <TableHead className="w-[140px]">Create Form</TableHead>
-                        {/* <TableHead className="w-[100px]">Action</TableHead> */}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loadingTasks ? (
                         <TableRow>
-                          <TableCell colSpan={15} className="text-center">
+                          <TableCell colSpan={16} className="text-center">
                             <div className="flex justify-center items-center h-32">
                               <Spin />
                             </div>
@@ -1028,6 +1021,27 @@ const ViewFmsTemp = () => {
                                   </SelectContent>
                                 </Select>
                               </TableCell>
+
+                              {/* 🟢 LINK WITH FORM CELL */}
+                              <TableCell>
+                                <Select
+                                  disabled={!isEditable}
+                                  value={task.linkedWithForm || "no"}
+                                  onValueChange={(v) =>
+                                    handleTaskChange(index, "linkedWithForm", v)
+                                  }
+                                >
+                                  <SelectTrigger className="w-[80px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="no">No</SelectItem>
+                                    <SelectItem value="yes">Yes</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+
+                              {/* 🟢 FREQUENCY CELL */}
                               <TableCell>
                                 <Select
                                   disabled={!isEditable}
@@ -1035,12 +1049,17 @@ const ViewFmsTemp = () => {
                                   onValueChange={(v) =>
                                     handleTaskChange(index, "frequency", v)
                                   }
-                                  className="w-[70px]"
                                 >
-                                  <SelectTrigger>
+                                  <SelectTrigger className="w-[140px]">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
+                                    {index === 0 && (
+                                      <SelectItem value="None">
+                                        None (Standard)
+                                      </SelectItem>
+                                    )}
+
                                     {task.isDependent == "no" && (
                                       <>
                                         <SelectItem value="Anytime">
@@ -1061,8 +1080,20 @@ const ViewFmsTemp = () => {
                                         <SelectItem value="Start+X in hours">
                                           Start+X in hours
                                         </SelectItem>
+
+                                        {task.linkedWithForm === "yes" && (
+                                          <>
+                                            <SelectItem value="Form Event+X in days">
+                                              Form Event+X in days
+                                            </SelectItem>
+                                            <SelectItem value="Form Event+X in hours">
+                                              Form Event+X in hours
+                                            </SelectItem>
+                                          </>
+                                        )}
                                       </>
                                     )}
+
                                     {task.isDependent == "yes" && (
                                       <>
                                         <SelectItem value="Task+X in days">
@@ -1073,6 +1104,7 @@ const ViewFmsTemp = () => {
                                         </SelectItem>
                                       </>
                                     )}
+
                                     {formik.values.fmsDuration ==
                                       "Fixed Period" &&
                                       task.isDependent == "no" && (
@@ -1094,6 +1126,8 @@ const ViewFmsTemp = () => {
                                   </SelectContent>
                                 </Select>
                               </TableCell>
+
+                              {/* Value Cell */}
                               <TableCell>
                                 <Input
                                   disabled={
@@ -1101,7 +1135,8 @@ const ViewFmsTemp = () => {
                                     task.frequency === "Anytime" ||
                                     task.frequency === "Daily" ||
                                     task.frequency === "Weekly" ||
-                                    task.frequency === "Monthly"
+                                    task.frequency === "Monthly" ||
+                                    task.frequency === "None"
                                   }
                                   className="w-16"
                                   value={task.value}
@@ -1124,7 +1159,7 @@ const ViewFmsTemp = () => {
                                     handleTaskChange(
                                       index,
                                       "decisionStep",
-                                      v === "yes", // ✅ Saves as strict boolean
+                                      v === "yes",
                                     )
                                   }
                                   className="w-[80px]"
@@ -1212,7 +1247,6 @@ const ViewFmsTemp = () => {
                                     size="sm"
                                     className="h-auto p-0 text-xs"
                                     onClick={() => openChecklistModal(index)}
-                                    // disabled={!isEditable}
                                   >
                                     <ListCheck className="h-3 w-3 mr-1" />
                                     {task.checklistItems.length > 0
@@ -1238,7 +1272,6 @@ const ViewFmsTemp = () => {
                                     size="sm"
                                     className="h-auto p-1 text-xs"
                                     onClick={() => openFormModal(index)}
-                                    // disabled={!isEditable}
                                   >
                                     <FilePlus className="h-3 w-3 mr-1" /> Add
                                     Form
@@ -1253,53 +1286,6 @@ const ViewFmsTemp = () => {
                                   )}
                                 </div>
                               </TableCell>
-
-                              {/* <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <div>
-                                    {task.isFromAPI ? (
-                                      editingIndex === index ? (
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          disabled={isAlreadyLaunched}
-                                          onClick={() => handleSave(index)}
-                                        >
-                                          <Check className="h-4 w-4 text-green-600" />
-                                        </Button>
-                                      ) : (
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="icon"
-                                          disabled={isAlreadyLaunched}
-                                          onClick={() => handleEdit(index)}
-                                        >
-                                          <Pencil className="h-4 w-4 text-blue-600" />
-                                        </Button>
-                                      )
-                                    ) : null}
-                                  </div>
-                                  <Popconfirm
-                                    title="Delete Task"
-                                    description="Are you sure you want to delete this task?"
-                                    onConfirm={() => handleDeleteTask(index)}
-                                    okText="Yes"
-                                    cancelText="No"
-                                  >
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      disabled={isAlreadyLaunched}
-                                      className="h-8 w-8 p-0"
-                                    >
-                                      <Trash2 className="h-4 w-4 text-destructive" />
-                                    </Button>
-                                  </Popconfirm>
-                                </div>
-                              </TableCell> */}
                             </TableRow>
                           );
                         })

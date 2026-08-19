@@ -218,7 +218,7 @@ const TaskActions = ({
   const onHold = task.status == "Onhold";
   const stopped = task.status == "Stopped";
   const isFms = task.taskType == "FmsInstanceTask";
-
+  const isWaitingForParent = Boolean(task?.waitingForParent);
   return (
     <div className="flex gap-1">
       {/* Checklist Button */}
@@ -289,36 +289,62 @@ const TaskActions = ({
       {/* Complete Button (Normal Direct Complete) */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            disabled={upComing || onHold || stopped || isCompleted || notDone}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-green-600 hover:bg-green-50"
-            onClick={() => onToggleComplete(task)}
-          >
-            <CheckCircle className="h-4 w-4" />
-          </Button>
+          <span>
+            <Button
+              disabled={
+                upComing ||
+                onHold ||
+                stopped ||
+                isCompleted ||
+                notDone ||
+                isWaitingForParent // 🟢 Disabled if waiting for parent
+              }
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-green-600 hover:bg-green-50"
+              onClick={() => onToggleComplete(task)}
+            >
+              <CheckCircle className="h-4 w-4" />
+            </Button>
+          </span>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Mark as Done</p>
+          <p>
+            {isWaitingForParent
+              ? "Waiting for parent task completion"
+              : "Mark as Done"}
+          </p>
         </TooltipContent>
       </Tooltip>
 
       {/* Not Done Button (Triggers Decision Step Check) */}
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button
-            disabled={upComing || onHold || stopped || isCompleted || notDone}
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-red-600 hover:bg-red-50"
-            onClick={() => handleNotDoneClick(task)}
-          >
-            <XCircle className="h-4 w-4" />
-          </Button>
+          <span>
+            <Button
+              disabled={
+                upComing ||
+                onHold ||
+                stopped ||
+                isCompleted ||
+                notDone ||
+                isWaitingForParent // 🟢 Disabled if waiting for parent
+              }
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-red-600 hover:bg-red-50"
+              onClick={() => handleNotDoneClick(task)}
+            >
+              <XCircle className="h-4 w-4" />
+            </Button>
+          </span>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Mark as Not Done</p>
+          <p>
+            {isWaitingForParent
+              ? "Waiting for parent task completion"
+              : "Mark as Not Done"}
+          </p>
         </TooltipContent>
       </Tooltip>
 
@@ -835,7 +861,7 @@ const TodayTasksTable = ({
   // 1. Safely combine tasks
   const combinedTasks = useMemo(
     () => [...(tasks || []), ...(upcomingRecurringTasks || [])],
-    [tasks, upcomingRecurringTasks]
+    [tasks, upcomingRecurringTasks],
   );
 
   // 2. Scan ALL tasks dynamically to build unique dynamic submission columns
@@ -848,7 +874,10 @@ const TodayTasksTable = ({
           if (field && typeof field === "object") {
             if (field.isTableColumn === true) {
               const columnLabel = field.label || formatLabel(key);
-              columnsMap.set(key, { label: columnLabel, fieldType: field.fieldType });
+              columnsMap.set(key, {
+                label: columnLabel,
+                fieldType: field.fieldType,
+              });
             }
           }
         });
@@ -866,7 +895,9 @@ const TodayTasksTable = ({
 
     if (fieldType === "date" && val) {
       const parsedDate = dayjs(val);
-      return parsedDate.isValid() ? parsedDate.format("DD MMM YYYY") : String(val);
+      return parsedDate.isValid()
+        ? parsedDate.format("DD MMM YYYY")
+        : String(val);
     }
 
     if (typeof val === "object") {
@@ -876,7 +907,7 @@ const TodayTasksTable = ({
         return val.length > 0
           ? val
               .map((item) =>
-                typeof item === "object" ? JSON.stringify(item) : String(item)
+                typeof item === "object" ? JSON.stringify(item) : String(item),
               )
               .join(", ")
           : "-";
@@ -924,12 +955,12 @@ const TodayTasksTable = ({
             combinedTasks.map((task, index) => {
               const assignedByUser =
                 allUsers?.find(
-                  (u) => String(u._id) === String(task?.assignedBy?._id)
+                  (u) => String(u._id) === String(task?.assignedBy?._id),
                 ) || null;
 
               const assignedToUser =
                 allUsers?.find(
-                  (u) => String(u._id) === String(task?.assignedTo?._id)
+                  (u) => String(u._id) === String(task?.assignedTo?._id),
                 ) || null;
 
               return (
@@ -1576,6 +1607,12 @@ const FmsTasks = () => {
 
   // --- 🟢 Complete Task Handler (Normal Standard Completion) ---
   const handleToggleComplete = async (task) => {
+    if (task?.waitingForParent) {
+      toast.warning(
+        "Cannot complete task: Waiting for parent task to be completed first.",
+      );
+      return;
+    }
     Modal.confirm({
       title: `Confirm Completion`,
       content: `Are you sure you want to mark this task as completed?`,
@@ -1624,6 +1661,12 @@ const FmsTasks = () => {
 
   // --- 🔴 Not Done Handler (Checks for Decision Gate Step) ---
   const handleNotDoneClick = async (task) => {
+    if (task?.waitingForParent) {
+      toast.warning(
+        "Cannot update status: Waiting for parent task to be completed first.",
+      );
+      return;
+    }
     setSelectedTask(task);
     try {
       // 🔀 Step 1: Call decision-info API to check if task has a Decision Step

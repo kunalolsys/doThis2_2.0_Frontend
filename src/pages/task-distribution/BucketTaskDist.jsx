@@ -20,30 +20,31 @@ import {
   Clock,
 } from "lucide-react";
 
-import { Table, Tag, Checkbox, Empty } from "antd";
+import { Table, Tag, Checkbox, Empty, Input, Select } from "antd";
 import api from "../../lib/api.js";
 import dayjs from "dayjs";
-import { Input, Select } from "antd";
 import TaskBucketListCard from "./TaskBucketListCard.jsx";
 import { useDebounce } from "../../lib/debounce.js";
 import { toast } from "sonner";
 
 const { Search } = Input;
+
 const TaskDistribution = () => {
   const [buckets, setBuckets] = useState([]);
-
   const [selectedBucket, setSelectedBucket] = useState(null);
-
   const [reportingUsers, setReportingUsers] = useState([]);
   const [isBucketComplete, setIsBucketComplete] = useState(false);
 
   const [selectedAssignments, setSelectedAssignments] = useState({});
+  // 🟢 State to keep track of selected department per user: { [userId]: departmentId }
+  const [selectedDepartments, setSelectedDepartments] = useState({});
 
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("Pending"); // all | recurring | non-recurring
   const [sortBy, setSortBy] = useState("newest"); // date | title | status
   const debounceSearch = useDebounce(search);
+
   // =========================================================
   // FETCH BUCKETS
   // =========================================================
@@ -71,8 +72,25 @@ const TaskDistribution = () => {
   const fetchReportingUsers = async (bucketId) => {
     try {
       const res = await api.get(`/task-buckets/${bucketId}/reporting-users`);
-      setReportingUsers(res?.data?.data || []);
+      const users = res?.data?.data || [];
+      setReportingUsers(users);
       setIsBucketComplete(res?.data?.isBucketComplete);
+
+      // Pre-fill department selection if user has only 1 department available
+      const initialDepts = {};
+      users.forEach((u) => {
+        const depts = u.department || u.departments || [];
+        if (Array.isArray(depts) && depts.length === 1) {
+          initialDepts[u._id] = depts[0]._id || depts[0];
+        } else if (
+          depts &&
+          typeof depts === "object" &&
+          !Array.isArray(depts)
+        ) {
+          initialDepts[u._id] = depts._id;
+        }
+      });
+      setSelectedDepartments(initialDepts);
     } catch (err) {
       console.log(err);
     }
@@ -88,8 +106,8 @@ const TaskDistribution = () => {
 
   const handleSelectBucket = async (bucket) => {
     setSelectedBucket(bucket);
-
     setSelectedAssignments({});
+    setSelectedDepartments({});
 
     await fetchReportingUsers(bucket._id);
   };
@@ -101,26 +119,28 @@ const TaskDistribution = () => {
   const tableData = useMemo(() => {
     return reportingUsers.map((u) => ({
       key: u._id,
-
       userId: u._id,
-
       userName: u.name,
-
       email: u.email,
-
       role: u.role?.name || "-",
-
       managerId: u.reportingManager?._id,
-
       managerName: u.reportingManager?.name || "-",
-
       alreadyAssigned: u.hasBucketTask === true,
       status: u.hasBucketTask ? "Distributed" : "Not Distributed",
       taskStatus: u.completedStatus || "No Task",
-
       completedAt: u.completedAt || null,
+
+      // 🟢 Extract departments array from user record
+      departments: Array.isArray(u.department)
+        ? u.department
+        : Array.isArray(u.departments)
+          ? u.departments
+          : u.department
+            ? [u.department]
+            : [],
     }));
   }, [reportingUsers]);
+
   // =========================================================
   // DISTRIBUTE TASK
   // =========================================================
@@ -139,10 +159,32 @@ const TaskDistribution = () => {
         return;
       }
 
+      // 🟢 VALIDATION: Ensure every selected employee has a selected department
+      const unselectedDeptUser = selectedUsers.find(
+        (userId) => !selectedDepartments[userId],
+      );
+
+      if (unselectedDeptUser) {
+        const userObj = reportingUsers.find(
+          (u) => u._id === unselectedDeptUser,
+        );
+        toast.error(
+          `Please select a department for ${userObj?.name || "all selected employees"}`,
+        );
+        return;
+      }
+
+      // Format payload with user & their chosen department
+      const assignments = selectedUsers.map((userId) => ({
+        userId,
+        departmentId: selectedDepartments[userId],
+      }));
+
       setLoading(true);
 
       await api.post(`/task-buckets/${selectedBucket._id}/distribute`, {
         selectedUsers,
+        assignments,
       });
 
       toast.success("Tasks distributed successfully");
@@ -155,9 +197,9 @@ const TaskDistribution = () => {
 
       // clear selected
       setSelectedAssignments({});
+      setSelectedDepartments({});
     } catch (err) {
       console.log(err);
-
       toast.error(err?.response?.data?.message || "Failed to distribute task");
     } finally {
       setLoading(false);
@@ -190,7 +232,7 @@ const TaskDistribution = () => {
     {
       title: "Assign",
       dataIndex: "assign",
-      width: 90,
+      width: 70,
 
       render: (_, record) => (
         <Checkbox
@@ -214,7 +256,6 @@ const TaskDistribution = () => {
       render: (_, record) => (
         <div>
           <div className="font-semibold text-slate-800">{record.userName}</div>
-
           <div className="text-xs text-slate-500">{record.email}</div>
         </div>
       ),
@@ -225,6 +266,39 @@ const TaskDistribution = () => {
       dataIndex: "role",
 
       render: (value) => <Tag color="blue">{value}</Tag>,
+    },
+
+    // 🟢 NEW COLUMN: DEPARTMENT SELECTION
+    {
+      title: "Department",
+      dataIndex: "departments",
+      width: 180,
+
+      render: (departments, record) => {
+        const isSelected = !!selectedAssignments[record.userId];
+        const hasMissingDept =
+          isSelected && !selectedDepartments[record.userId];
+
+        return (
+          <Select
+            placeholder="Select Department"
+            style={{ width: "100%" }}
+            disabled={record.alreadyAssigned || isBucketComplete}
+            status={hasMissingDept ? "error" : ""}
+            value={selectedDepartments[record.userId] || undefined}
+            onChange={(deptId) => {
+              setSelectedDepartments((prev) => ({
+                ...prev,
+                [record.userId]: deptId,
+              }));
+            }}
+            options={departments.map((d) => ({
+              label: d.name || d.departmentName || d,
+              value: d._id || d,
+            }))}
+          />
+        );
+      },
     },
 
     {
@@ -355,7 +429,8 @@ const TaskDistribution = () => {
                     </CardTitle>
 
                     <p className="text-sm text-slate-500 mt-1">
-                      Select employees who should receive tasks
+                      Select employees and their target department to receive
+                      tasks
                     </p>
                   </div>
 
@@ -390,53 +465,6 @@ const TaskDistribution = () => {
                     pagination={{
                       pageSize: 7,
                     }}
-                    // expandable={{
-                    //   expandedRowRender: (record) => (
-                    //     <div className="grid grid-cols-2 gap-5 p-2">
-                    //       <div>
-                    //         <p className="text-xs text-slate-500">User ID</p>
-
-                    //         <div className="font-medium text-slate-700 break-all">
-                    //           {record.userId}
-                    //         </div>
-                    //       </div>
-
-                    //       <div>
-                    //         <p className="text-xs text-slate-500">
-                    //           Reporting Manager
-                    //         </p>
-
-                    //         <div className="font-medium text-slate-700">
-                    //           {record.managerName}
-                    //         </div>
-                    //       </div>
-
-                    //       <div>
-                    //         <p className="text-xs text-slate-500">
-                    //           Employee Email
-                    //         </p>
-
-                    //         <div className="font-medium text-slate-700">
-                    //           {record.email}
-                    //         </div>
-                    //       </div>
-
-                    //       <div>
-                    //         <p className="text-xs text-slate-500">
-                    //           Current Status
-                    //         </p>
-
-                    //         <div>
-                    //           {record.alreadyAssigned ? (
-                    //             <Tag color="green">Already Assigned</Tag>
-                    //           ) : (
-                    //             <Tag color="orange">Pending Assignment</Tag>
-                    //           )}
-                    //         </div>
-                    //       </div>
-                    //     </div>
-                    //   ),
-                    // }}
                   />
                 )}
 
