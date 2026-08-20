@@ -285,43 +285,6 @@ const TaskActions = ({
           <p>Mark as Done</p>
         </TooltipContent>
       </Tooltip>
-      {/* {!isCompleted ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              disabled={upComing || onHold || stopped}
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-green-600 hover:bg-green-50"
-              onClick={() => onToggleComplete(task)}
-            >
-              <CheckCircle className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Mark as Done</p>
-          </TooltipContent>
-        </Tooltip>
-      ) : !isFms ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-yellow-600 hover:bg-yellow-50"
-              onClick={() => onToggleComplete(task)}
-              disabled={onHold || stopped}
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Reopen Task</p>
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        <></>
-      )} */}
       <Tooltip>
         <TooltipTrigger asChild>
           <div className="relative">
@@ -451,21 +414,7 @@ const FmsFormModal = ({
   }, [task, open]);
   const formik = useFormik({
     enableReinitialize: true,
-
-    /* ✅ Dynamic Initial Values */
     initialValues,
-    // initialValues:
-    //   task?.createdForm?.reduce((acc, field) => {
-    //     const key = getFieldKey(field.fieldName);
-
-    //     acc[key] =
-    //       task?.formData?.[field.fieldName] ??
-    //       (field.fieldType === "checkbox" ? false : "");
-
-    //     return acc;
-    //   }, {}) || {},
-
-    /* ✅ Dynamic Validation */
     validationSchema: buildValidationSchema(task?.createdForm || []),
 
     onSubmit: (values) => {
@@ -604,7 +553,6 @@ const FmsFormModal = ({
           {task.status != "Completed" && (
             <button
               onClick={formik.handleSubmit}
-              // disabled={!formik.dirty || !formik.isValid || formik.isSubmitting}
               className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md disabled:opacity-50"
             >
               Submit
@@ -683,7 +631,7 @@ const Pagination = ({
 const StatsCards = ({ counts, selectedStat, onStatClick }) => {
   const getCardClass = (type, color) => `
     cursor-pointer transition-all duration-200 transform hover:scale-105
-    ${selectedStat === type ? `ring-2 ring-${color}-500 shadow-lg` : ""}
+    ${selectedStat === type ? `ring-2 ring-${color}-500 shadow-lg scale-105` : ""}
   `;
 
   return (
@@ -774,7 +722,7 @@ const FilterBar = ({
   selectedFilterTaskType,
   setSelectedFilterTaskType,
   selectedFilterStatus,
-  setSelectedFilterStatus,
+  onFilterStatusChange, // 🟢 SYNCHRONIZED STATUS DROPDOWN CHANGE
   showExport = false,
   onExport,
   isExporting,
@@ -822,32 +770,25 @@ const FilterBar = ({
                 <SelectItem value="RecurringTask">Recurring</SelectItem>
               </>
             )}
-
-            {/* {isFMSEnable && (
-              <SelectItem value="FmsInstanceTask">FMS</SelectItem>
-            )} */}
           </SelectContent>
         </Select>
       )}
-      {(selectedStatFilter == "total" || !selectedStatFilter) && (
-        <Select
-          value={selectedFilterStatus}
-          onValueChange={setSelectedFilterStatus}
-        >
-          <SelectTrigger className="w-full bg-white">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="Completed">Completed</SelectItem>
-            <SelectItem value="Overdue">Overdue</SelectItem>
-            <SelectItem value="Delayed">Delayed</SelectItem>
-            {isFMSEnable && <SelectItem value="Stopped">Stopped</SelectItem>}
-            {/* <SelectItem value="Due Today">Due Today</SelectItem> */}
-          </SelectContent>
-        </Select>
-      )}
+      <Select
+        value={selectedFilterStatus}
+        onValueChange={onFilterStatusChange} // 🟢 SYNCHRONIZED DROPDOWN CHANGE
+      >
+        <SelectTrigger className="w-full bg-white">
+          <SelectValue placeholder="All Statuses" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Statuses</SelectItem>
+          <SelectItem value="Pending">Pending</SelectItem>
+          <SelectItem value="Completed">Completed</SelectItem>
+          <SelectItem value="Overdue">Overdue</SelectItem>
+          <SelectItem value="Delayed">Delayed</SelectItem>
+          {isFMSEnable && <SelectItem value="Stopped">Stopped</SelectItem>}
+        </SelectContent>
+      </Select>
     </div>
 
     {showExport && (
@@ -1110,7 +1051,11 @@ const TodayTasksTable = ({
                             ? "bg-blue-100 text-blue-700"
                             : task.taskType === "RecurringTask"
                               ? "bg-purple-100 text-purple-700"
-                              : "bg-gray-100 text-gray-700"
+                              : task.taskType == "FutureRecurringTask"
+                                ? "bg-purple-100 text-purple-700"
+                                : task.frequency
+                                  ? "bg-purple-100 text-purple-700"
+                                  : "bg-gray-100 text-gray-700"
                         }`}
                       >
                         {task.taskType === "FmsInstanceTask"
@@ -1124,7 +1069,6 @@ const TodayTasksTable = ({
                                 : "Delegation"}
                       </span>
                     </TableCell>
-                    {/* <TableCell>{task.assignedBy?.name || "Self"}</TableCell> */}
                     <TableCell>
                       {Array.isArray(task?.attachmentFile) &&
                       task.attachmentFile.length > 0 ? (
@@ -1142,48 +1086,65 @@ const TodayTasksTable = ({
                     <TableCell>{task.frequency ?? "-"}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       {(() => {
-                        const dueStatus = getDueStatus(task.dueDate);
+                        if (
+                          ["Completed", "Stopped", "Not Done"].includes(
+                            task.status,
+                          )
+                        ) {
+                          return (
+                            <span className="text-gray-400 text-xs font-medium">
+                              —
+                            </span>
+                          );
+                        }
 
-                        if (!dueStatus) return "-";
-                        if (task.status == "Completed") return;
+                        const dueStatus = getDueStatus(
+                          task.dueDate || task.plannedDueDate,
+                        );
+
+                        if (!dueStatus)
+                          return (
+                            <span className="text-gray-400 text-xs font-medium">
+                              —
+                            </span>
+                          );
+
+                        const isOverdue = dueStatus.type === "overdue";
+                        const isToday = dueStatus.type === "today";
+
                         return (
                           <div
                             className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm
-                                    transition-all duration-300 hover:-translate-y-1 hover:shadow-lg
-                                    ${
-                                      dueStatus.type === "overdue"
-                                        ? "border-l-4 border-l-red-500"
-                                        : dueStatus.type === "today"
-                                          ? "border-l-4 border-l-amber-500"
-                                          : "border-l-4 border-l-emerald-500"
-                                    }`}
+          transition-all duration-300 hover:-translate-y-1 hover:shadow-lg
+          ${
+            isOverdue
+              ? "border-l-4 border-l-red-500 bg-red-50/20"
+              : isToday
+                ? "border-l-4 border-l-amber-500 bg-amber-50/20"
+                : "border-l-4 border-l-emerald-500"
+          }`}
                           >
                             {/* Animated Status Dot */}
                             <div className="mr-3 relative flex h-3 w-3 items-center justify-center">
-                              {(dueStatus.type === "overdue" ||
-                                dueStatus.type === "today" ||
-                                dueStatus.type === "upcoming") && (
-                                <span
-                                  className={`absolute inline-flex h-full w-full rounded-full opacity-75
-                                            ${
-                                              dueStatus.type === "overdue"
-                                                ? "bg-red-500 animate-ping"
-                                                : dueStatus.type === "today"
-                                                  ? "bg-amber-500 animate-ping"
-                                                  : "bg-emerald-500 animate-ping"
-                                            }`}
-                                />
-                              )}
-
+                              <span
+                                className={`absolute inline-flex h-full w-full rounded-full opacity-75
+              ${
+                isOverdue
+                  ? "bg-red-500 animate-ping"
+                  : isToday
+                    ? "bg-amber-500 animate-ping"
+                    : "bg-emerald-500 animate-ping"
+              }`}
+                              />
                               <span
                                 className={`relative inline-flex h-3 w-3 rounded-full
-                                          ${
-                                            dueStatus.type === "overdue"
-                                              ? "bg-red-500"
-                                              : dueStatus.type === "today"
-                                                ? "bg-amber-500"
-                                                : "bg-emerald-500"
-                                          }`}
+              ${
+                isOverdue
+                  ? "bg-red-500"
+                  : isToday
+                    ? "bg-amber-500"
+                    : "bg-emerald-500"
+              }`}
                               />
                             </div>
 
@@ -1191,37 +1152,25 @@ const TodayTasksTable = ({
                             <div>
                               <p
                                 className={`text-xs font-semibold
-                                          ${
-                                            dueStatus.type === "overdue"
-                                              ? "text-red-700"
-                                              : dueStatus.type === "today"
-                                                ? "text-amber-700"
-                                                : "text-emerald-700"
-                                          }`}
+              ${
+                isOverdue
+                  ? "text-red-700"
+                  : isToday
+                    ? "text-amber-700"
+                    : "text-emerald-700"
+              }`}
                               >
-                                {dueStatus.type === "overdue"
-                                  ? "Overdue"
-                                  : dueStatus.type === "today"
-                                    ? "Due Today"
-                                    : "Remaining"}
+                                {dueStatus.label}
                               </p>
 
                               <p className="text-[11px] text-muted-foreground">
                                 {dueStatus.text}
                               </p>
                             </div>
-
-                            {/* Shine Effect */}
-                            <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-lg">
-                              <span className="absolute -left-full top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent transition-all duration-700 hover:left-full" />
-                            </span>
                           </div>
                         );
                       })()}
                     </TableCell>
-                    {/* <TableCell className={task.delay ? "text-red-600" : ""}>
-                      {task.delay || "-"}
-                    </TableCell> */}
                     <TableCell>{getStatusBadge(task.status)}</TableCell>
                     <TableCell>
                       <div className="flex items-center">
@@ -1269,11 +1218,9 @@ const MyTask = () => {
   const location = useLocation();
   const currentUser = useSelector((state) => state.users.currentUser);
   const source = location.state?.source;
-  // 🔴 AUTH CHECK
-  // only save if NOT login page
+
   if (location.pathname !== "/") {
     const redirectPath = location.pathname + location.search + location.hash;
-
     localStorage.setItem("redirectAfterLogin", redirectPath);
   }
 
@@ -1286,29 +1233,23 @@ const MyTask = () => {
     error,
     totalTasks,
   } = useSelector((state) => state.myTasks);
+
   const fetchTaskById = async () => {
     try {
       const res = await api.get(`/tasks/${taskId}`);
       const task = res.data.data || [];
-      // ✅ task not found
       if (!task) return;
 
-      // ✅ only assignee OR assigner can open
       const currentUserId = currentUser?._id?.toString();
       const assignedToId =
         task?.assignedTo?._id?.toString() || task?.assignedTo?.id?.toString();
 
       const hasAccess = currentUserId === assignedToId;
-
       if (!hasAccess) return;
 
-      // ✅ set selected task
       setSelectedQueryTask(task);
-
-      // ✅ open drawer
       setQueryDrawerOpen(true);
 
-      // optional unread reset
       if (task?.conversationId) {
         setUnreadMap((prev) => ({
           ...prev,
@@ -1319,9 +1260,9 @@ const MyTask = () => {
       console.log(error);
     }
   };
+
   useEffect(() => {
     if (!taskId) return;
-
     fetchTaskById();
   }, [taskId, currentUser]);
 
@@ -1330,6 +1271,7 @@ const MyTask = () => {
   const [configOpen, setConfigOpen] = useState(false);
   const { isConnected, socket, events } = useSocket();
   const [unreadMap, setUnreadMap] = useState({});
+
   useEffect(() => {
     if (!socket) return;
 
@@ -1345,7 +1287,6 @@ const MyTask = () => {
     };
   }, [socket]);
 
-  // NOTE: selectedStatFilter can be: 'total', 'overdue', 'completed', 'dueToday', or null (no stat filter)
   const [selectedStatFilter, setSelectedStatFilter] = useState(null);
   useEffect(() => {
     if (!source) return;
@@ -1356,6 +1297,30 @@ const MyTask = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFilterTaskType, setSelectedFilterTaskType] = useState("all");
   const [selectedFilterStatus, setSelectedFilterStatus] = useState("all");
+
+  // 🟢 BIDIRECTIONAL SYNCHRONIZATION: DROPDOWN SELECT -> STATS CARD HIGHLIGHT
+  const handleDropdownStatusChange = (val) => {
+    setSelectedFilterStatus(val);
+    setLocalCurrentPage(1);
+
+    switch (val) {
+      case "Pending":
+        setSelectedStatFilter("pending");
+        break;
+      case "Completed":
+        setSelectedStatFilter("completed");
+        setActiveTab("completed");
+        break;
+      case "Overdue":
+        setSelectedStatFilter("overdue");
+        setActiveTab("today");
+        break;
+      case "all":
+      default:
+        setSelectedStatFilter("total");
+        break;
+    }
+  };
 
   // Pagination States
   const [localCurrentPage, setLocalCurrentPage] = useState(1);
@@ -1376,7 +1341,7 @@ const MyTask = () => {
   // Export State
   const [isExporting, setIsExporting] = useState(false);
 
-  // Edit Form States (Minimal placeholder)
+  // Edit Form States
   const [editTitle, setEditTitle] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 500);
   const [isFetching, setIsFetching] = useState(false);
@@ -1391,14 +1356,13 @@ const MyTask = () => {
   const [refreshUI, setRefreshUI] = useState(false);
   const [submissionModalOpen, setSubmissionModalOpen] = useState(false);
   const [selectedSubmissionTask, setSelectedSubmissionTask] = useState(null);
-  // --- Initial Data Load ---
+
   useEffect(() => {
     if (currentUser?._id) {
       dispatch(fetchTaskCounts(currentUser._id));
     }
   }, [currentUser, dispatch, refetch]);
 
-  //**Fetch users */
   const [allUsers, setAllUsers] = useState([]);
   useEffect(() => {
     const fetchUsers = async () => {
@@ -1427,7 +1391,7 @@ const MyTask = () => {
     debouncedSearch,
     dateRange,
   ]);
-  // --- Fetch Trigger ---
+
   useEffect(() => {
     let mounted = true;
     if (currentUser?._id) {
@@ -1441,12 +1405,8 @@ const MyTask = () => {
           dateRange,
           search: debouncedSearch || undefined,
 
-          // ✅ MULTI FILTER OBJECT
           filters: {
-            // 📊 STAT FILTER
             stat: selectedStatFilter || null,
-
-            // 📌 TAB FILTER
             taskCategory: selectedStatFilter
               ? null
               : activeTab === "today"
@@ -1456,12 +1416,8 @@ const MyTask = () => {
                   : activeTab === "completed"
                     ? "completed"
                     : null,
-
-            // 🔁 TYPE
             taskType:
               selectedFilterTaskType === "all" ? null : selectedFilterTaskType,
-
-            // 📊 STATUS
             status:
               selectedFilterStatus === "all" ? null : selectedFilterStatus,
           },
@@ -1490,7 +1446,6 @@ const MyTask = () => {
     refreshUI,
   ]);
 
-  // --- Export Function ---
   const handleExport = async () => {
     try {
       setIsExporting(true);
@@ -1502,10 +1457,7 @@ const MyTask = () => {
           search: debouncedSearch || undefined,
 
           filters: {
-            // 📊 STAT
             stat: selectedStatFilter || null,
-
-            // 📌 TAB
             taskCategory: selectedStatFilter
               ? null
               : activeTab === "today"
@@ -1515,12 +1467,8 @@ const MyTask = () => {
                   : activeTab === "completed"
                     ? "completed"
                     : null,
-
-            // 🔁 TYPE
             taskType:
               selectedFilterTaskType === "all" ? null : selectedFilterTaskType,
-
-            // 📊 STATUS
             status:
               selectedFilterStatus === "all" ? null : selectedFilterStatus,
           },
@@ -1534,130 +1482,96 @@ const MyTask = () => {
         return;
       }
 
-      // ==================================================
-      // FORMAT EXPORT DATA
-      // ==================================================
-
       const dataToExport = filteredData.map((task, index) => ({
         "Sr. No.": index + 1,
-
         "Task ID": task?.TaskId || "-",
-
         "Task Title": task?.title || "-",
-
         Description: task?.description || "-",
-
         Type: task?.taskType || "-",
-
         Frequency: task?.frequency || "-",
-
         Status: task?.status || "-",
-
         Source: task?.assignedBy?.name || "Self",
-
         Assignee: task?.assignedTo?.name || "-",
-
         Department: task?.departmentOfAssignToUser?.name || "-",
-
         Attachment: task?.attachmentFile?.length > 0 ? "Yes" : "No",
-
         "Checklist Count": task?.checklist?.length || 0,
-
         "Start Date": task?.startDate
           ? new Date(task.startDate).toLocaleDateString()
           : "-",
-
         "Due Date": task?.dueDate
           ? new Date(task.dueDate).toLocaleDateString()
           : "-",
-
         Delay: task?.delay || "-",
-
         "Created At": task?.createdAt
           ? new Date(task.createdAt).toLocaleString()
           : "-",
-
         "Updated At": task?.updatedAt
           ? new Date(task.updatedAt).toLocaleString()
           : "-",
       }));
 
-      // ==================================================
-      // CREATE EXCEL
-      // ==================================================
-
       const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-
       const workbook = XLSX.utils.book_new();
-
       XLSX.utils.book_append_sheet(workbook, worksheet, "My Tasks");
-
       const timestamp = new Date().toISOString().split("T")[0];
-
       XLSX.writeFile(workbook, `MyTasks_${timestamp}.xlsx`);
 
       toast.success("Export completed successfully");
     } catch (error) {
       console.error("Export error:", error);
-
       toast.error(error?.message || "Failed to export tasks");
     } finally {
       setIsExporting(false);
     }
   };
 
-  // --- Handlers ---
+  // 🟢 BIDIRECTIONAL SYNCHRONIZATION: STATS CARD CLICK -> DROPDOWN SELECTION
   const handleStatClick = (statType) => {
     setSelectedStatFilter(statType);
     setLocalCurrentPage(1);
     setSearchTerm("");
 
-    // reset filters
-    setSelectedFilterStatus("all");
-    setSelectedFilterTaskType("all");
-
-    // UI sync
-    if (statType === "completed") {
+    if (statType === "overdue") {
+      setSelectedFilterStatus("Overdue");
+      setActiveTab("today");
+    } else if (statType === "completed") {
+      setSelectedFilterStatus("Completed");
       setActiveTab("completed");
+    } else if (statType === "pending") {
+      setSelectedFilterStatus("Pending");
+      setActiveTab("today");
     } else {
+      setSelectedFilterStatus("all");
+      setSelectedFilterTaskType("all");
       setActiveTab("today");
     }
   };
 
   const handleTabChange = (value) => {
     setActiveTab(value);
-    setSelectedStatFilter(null); // Clear stat filter when user manually switches tabs
+    setSelectedStatFilter(null);
     setSelectedFilterStatus("all");
     setLocalCurrentPage(1);
-    setSearchTerm(""); // Clear search when switching tabs
+    setSearchTerm("");
   };
 
-  // --- Action Handlers ---
   const handleEditClick = (task) => {
     setEditingTask(task);
-    setEditTitle(task.title); // Populate other fields as needed
+    setEditTitle(task.title);
     setIsEditOpen(true);
   };
 
   const handleSaveEdit = async () => {
-    // Implement your update logic here (api.put...)
     setIsEditOpen(false);
     toast.success("Task updated");
-    // dispatch(fetchMyTasks(getFetchParams()));
     dispatch(
       getFilterTasks({
         userId: currentUser._id,
         page: localCurrentPage,
         limit: localItemsPerPage,
-
         search: debouncedSearch || undefined,
-
-        // ✅ MULTI FILTER OBJECT
         filters: {
-          // 📊 STAT FILTER
           stat: selectedStatFilter || null,
-
-          // 📌 TAB FILTER
           taskCategory: selectedStatFilter
             ? null
             : activeTab === "today"
@@ -1667,27 +1581,22 @@ const MyTask = () => {
                 : activeTab === "completed"
                   ? "completed"
                   : null,
-
-          // 🔁 TYPE
           taskType:
             selectedFilterTaskType === "all" ? null : selectedFilterTaskType,
-
-          // 📊 STATUS
           status: selectedFilterStatus === "all" ? null : selectedFilterStatus,
         },
       }),
     );
   };
+
   const handleToggleComplete = (task) => {
-    // Trigger Ant Design's confirmation modal
     Modal.confirm({
       title: `Confirm Action`,
       content: `Are you sure you want to complete this task?`,
       okText: "Yes",
       cancelText: "No",
-      centered: true, // Centers the modal vertically on the screen
+      centered: true,
 
-      // Everything in onOk runs when the user clicks 'Yes'
       onOk: async () => {
         setRefreshUI(true);
         const newStatus = task.status !== "Completed";
@@ -1705,14 +1614,12 @@ const MyTask = () => {
                 taskId: task.TaskId,
                 status: newStatus,
               }),
-            ).unwrap(); // .unwrap() throws a serializable rejection or error object
+            ).unwrap();
           }
 
           toast.success(newStatus ? "Task Completed" : "Task Reopened");
         } catch (error) {
           console.error("COMPLETE TASK ERROR:", error);
-
-          // 🔥 FIX: Safely extract a string message. Never pass the raw 'error' object directly to toast.
           const errorMessage =
             error?.response?.data?.message ||
             error?.message ||
@@ -1726,40 +1633,6 @@ const MyTask = () => {
       },
     });
   };
-  // const handleToggleComplete = async (task) => {
-  //   setRefreshUI(true);
-  //   const newStatus = task.status !== "Completed";
-  //   const isFMSTask = task.taskType === "FmsInstanceTask";
-
-  //   try {
-  //     if (!isFMSTask) {
-  //       await api.patch(`/tasks/${task._id || task.id}/completion`, {
-  //         completeStatus: newStatus,
-  //       });
-  //     } else {
-  //       await dispatch(
-  //         completeFMSTask({
-  //           id: task.fmsInstanceId,
-  //           taskId: task.TaskId,
-  //           status: newStatus,
-  //         }),
-  //       ).unwrap();
-  //     }
-
-  //     toast.success(newStatus ? "Task Completed" : "Task Reopened");
-  //   } catch (error) {
-  //     console.log("COMPLETE TASK ERROR:", error);
-
-  //     toast.error(
-  //       error ||
-  //         error?.response?.data?.message ||
-  //         error?.message ||
-  //         "Failed to update status",
-  //     );
-  //   } finally {
-  //     setRefreshUI(false);
-  //   }
-  // };
 
   const handleDeleteClick = (task) => {
     setTaskToDelete(task);
@@ -1771,21 +1644,14 @@ const MyTask = () => {
       await api.delete(`/tasks/${taskToDelete._id}`);
       setIsDeleteOpen(false);
       toast.success("Deleted");
-      // dispatch(fetchMyTasks(getFetchParams()));
       dispatch(
         getFilterTasks({
           userId: currentUser._id,
           page: localCurrentPage,
           limit: localItemsPerPage,
-
           search: debouncedSearch || undefined,
-
-          // ✅ MULTI FILTER OBJECT
           filters: {
-            // 📊 STAT FILTER
             stat: selectedStatFilter || null,
-
-            // 📌 TAB FILTER
             taskCategory: selectedStatFilter
               ? null
               : activeTab === "today"
@@ -1795,12 +1661,8 @@ const MyTask = () => {
                   : activeTab === "completed"
                     ? "completed"
                     : null,
-
-            // 🔁 TYPE
             taskType:
               selectedFilterTaskType === "all" ? null : selectedFilterTaskType,
-
-            // 📊 STATUS
             status:
               selectedFilterStatus === "all" ? null : selectedFilterStatus,
           },
@@ -1817,15 +1679,16 @@ const MyTask = () => {
     setChecklistItems(task.checklist || []);
     setIsChecklistDialogOpen(true);
   };
+
   const handleViewDescription = (desc) => {
     setFullDescription(desc);
     setIsDescriptionDialogOpen(true);
   };
+
   const handleChecklistToggle = async (task, taskID, index, currentValue) => {
     setRefetch(true);
     const isFMStask = task.taskType == "FmsInstanceTask";
     try {
-      // ✅ Optimistic UI (IMMUTABLE)
       const updated = checklistItems.map((item, i) =>
         i === index ? { ...item, isCompleted: !currentValue } : item,
       );
@@ -1833,7 +1696,6 @@ const MyTask = () => {
       setChecklistItems(updated);
 
       if (!isFMStask) {
-        // ✅ API CALL
         await dispatch(
           updateMyTaskChecklistItems({
             id: taskID,
@@ -1853,12 +1715,9 @@ const MyTask = () => {
       }
     } catch (err) {
       console.error(err);
-
-      // ❌ revert UI safely
       const reverted = checklistItems.map((item, i) =>
         i === index ? { ...item, isCompleted: currentValue } : item,
       );
-
       setChecklistItems(reverted);
     } finally {
       setRefetch(false);
@@ -1869,14 +1728,12 @@ const MyTask = () => {
     if (task.taskType === "FmsInstanceTask" && task.createdForm?.length > 0) {
       setSelectedTask(task);
       setShowFormModal(true);
-    } else {
-      // onToggleComplete(task);
     }
   };
+
   const handleFormSubmit = async (formData) => {
     try {
       setRefetch(true);
-      // 🔥 1. Save formData first
       await dispatch(
         updateMyTaskFormData({
           id: selectedTask.fmsInstanceId,
@@ -1884,14 +1741,6 @@ const MyTask = () => {
           data: formData,
         }),
       );
-
-      // // 🔥 2. Complete task
-      // await dispatch(
-      //   completeFmsTask({
-      //     instanceId: selectedTask.fmsInstanceId,
-      //     taskId: selectedTask.taskId,
-      //   })
-      // );
       toast.success("Task updated successfully!");
       setShowFormModal(false);
     } catch (err) {
@@ -1901,6 +1750,7 @@ const MyTask = () => {
       toast.error(errorMessage);
     }
   };
+
   const [modules, setModules] = useState([]);
   useEffect(() => {
     const fetch_ = async () => {
@@ -1914,16 +1764,17 @@ const MyTask = () => {
     };
     fetch_();
   }, []);
+
   const role = Cookies.get("role") || "";
   const isSuper = role === "Super";
   const isModuleEnabled = (moduleKey) => {
-    // ✅ Super user can access all modules
     if (isSuper) return true;
-
     return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
   };
+
   const isDoThisEnable = isModuleEnabled("DO_THIS2");
   const isFMSEnable = isModuleEnabled("FMS_ENGINE");
+
   const initialValues = useMemo(() => {
     return (
       selectedTask?.createdForm?.reduce((acc, field) => {
@@ -1937,6 +1788,7 @@ const MyTask = () => {
       }, {}) || {}
     );
   }, [selectedTask]);
+
   if (status === "failed")
     return <div className="p-6 text-red-500">Error: {error}</div>;
 
@@ -1951,22 +1803,14 @@ const MyTask = () => {
               size="sm"
               onClick={() => {
                 dispatch(fetchTaskCounts(currentUser._id));
-                // Refresh tasks with current params
-                // dispatch(fetchMyTasks(getFetchParams()));
                 dispatch(
                   getFilterTasks({
                     userId: currentUser._id,
                     page: localCurrentPage,
                     limit: localItemsPerPage,
-
                     search: debouncedSearch || undefined,
-
-                    // ✅ MULTI FILTER OBJECT
                     filters: {
-                      // 📊 STAT FILTER
                       stat: selectedStatFilter || null,
-
-                      // 📌 TAB FILTER
                       taskCategory: selectedStatFilter
                         ? null
                         : activeTab === "today"
@@ -1976,14 +1820,10 @@ const MyTask = () => {
                             : activeTab === "completed"
                               ? "completed"
                               : null,
-
-                      // 🔁 TYPE
                       taskType:
                         selectedFilterTaskType === "all"
                           ? null
                           : selectedFilterTaskType,
-
-                      // 📊 STATUS
                       status:
                         selectedFilterStatus === "all"
                           ? null
@@ -2023,7 +1863,7 @@ const MyTask = () => {
                 selectedFilterTaskType={selectedFilterTaskType}
                 setSelectedFilterTaskType={setSelectedFilterTaskType}
                 selectedFilterStatus={selectedFilterStatus}
-                setSelectedFilterStatus={setSelectedFilterStatus}
+                onFilterStatusChange={handleDropdownStatusChange} // 🟢 SYNCHRONIZED STATUS CHANGE
                 showExport={true}
                 onExport={handleExport}
                 isExporting={isExporting}
@@ -2060,16 +1900,10 @@ const MyTask = () => {
                       </div>
                     )}
 
-                    {/* Show search term in UI */}
                     {searchTerm && (
                       <div className="text-sm text-gray-600 mb-2">
                         Searching for: "
                         <span className="font-semibold">{searchTerm}</span>"
-                        {/* {totalTasks === 0 && fetchedTasks.length > 0 && (
-                          <span className="ml-2 text-red-500">
-                            (No matches found in current view)
-                          </span>
-                        )} */}
                       </div>
                     )}
 
@@ -2113,8 +1947,8 @@ const MyTask = () => {
           </CardContent>
         </Card>
       </div>
-      {/* --- DIALOGS --- */}
-      {/* Delete Confirmation */}
+
+      {/* DIALOGS */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -2131,7 +1965,7 @@ const MyTask = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Edit Dialog (Minimal Placeholder) */}
+
       <Dialog
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
@@ -2153,7 +1987,7 @@ const MyTask = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Description Dialog */}
+
       <Dialog
         open={isDescriptionDialogOpen}
         onOpenChange={setIsDescriptionDialogOpen}
@@ -2172,7 +2006,7 @@ const MyTask = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Checklist Dialog */}
+
       <Dialog
         open={isChecklistDialogOpen}
         onOpenChange={setIsChecklistDialogOpen}
@@ -2231,7 +2065,7 @@ const MyTask = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      {/* Form Modal */}
+
       <FmsFormModal
         key={`${selectedTask?._id}-${JSON.stringify(selectedTask?.formData || {})}`}
         open={showFormModal}
@@ -2246,36 +2080,24 @@ const MyTask = () => {
         open={raiseQueryModalOpen}
         onClose={() => setRaiseQueryModalOpen(false)}
       />
-      {/* <QueryDrawer
-        task={selectedQueryTask}
-        open={queryDrawerOpen}
-        onClose={() => setQueryDrawerOpen(false)}
-      />{" "} */}
-      {/* Legacy local TaskChat - kept for compatibility */}
-      {/* <TaskChat
-        task={selectedQueryTask}
-        open={queryDrawerOpen}
-        onClose={() => setQueryDrawerOpen(false)}
-      /> */}
+
       {queryDrawerOpen && selectedQueryTask && (
         <TaskChat
           task={selectedQueryTask}
           open={queryDrawerOpen}
-          // onClose={() => setQueryDrawerOpen(false)}
           onClose={() => {
-            // ✅ reset unread count when closing
             if (selectedQueryTask?.conversationId) {
               setUnreadMap((prev) => ({
                 ...prev,
                 [selectedQueryTask.conversationId]: 0,
               }));
             }
-
             setQueryDrawerOpen(false);
           }}
           setRefreshTaskAfterReopen={setRefreshTaskAfterReopen}
         />
       )}
+
       <AntdModal
         title="Form Submission Details"
         open={submissionModalOpen}

@@ -64,8 +64,8 @@ const initialTask = {
   checklistItems: [],
   isDependent: "no",
   dependentOn: "",
-  frequency: "None", // Default to None for Row 1 optionality
-  linkedWithForm: "no", // 🟢 NEW FIELD
+  frequency: "None",
+  linkedWithForm: "no",
   value: "",
   startTime: "none",
   decisionStep: false,
@@ -78,7 +78,7 @@ const mapTasksToUI = (apiTasks) => {
   return apiTasks.map((task) => ({
     _id: task._id,
     isFromAPI: true,
-    taskId: task.taskId || "",
+    taskId: task.taskId || "", // 🟢 Retains exact Database Task ID
     description: task.description || "",
 
     dept: task.departmentOfAssignToUser?._id || "",
@@ -91,7 +91,7 @@ const mapTasksToUI = (apiTasks) => {
     dependentOn: task.dependentOn || "",
 
     frequency: task.frequency || "None",
-    linkedWithForm: task.linkedWithForm ? "yes" : "no", // 🟢 Map linkedWithForm from API
+    linkedWithForm: task.linkedWithForm ? "yes" : "no",
     value: task.xValue ?? "",
 
     startTime: task.startTimeSetting || "none",
@@ -299,7 +299,7 @@ const CreateNewFmsTem = () => {
               departmentOfAssignToUser: task.dept,
               assignedTo: task.doer,
               frequency: task.frequency || "None",
-              linkedWithForm: task.linkedWithForm === "yes", // 🟢 Convert to Boolean for Backend
+              linkedWithForm: task.linkedWithForm === "yes",
               xValue: task.value,
               isDependent:
                 task.isDependent === "yes" || task.isDependent === true,
@@ -406,6 +406,9 @@ const CreateNewFmsTem = () => {
 
     setTasks((prev) =>
       prev.map((t, i) => {
+        // Agar task API se aaya hai to uski real Task ID mat chhodo
+        if (t.isFromAPI) return t;
+
         const generatedId = `${templateFMSId}_T${i + 1}`;
         if (t.taskId === generatedId) return t;
         return {
@@ -462,7 +465,14 @@ const CreateNewFmsTem = () => {
   };
 
   const addTask = () => {
-    const newTask = { ...initialTask, isFromAPI: false };
+    const nextTaskNum = tasks.length + 1;
+    const generatedId = templateFMSId ? `${templateFMSId}_T${nextTaskNum}` : "";
+
+    const newTask = {
+      ...initialTask,
+      taskId: generatedId,
+      isFromAPI: false,
+    };
     const newTasks = [...tasks, newTask];
     setTasks(newTasks);
 
@@ -593,7 +603,7 @@ const CreateNewFmsTem = () => {
         departmentOfAssignToUser: task.dept,
         assignedTo: task.doer,
         frequency: task.frequency || "None",
-        linkedWithForm: task.linkedWithForm === "yes", // 🟢 Boolean conversion
+        linkedWithForm: task.linkedWithForm === "yes",
         xValue: task.value,
         isDependent: task.isDependent === "yes" || task.isDependent === true,
         dependentOn: task.dependentOn,
@@ -862,7 +872,6 @@ const CreateNewFmsTem = () => {
                         <TableHead className="w-[180px]">
                           Start Time Setting
                         </TableHead>
-                        {/* 🟢 NEW COLUMN HEADER */}
                         <TableHead className="w-[140px]">
                           Link with Form?
                         </TableHead>
@@ -1066,7 +1075,6 @@ const CreateNewFmsTem = () => {
                                 </Select>
                               </TableCell>
 
-                              {/* 🟢 NEW CELL: Link with Form? */}
                               <TableCell>
                                 <Select
                                   disabled={!isEditable}
@@ -1085,7 +1093,6 @@ const CreateNewFmsTem = () => {
                                 </Select>
                               </TableCell>
 
-                              {/* 🟢 FREQUENCY CELL */}
                               <TableCell>
                                 <Select
                                   disabled={!isEditable}
@@ -1125,7 +1132,6 @@ const CreateNewFmsTem = () => {
                                           Start+X in hours
                                         </SelectItem>
 
-                                        {/* Form Event options available when Linked With Form */}
                                         {task.linkedWithForm === "yes" && (
                                           <>
                                             <SelectItem value="Form Event+X in days">
@@ -1172,7 +1178,6 @@ const CreateNewFmsTem = () => {
                                 </Select>
                               </TableCell>
 
-                              {/* 🟢 VALUE CELL */}
                               <TableCell>
                                 <Input
                                   disabled={
@@ -1195,7 +1200,6 @@ const CreateNewFmsTem = () => {
                                 />
                               </TableCell>
 
-                              {/* Decision Step Cell */}
                               <TableCell>
                                 <Select
                                   disabled={!isEditable}
@@ -1219,7 +1223,6 @@ const CreateNewFmsTem = () => {
                                 </Select>
                               </TableCell>
 
-                              {/* decisionYesAction Dropdown */}
                               <TableCell>
                                 <Select
                                   disabled={!isEditable || !isDecisionYes}
@@ -1247,7 +1250,6 @@ const CreateNewFmsTem = () => {
                                 </Select>
                               </TableCell>
 
-                              {/* triggerFmsTemplate Dropdown */}
                               <TableCell>
                                 {isDecisionYes &&
                                 task.decisionYesAction === "trigger_fms" ? (

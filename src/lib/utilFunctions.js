@@ -62,50 +62,80 @@ export const getDueStatus = (dueDate) => {
 
   const now = new Date();
   const due = new Date(dueDate);
+  const diffMs = due.getTime() - now.getTime();
 
-  // Old day logic
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
+  // 🔴 1. OVERDUE (Due time has passed)
+  if (diffMs < 0) {
+    const overdueMs = Math.abs(diffMs);
 
-  const dueDay = new Date(due);
-  dueDay.setHours(0, 0, 0, 0);
+    const totalMinutes = Math.floor(overdueMs / (1000 * 60));
+    const totalHours = Math.floor(overdueMs / (1000 * 60 * 60));
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
 
-  const diffDays = Math.ceil((today - dueDay) / (1000 * 60 * 60 * 24));
+    let lateText = "";
 
-  // Time difference
-  const diffMs = Math.abs(now - due);
+    if (days > 0) {
+      lateText =
+        hours > 0
+          ? `${days} day(s), ${hours} hr(s) late`
+          : `${days} day(s) late`;
+    } else if (totalHours > 0) {
+      lateText = `${totalHours} hr(s) late`;
+    } else if (totalMinutes > 0) {
+      lateText = `${totalMinutes} min(s) late`;
+    } else {
+      lateText = "Just now overdue";
+    }
 
-  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-  if (diffDays > 0) {
     return {
       type: "overdue",
-      text: `${diffDays}d ${hours}h ${minutes}m overdue`,
-      className: "bg-red-50 text-red-600 border border-red-200",
+      label: "Overdue",
+      text: lateText,
     };
   }
 
-  if (diffDays === 0) {
-    if (due < now) {
-      return {
-        type: "overdue-today",
-        text: `${hours}h ${minutes}m overdue`,
-        className: "bg-red-50 text-red-600 border border-red-200",
-      };
+  // 🟡 2. DUE TODAY (Time remaining within today's date)
+  if (due.toDateString() === now.toDateString()) {
+    const totalMinutesLeft = Math.ceil(diffMs / (1000 * 60));
+    const hoursLeft = Math.floor(totalMinutesLeft / 60);
+    const minsLeft = totalMinutesLeft % 60;
+
+    let dueTodayText = "";
+    if (hoursLeft > 0) {
+      dueTodayText =
+        minsLeft > 0
+          ? `${hoursLeft} hr(s), ${minsLeft} min(s) left`
+          : `${hoursLeft} hr(s) left`;
+    } else {
+      dueTodayText = `${totalMinutesLeft} min(s) left`;
     }
 
     return {
       type: "today",
-      text: `Due Today (${hours}h ${minutes}m left)`,
-      className: "bg-yellow-50 text-yellow-600 border border-yellow-200",
+      label: "Due Today",
+      text: dueTodayText,
     };
+  }
+
+  // 🟢 3. REMAINING / UPCOMING (Future dates)
+  const totalHoursLeft = Math.floor(diffMs / (1000 * 60 * 60));
+  const daysLeft = Math.floor(totalHoursLeft / 24);
+  const remainingHours = totalHoursLeft % 24;
+
+  let remainingText = "";
+  if (daysLeft > 0) {
+    remainingText =
+      remainingHours > 0
+        ? `${daysLeft} day(s), ${remainingHours} hr(s) left`
+        : `${daysLeft} day(s) left`;
+  } else {
+    remainingText = `${totalHoursLeft} hr(s) left`;
   }
 
   return {
     type: "upcoming",
-    text: `${Math.abs(diffDays)}d ${hours}h ${minutes}m left`,
-    className: "bg-green-50 text-green-600 border border-green-200",
+    label: "Remaining",
+    text: remainingText,
   };
 };

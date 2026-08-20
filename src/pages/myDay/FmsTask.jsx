@@ -286,7 +286,7 @@ const TaskActions = ({
         </TooltipContent>
       </Tooltip>
 
-      {/* Complete Button (Normal Direct Complete) */}
+      {/* Complete Button */}
       <Tooltip>
         <TooltipTrigger asChild>
           <span>
@@ -297,7 +297,7 @@ const TaskActions = ({
                 stopped ||
                 isCompleted ||
                 notDone ||
-                isWaitingForParent // 🟢 Disabled if waiting for parent
+                isWaitingForParent
               }
               variant="ghost"
               size="icon"
@@ -317,7 +317,7 @@ const TaskActions = ({
         </TooltipContent>
       </Tooltip>
 
-      {/* Not Done Button (Triggers Decision Step Check) */}
+      {/* Not Done Button */}
       <Tooltip>
         <TooltipTrigger asChild>
           <span>
@@ -328,7 +328,7 @@ const TaskActions = ({
                 stopped ||
                 isCompleted ||
                 notDone ||
-                isWaitingForParent // 🟢 Disabled if waiting for parent
+                isWaitingForParent
               }
               variant="ghost"
               size="icon"
@@ -678,7 +678,7 @@ const Pagination = ({
 const StatsCards = ({ counts, selectedStat, onStatClick }) => {
   const getCardClass = (type, color) => `
     cursor-pointer transition-all duration-200 transform hover:scale-105
-    ${selectedStat === type ? `ring-2 ring-${color}-500 shadow-lg` : ""}
+    ${selectedStat === type ? `ring-2 ring-${color}-500 shadow-lg scale-105` : ""}
   `;
 
   return (
@@ -767,7 +767,7 @@ const FilterBar = ({
   selectedFilterTaskType,
   setSelectedFilterTaskType,
   selectedFilterStatus,
-  setSelectedFilterStatus,
+  onFilterStatusChange, // 🟢 SYNCHRONIZED DROPDOWN CHANGE
   showExport = false,
   onExport,
   isExporting,
@@ -797,25 +797,23 @@ const FilterBar = ({
     </div>
 
     <div className="flex flex-col sm:flex-row gap-2 flex-1">
-      {(selectedStatFilter == "total" || !selectedStatFilter) && (
-        <Select
-          value={selectedFilterStatus}
-          onValueChange={setSelectedFilterStatus}
-        >
-          <SelectTrigger className="w-full bg-white">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="Completed">Completed</SelectItem>
-            <SelectItem value="Not Done">Not Done</SelectItem>
-            <SelectItem value="Overdue">Overdue</SelectItem>
-            <SelectItem value="Delayed">Delayed</SelectItem>
-            {isFMSEnable && <SelectItem value="Stopped">Stopped</SelectItem>}
-          </SelectContent>
-        </Select>
-      )}
+      <Select
+        value={selectedFilterStatus}
+        onValueChange={onFilterStatusChange} // 🟢 SYNCHRONIZED DROPDOWN CHANGE
+      >
+        <SelectTrigger className="w-full bg-white">
+          <SelectValue placeholder="All Statuses" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Statuses</SelectItem>
+          <SelectItem value="Pending">Pending</SelectItem>
+          <SelectItem value="Completed">Completed</SelectItem>
+          <SelectItem value="Not Done">Not Done</SelectItem>
+          <SelectItem value="Overdue">Overdue</SelectItem>
+          <SelectItem value="Delayed">Delayed</SelectItem>
+          {isFMSEnable && <SelectItem value="Stopped">Stopped</SelectItem>}
+        </SelectContent>
+      </Select>
     </div>
 
     {showExport && (
@@ -858,13 +856,11 @@ const TodayTasksTable = ({
   setSubmissionModalOpen,
   setSelectedSubmissionTask,
 }) => {
-  // 1. Safely combine tasks
   const combinedTasks = useMemo(
     () => [...(tasks || []), ...(upcomingRecurringTasks || [])],
     [tasks, upcomingRecurringTasks],
   );
 
-  // 2. Scan ALL tasks dynamically to build unique dynamic submission columns
   const tableColumns = useMemo(() => {
     const columnsMap = new Map();
 
@@ -884,10 +880,9 @@ const TodayTasksTable = ({
       }
     });
 
-    return Array.from(columnsMap.entries()); // [[key, { label, fieldType }], ...]
+    return Array.from(columnsMap.entries());
   }, [combinedTasks]);
 
-  // 3. Robust Cell Formatter to catch objects, booleans, dates, and edge cases
   const renderCellValue = (val, fieldType) => {
     if (val === null || val === undefined || val === "") return "-";
 
@@ -931,7 +926,6 @@ const TodayTasksTable = ({
             <TableHead>Sr. No.</TableHead>
             <TableHead>Task Title</TableHead>
 
-            {/* ⚡ Dynamic Submission Data Headers */}
             {tableColumns.map(([key, colMeta]) => (
               <TableHead
                 key={key}
@@ -1049,7 +1043,6 @@ const TodayTasksTable = ({
                       </div>
                     </TableCell>
 
-                    {/* ⚡ Safely Extract Dynamic Submission Data Values */}
                     {tableColumns.map(([key, colMeta]) => {
                       const rawData = task?.submissionData?.[key];
 
@@ -1160,11 +1153,7 @@ const TodayTasksTable = ({
                                         : "text-emerald-700"
                                   }`}
                               >
-                                {dueStatus.type === "overdue"
-                                  ? "Overdue"
-                                  : dueStatus.type === "today"
-                                    ? "Due Today"
-                                    : "Remaining"}
+                                {dueStatus.label}
                               </p>
 
                               <p className="text-[11px] text-muted-foreground">
@@ -1359,6 +1348,30 @@ const FmsTasks = () => {
   const [selectedFilterTaskType, setSelectedFilterTaskType] = useState("all");
   const [selectedFilterStatus, setSelectedFilterStatus] = useState("all");
 
+  // 🟢 BIDIRECTIONAL SYNCHRONIZATION: DROPDOWN SELECT -> STATS CARD SELECTION
+  const handleDropdownStatusChange = (val) => {
+    setSelectedFilterStatus(val);
+    setLocalCurrentPage(1);
+
+    switch (val) {
+      case "Pending":
+        setSelectedStatFilter("pending");
+        break;
+      case "Completed":
+        setSelectedStatFilter("completed");
+        setActiveTab("completed");
+        break;
+      case "Overdue":
+        setSelectedStatFilter("overdue");
+        setActiveTab("today");
+        break;
+      case "all":
+      default:
+        setSelectedStatFilter("total");
+        break;
+    }
+  };
+
   // Pagination States
   const [localCurrentPage, setLocalCurrentPage] = useState(1);
   const [localItemsPerPage, setLocalItemsPerPage] = useState(10);
@@ -1378,11 +1391,11 @@ const FmsTasks = () => {
   // Decision Step Dialog States
   const [isDecisionDialogOpen, setIsDecisionDialogOpen] = useState(false);
   const [decisionTask, setDecisionTask] = useState(null);
-  const [decisionChoice, setDecisionChoice] = useState(null); // "yes" | "no" | null
+  const [decisionChoice, setDecisionChoice] = useState(null);
   const [decisionRemark, setDecisionRemark] = useState("");
   const [isSubmittingDecision, setIsSubmittingDecision] = useState(false);
 
-  // OpenForm Dialog States (For Trigger FMS with Linked Form)
+  // OpenForm Dialog States
   const [linkedFormModalOpen, setLinkedFormModalOpen] = useState(false);
 
   // Export State
@@ -1406,14 +1419,12 @@ const FmsTasks = () => {
   const [submissionModalOpen, setSubmissionModalOpen] = useState(false);
   const [selectedSubmissionTask, setSelectedSubmissionTask] = useState(null);
 
-  // --- Initial Data Load ---
   useEffect(() => {
     if (currentUser?._id) {
       dispatch(fetchTaskCounts(currentUser._id));
     }
   }, [currentUser, dispatch, refetch]);
 
-  // Fetch users
   const [allUsers, setAllUsers] = useState([]);
   useEffect(() => {
     const fetchUsers = async () => {
@@ -1443,7 +1454,6 @@ const FmsTasks = () => {
     dateRange,
   ]);
 
-  // --- Fetch Trigger ---
   useEffect(() => {
     let mounted = true;
     if (currentUser?._id) {
@@ -1457,7 +1467,7 @@ const FmsTasks = () => {
       dispatch(
         getFilterFMSTasks({
           userId: currentUser._id,
-          role: currentUser.role?.name, // ✅ REQUIRED
+          role: currentUser.role?.name,
           page: localCurrentPage,
           limit: localItemsPerPage,
           dateRange,
@@ -1503,7 +1513,6 @@ const FmsTasks = () => {
     refreshUI,
   ]);
 
-  // --- Export Function ---
   const handleExport = async () => {
     try {
       setIsExporting(true);
@@ -1582,17 +1591,24 @@ const FmsTasks = () => {
     }
   };
 
-  // --- Handlers ---
+  // 🟢 BIDIRECTIONAL SYNCHRONIZATION: STATS CARD CLICK -> DROPDOWN SELECTION
   const handleStatClick = (statType) => {
     setSelectedStatFilter(statType);
     setLocalCurrentPage(1);
     setSearchTerm("");
-    setSelectedFilterStatus("all");
-    setSelectedFilterTaskType("all");
 
-    if (statType === "completed") {
+    if (statType === "overdue") {
+      setSelectedFilterStatus("Overdue");
+      setActiveTab("today");
+    } else if (statType === "completed") {
+      setSelectedFilterStatus("Completed");
       setActiveTab("completed");
+    } else if (statType === "pending") {
+      setSelectedFilterStatus("Pending");
+      setActiveTab("today");
     } else {
+      setSelectedFilterStatus("all");
+      setSelectedFilterTaskType("all");
       setActiveTab("today");
     }
   };
@@ -1605,7 +1621,6 @@ const FmsTasks = () => {
     setSearchTerm("");
   };
 
-  // --- 🟢 Complete Task Handler (Normal Standard Completion) ---
   const handleToggleComplete = async (task) => {
     if (task?.waitingForParent) {
       toast.warning(
@@ -1659,7 +1674,6 @@ const FmsTasks = () => {
     }
   };
 
-  // --- 🔴 Not Done Handler (Checks for Decision Gate Step) ---
   const handleNotDoneClick = async (task) => {
     if (task?.waitingForParent) {
       toast.warning(
@@ -1669,7 +1683,6 @@ const FmsTasks = () => {
     }
     setSelectedTask(task);
     try {
-      // 🔀 Step 1: Call decision-info API to check if task has a Decision Step
       const res = await api.get(
         `/fms-decision/${task._id || task.id}/decision-info`,
       );
@@ -1680,7 +1693,7 @@ const FmsTasks = () => {
           ...task,
           decisionYesAction: decisionData.decisionYesAction,
           triggerFmsTemplate: decisionData.triggerFmsTemplate,
-          linkedForm: decisionData.linkedForm, // OpenForm object if exists
+          linkedForm: decisionData.linkedForm,
         });
         setDecisionChoice(null);
         setDecisionRemark("");
@@ -1688,18 +1701,15 @@ const FmsTasks = () => {
         return;
       }
 
-      // Standard Not Done Remark Modal if NO Decision Step exists
       setRemark("");
       setNotDoneModalOpen(true);
     } catch (error) {
       console.error("Decision Info Check Error:", error);
-      // Fallback to standard Not-Done Remark Modal on error
       setRemark("");
       setNotDoneModalOpen(true);
     }
   };
 
-  // --- Execute Backend Decision Submission for Not Done ---
   const executeDecisionApi = async (payload) => {
     setRefreshUI(true);
     setIsSubmittingDecision(true);
@@ -1708,7 +1718,7 @@ const FmsTasks = () => {
         `/fms-decision/${decisionTask._id || decisionTask.id}/decision`,
         {
           ...payload,
-          status: "Not Done", // Ensures status remains 'Not Done'
+          status: "Not Done",
         },
       );
 
@@ -1737,7 +1747,6 @@ const FmsTasks = () => {
     }
   };
 
-  // --- Submit Handler for Decision Gate Modal ---
   const handleDecisionSubmit = async () => {
     if (!decisionChoice) {
       toast.error("Please select an option.");
@@ -1749,7 +1758,6 @@ const FmsTasks = () => {
       return;
     }
 
-    // 📋 Case: User chooses "YES" + "TRIGGER_FMS" + "LINKED_FORM EXISTS"
     if (
       decisionChoice === "yes" &&
       decisionTask?.decisionYesAction === "trigger_fms" &&
@@ -1760,18 +1768,15 @@ const FmsTasks = () => {
       return;
     }
 
-    // Standard cases: NO (Normal Not Done), or YES with Terminate / Trigger (No form)
     executeDecisionApi({
       answer: decisionChoice,
       remark: decisionRemark.trim(),
     });
   };
 
-  // Callback executed when PublicOpenForm finishes submission in modal
   const handleLinkedFormComplete = async ({ submissionId }) => {
     setLinkedFormModalOpen(false);
 
-    // Complete decision task on backend by linking submissionId
     await executeDecisionApi({
       answer: "yes",
       remark: decisionRemark.trim(),
@@ -1791,7 +1796,7 @@ const FmsTasks = () => {
     dispatch(
       getFilterFMSTasks({
         userId: currentUser._id,
-        role: currentUser.role?.name, // ✅ REQUIRED
+        role: currentUser.role?.name,
         page: localCurrentPage,
         limit: localItemsPerPage,
         search: debouncedSearch || undefined,
@@ -1827,7 +1832,7 @@ const FmsTasks = () => {
       dispatch(
         getFilterFMSTasks({
           userId: currentUser._id,
-          role: currentUser.role?.name, // ✅ REQUIRED
+          role: currentUser.role?.name,
           page: localCurrentPage,
           limit: localItemsPerPage,
           search: debouncedSearch || undefined,
@@ -1969,7 +1974,6 @@ const FmsTasks = () => {
     );
   }, [selectedTask]);
 
-  // Standard Mark Not Done Handler for non-decision tasks
   const handleMarkNotDone = async (task, remarkText) => {
     if (!remarkText.trim()) {
       toast.error("Please enter a remark.");
@@ -2015,7 +2019,7 @@ const FmsTasks = () => {
                 dispatch(
                   getFilterFMSTasks({
                     userId: currentUser._id,
-                    role: currentUser.role?.name, // ✅ REQUIRED
+                    role: currentUser.role?.name,
                     page: localCurrentPage,
                     limit: localItemsPerPage,
                     search: debouncedSearch || undefined,
@@ -2070,7 +2074,7 @@ const FmsTasks = () => {
                 selectedFilterTaskType={selectedFilterTaskType}
                 setSelectedFilterTaskType={setSelectedFilterTaskType}
                 selectedFilterStatus={selectedFilterStatus}
-                setSelectedFilterStatus={setSelectedFilterStatus}
+                onFilterStatusChange={handleDropdownStatusChange} // 🟢 SYNCHRONIZED STATUS CHANGE
                 showExport={true}
                 onExport={handleExport}
                 isExporting={isExporting}
@@ -2154,9 +2158,7 @@ const FmsTasks = () => {
         </Card>
       </div>
 
-      {/* --- DIALOGS --- */}
-
-      {/* 🔴 Decision Step Modal for "Not Done" Action */}
+      {/* DIALOGS */}
       <Dialog
         open={isDecisionDialogOpen}
         onOpenChange={setIsDecisionDialogOpen}
@@ -2189,7 +2191,6 @@ const FmsTasks = () => {
             <div>
               <Label className="text-sm font-medium">Select Choice *</Label>
               <div className="grid grid-cols-2 gap-3 mt-2">
-                {/* Dynamic YES Choice Button */}
                 <button
                   type="button"
                   onClick={() => setDecisionChoice("yes")}
@@ -2211,7 +2212,6 @@ const FmsTasks = () => {
                   </span>
                 </button>
 
-                {/* Dynamic NO Choice Button (Normal Not Done) */}
                 <button
                   type="button"
                   onClick={() => setDecisionChoice("no")}
@@ -2227,7 +2227,6 @@ const FmsTasks = () => {
               </div>
             </div>
 
-            {/* If Choice === YES and Trigger FMS + Linked Form exists */}
             {decisionChoice === "yes" &&
               decisionTask?.decisionYesAction === "trigger_fms" &&
               decisionTask?.linkedForm && (
@@ -2245,7 +2244,6 @@ const FmsTasks = () => {
                 </div>
               )}
 
-            {/* Remark Input - Mandatory in ALL cases */}
             {decisionChoice && (
               <div className="space-y-1.5 animate-in fade-in duration-200">
                 <Label className="text-xs font-semibold text-slate-700">
@@ -2305,7 +2303,6 @@ const FmsTasks = () => {
         </DialogContent>
       </Dialog>
 
-      {/* 🟢 OpenForm React Component Modal */}
       <Dialog open={linkedFormModalOpen} onOpenChange={setLinkedFormModalOpen}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4">
           <DialogHeader className="pb-2 border-b">
@@ -2331,7 +2328,6 @@ const FmsTasks = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -2349,7 +2345,6 @@ const FmsTasks = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Dialog */}
       <Dialog
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
@@ -2372,7 +2367,6 @@ const FmsTasks = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Description Dialog */}
       <Dialog
         open={isDescriptionDialogOpen}
         onOpenChange={setIsDescriptionDialogOpen}
@@ -2392,7 +2386,6 @@ const FmsTasks = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Checklist Dialog */}
       <Dialog
         open={isChecklistDialogOpen}
         onOpenChange={setIsChecklistDialogOpen}
@@ -2452,7 +2445,6 @@ const FmsTasks = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Form Modal */}
       <FmsFormModal
         key={`${selectedTask?._id}-${JSON.stringify(selectedTask?.formData || {})}`}
         open={showFormModal}
@@ -2513,7 +2505,6 @@ const FmsTasks = () => {
         )}
       </AntdModal>
 
-      {/* Standard Not Done Remark Modal (for Non-Decision tasks) */}
       <Dialog open={notDoneModalOpen} onOpenChange={setNotDoneModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

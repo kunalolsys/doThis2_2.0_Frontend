@@ -2123,65 +2123,78 @@ const TaskTable = ({
                           {columns.find((c) => c.key === "delay")?.visible && (
                             <TableCell className="whitespace-nowrap">
                               {(() => {
-                                const dueStatus = getDueStatus(task.dueDate);
+                                // 🟢 1. Return fallback "-" for finished/closed statuses
+                                if (
+                                  ["Completed", "Stopped", "Not Done"].includes(
+                                    task.status,
+                                  )
+                                ) {
+                                  return (
+                                    <span className="text-gray-400 text-xs font-medium">
+                                      —
+                                    </span>
+                                  );
+                                }
 
-                                if (!dueStatus) return "-";
-                                if (task.status == "Completed") return;
+                                const dueStatus = getDueStatus(
+                                  task.dueDate || task.plannedDueDate,
+                                );
+
+                                if (!dueStatus) {
+                                  return (
+                                    <span className="text-gray-400 text-xs font-medium">
+                                      —
+                                    </span>
+                                  );
+                                }
+
+                                const isOverdue = dueStatus.type === "overdue";
+                                const isToday = dueStatus.type === "today";
+
                                 return (
                                   <div
-                                    className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm
-        transition-all duration-300 hover:-translate-y-1 hover:shadow-lg
-        ${
-          dueStatus.type === "overdue"
-            ? "border-l-4 border-l-red-500"
-            : dueStatus.type === "today"
-              ? "border-l-4 border-l-amber-500"
-              : "border-l-4 border-l-emerald-500"
-        }`}
+                                    className={`relative inline-flex items-center overflow-hidden rounded-lg border bg-white px-3 py-2 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
+                                      isOverdue
+                                        ? "border-l-4 border-l-red-500 bg-red-50/20"
+                                        : isToday
+                                          ? "border-l-4 border-l-amber-500 bg-amber-50/20"
+                                          : "border-l-4 border-l-emerald-500"
+                                    }`}
                                   >
                                     {/* Animated Status Dot */}
                                     <div className="mr-3 relative flex h-3 w-3 items-center justify-center">
-                                      {(dueStatus.type === "overdue" ||
-                                        dueStatus.type === "today") && (
-                                        <span
-                                          className={`absolute inline-flex h-full w-full rounded-full opacity-75
-                ${
-                  dueStatus.type === "overdue"
-                    ? "bg-red-500 animate-ping"
-                    : "bg-amber-500 animate-ping"
-                }`}
-                                        />
-                                      )}
-
                                       <span
-                                        className={`relative inline-flex h-3 w-3 rounded-full
-              ${
-                dueStatus.type === "overdue"
-                  ? "bg-red-500"
-                  : dueStatus.type === "today"
-                    ? "bg-amber-500"
-                    : "bg-emerald-500"
-              }`}
+                                        className={`absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                                          isOverdue
+                                            ? "bg-red-500 animate-ping"
+                                            : isToday
+                                              ? "bg-amber-500 animate-ping"
+                                              : "bg-emerald-500 animate-ping"
+                                        }`}
+                                      />
+                                      <span
+                                        className={`relative inline-flex h-3 w-3 rounded-full ${
+                                          isOverdue
+                                            ? "bg-red-500"
+                                            : isToday
+                                              ? "bg-amber-500"
+                                              : "bg-emerald-500"
+                                        }`}
                                       />
                                     </div>
 
                                     {/* Content */}
                                     <div>
                                       <p
-                                        className={`text-xs font-semibold
-              ${
-                dueStatus.type === "overdue"
-                  ? "text-red-700"
-                  : dueStatus.type === "today"
-                    ? "text-amber-700"
-                    : "text-emerald-700"
-              }`}
+                                        className={`text-xs font-semibold ${
+                                          isOverdue
+                                            ? "text-red-700"
+                                            : isToday
+                                              ? "text-amber-700"
+                                              : "text-emerald-700"
+                                        }`}
                                       >
-                                        {dueStatus.type === "overdue"
-                                          ? "Overdue"
-                                          : dueStatus.type === "today"
-                                            ? "Due Today"
-                                            : "Remaining"}
+                                        {dueStatus.label}
                                       </p>
 
                                       <p className="text-[11px] text-muted-foreground">
@@ -2197,7 +2210,7 @@ const TaskTable = ({
                                 );
                               })()}
                             </TableCell>
-                          )}{" "}
+                          )}
                           {/* <TableCell className="text-center">
                           {Array.isArray(task.attachmentFile) &&
                           task.attachmentFile.length > 0 ? (

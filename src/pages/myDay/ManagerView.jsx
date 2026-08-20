@@ -294,7 +294,7 @@ const StatsCards = ({ allTaskCounts, selectedStat, onStatClick }) => {
   if (!allTaskCounts) return null;
   const getCardClass = (type, color) => `
     cursor-pointer transition-all duration-200 transform hover:scale-105
-    ${selectedStat === type ? `ring-2 ring-${color}-500 shadow-lg` : ""}
+    ${selectedStat === type ? `ring-2 ring-${color}-500 shadow-lg scale-105` : ""}
   `;
 
   return (
@@ -382,7 +382,7 @@ const FilterBar = ({
   searchTerm,
   setSearchTerm,
   selectedFilterStatus,
-  setSelectedFilterStatus,
+  onFilterStatusChange, // 🟢 SYNCHRONIZED STATUS CHANGE
   showExport = false,
   onExport,
   isExporting,
@@ -485,7 +485,7 @@ const FilterBar = ({
         </Select>
         <Select
           value={selectedFilterStatus}
-          onValueChange={setSelectedFilterStatus}
+          onValueChange={onFilterStatusChange} // 🟢 SYNCHRONIZED DROPDOWN CALL
         >
           <SelectTrigger className="w-full bg-white">
             <SelectValue placeholder="All Statuses" />
@@ -671,13 +671,41 @@ const ManagerView = () => {
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState("all");
   const [loading, setLoading] = useState(false);
+
+  // 🟢 BIDIRECTIONAL SYNCHRONIZATION: DROPDOWN SELECT -> STATS CARD SELECTION
+  const handleDropdownStatusChange = (val) => {
+    setSelectedFilterStatus(val);
+    setLocalCurrentPage(1);
+
+    switch (val) {
+      case "Pending":
+        setSelectedStatFilter("pending");
+        break;
+      case "Completed":
+        setSelectedStatFilter("completed");
+        setActiveTab("completed");
+        break;
+      case "Overdue":
+        setSelectedStatFilter("overdue");
+        setActiveTab("today");
+        break;
+      case "Due Today":
+        setSelectedStatFilter("dueToday");
+        setActiveTab("today");
+        break;
+      case "all":
+      default:
+        setSelectedStatFilter("total");
+        break;
+    }
+  };
+
   useEffect(() => {
     const fetchTemplates = async () => {
       if (!currentUser?._id) return;
 
       setLoading(true);
       try {
-        // Send POST request with role & filter context matching getRoleBasedTasks
         const response = await api.post("/fms/assigned-templates", {
           userId: currentUser._id,
           role: currentUser.role?.name,
@@ -701,8 +729,8 @@ const ManagerView = () => {
 
   const handleFilterChange = (setter, val) => {
     setter(val);
-    // Add additional filtering logic here if needed
   };
+
   const handleReopenTask = async () => {
     if (!reopenReason.trim()) {
       toast.error("Please enter reopen reason");
@@ -837,6 +865,7 @@ const ManagerView = () => {
     }
   }, [currentUser]);
 
+  // 🟢 BIDIRECTIONAL SYNCHRONIZATION: STATS CARD CLICK -> DROPDOWN SELECTION
   const handleStatClick = (statType) => {
     if (statType === "dueToday" || statType === "overdue") {
       setSelectedStatFilter(statType);
@@ -849,7 +878,7 @@ const ManagerView = () => {
       setSelectedStatFilter(statType);
       setSelectedFilterStatus("Pending");
     } else {
-      setSelectedStatFilter(statType);
+      setSelectedStatFilter("total");
       setSelectedFilterStatus("all");
     }
     setLocalCurrentPage(1);
@@ -895,7 +924,7 @@ const ManagerView = () => {
           selectedSrManager,
           search: debouncedSearch,
           selectedTemplate,
-          taskTypeFilter: engineViewTab, // 👈 PASSES SUB-TAB TO BACKEND
+          taskTypeFilter: engineViewTab,
           filters: {
             stat: selectedStatFilter || null,
             taskCategory: selectedStatFilter
@@ -917,7 +946,7 @@ const ManagerView = () => {
     currentUser,
     dispatch,
     activeTab,
-    engineViewTab, // Refetch when sub-tab changes
+    engineViewTab,
     selectedStatFilter,
     selectedFilterStatus,
     selectedDoer,
@@ -931,7 +960,7 @@ const ManagerView = () => {
     refreshTaskAfterReopen,
   ]);
 
-  // ⚡ DYNAMIC HEADERS FOR FMS SUBMISSION DATA (isTableColumn === true)
+  // ⚡ DYNAMIC HEADERS FOR FMS SUBMISSION DATA
   const dynamicFmsHeaders = useMemo(() => {
     const headersMap = new Map();
 
@@ -1033,7 +1062,6 @@ const ManagerView = () => {
         <TableHead>Task Title</TableHead>
         <TableHead>Description</TableHead>
 
-        {/* ⚡ RENDER DYNAMIC HEADERS FOR FMS SUBMISSION DATA (ONLY IN FMS SUB-TAB) */}
         {engineViewTab === "fms" &&
           dynamicFmsHeaders.map((headerLabel) => (
             <TableHead
@@ -1162,7 +1190,6 @@ const ManagerView = () => {
           </Button>
         </TableCell>
 
-        {/* ⚡ RENDER DYNAMIC CELLS FOR FMS SUBMISSION DATA */}
         {engineViewTab === "fms" &&
           dynamicFmsHeaders.map((headerLabel) => {
             const matchedField = task.submissionData
@@ -1455,7 +1482,7 @@ const ManagerView = () => {
               searchTerm={searchTerm}
               setSearchTerm={setSearchTerm}
               selectedFilterStatus={selectedFilterStatus}
-              setSelectedFilterStatus={setSelectedFilterStatus}
+              onFilterStatusChange={handleDropdownStatusChange} // 🟢 SYNCHRONIZED STATUS CHANGE
               showExport={true}
               onExport={handleExport}
               isExporting={isExporting}
