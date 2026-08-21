@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -17,15 +17,12 @@ import {
   RadialBar,
 } from "recharts";
 import {
-  TrendingUp,
-  TrendingDown,
   AlertCircle,
   CheckCircle2,
   Clock,
   Users,
   Layers,
   Award,
-  Filter,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
@@ -38,26 +35,33 @@ import {
   BarChart2,
   PieChart as PieChartIcon,
   List,
+  TrendingDown,
+  Hourglass,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { getUserForDrop } from "../../redux/slices/user/userSlice.js";
 import api from "../../lib/api";
 import { DatePicker, Select as AntdSelect } from "antd";
+import dayjs from "dayjs";
+
 const { RangePicker } = DatePicker;
 
-/* ─── Design tokens ────────────────────────────────────────────────────── */
+/* ─── Design Tokens ───────────────────────────────────────────────────── */
 const TOKEN = {
-  bg: "#F1F5F9",
-  surface: "#E8EDF5",
+  bg: "#F8FAFC",
+  surface: "#F1F5F9",
   card: "#FFFFFF",
-  cardHover: "#F8FAFC",
+  cardHover: "#FAFAFA",
   border: "#E2E8F0",
   border2: "#CBD5E1",
   accent: "#2563EB",
   accent2: "#4F46E5",
   green: "#059669",
+  greenGlow: "rgba(5,150,105,0.12)",
   amber: "#D97706",
+  amberGlow: "rgba(217,119,6,0.12)",
   red: "#DC2626",
+  redGlow: "rgba(220,38,38,0.12)",
   purple: "#7C3AED",
   teal: "#0D9488",
   text: "#0F172A",
@@ -66,27 +70,13 @@ const TOKEN = {
 };
 
 const STATUS_META = {
-  Overdue: { color: TOKEN.red, bg: "rgba(239,68,68,0.12)", label: "Overdue" },
-  Pending: {
-    color: TOKEN.amber,
-    bg: "rgba(245,158,11,0.12)",
-    label: "Pending",
-  },
-  Completed: {
-    color: TOKEN.green,
-    bg: "rgba(16,185,129,0.12)",
-    label: "Completed",
-  },
-  "In Progress": {
-    color: TOKEN.accent,
-    bg: "rgba(59,130,246,0.12)",
-    label: "In Progress",
-  },
-  Ongoing: {
-    color: TOKEN.accent,
-    bg: "rgba(59,130,246,0.12)",
-    label: "Ongoing",
-  },
+  Overdue: { color: TOKEN.red, bg: TOKEN.redGlow, label: "Overdue" },
+  Pending: { color: TOKEN.amber, bg: TOKEN.amberGlow, label: "Pending" },
+  Completed: { color: TOKEN.green, bg: TOKEN.greenGlow, label: "Completed" },
+  "In Progress": { color: TOKEN.accent, bg: "rgba(37,99,235,0.12)", label: "In Progress" },
+  Ongoing: { color: TOKEN.accent, bg: "rgba(37,99,235,0.12)", label: "Ongoing" },
+  Stopped: { color: TOKEN.muted, bg: "rgba(100,116,139,0.12)", label: "Stopped" },
+  "Not Done": { color: TOKEN.red, bg: TOKEN.redGlow, label: "Not Done" },
 };
 
 const CHART_COLORS = [
@@ -98,12 +88,12 @@ const CHART_COLORS = [
   TOKEN.red,
 ];
 
-/* ─── Inline styles ────────────────────────────────────────────────────── */
+/* ─── Inline Styles ────────────────────────────────────────────────────── */
 const S = {
   page: {
     minHeight: "100vh",
     background: TOKEN.bg,
-    fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+    fontFamily: "'DM Sans', 'Inter', 'Segoe UI', sans-serif",
     color: TOKEN.text,
     padding: "24px",
   },
@@ -112,7 +102,7 @@ const S = {
     border: `1px solid ${TOKEN.border}`,
     borderRadius: "16px",
     transition: "all 0.2s ease",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
   }),
   kpiCard: {
     background: TOKEN.card,
@@ -125,11 +115,11 @@ const S = {
     overflow: "hidden",
     transition: "transform 0.2s, box-shadow 0.2s",
     cursor: "default",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
   },
   label: {
     fontSize: "11px",
-    fontWeight: 600,
+    fontWeight: 700,
     letterSpacing: "1.2px",
     textTransform: "uppercase",
     color: TOKEN.muted,
@@ -164,45 +154,6 @@ const S = {
     gap: "16px",
     marginBottom: "24px",
   },
-  input: {
-    background: "#FFFFFF",
-    border: `1px solid ${TOKEN.border2}`,
-    borderRadius: "10px",
-    padding: "8px 14px",
-    color: TOKEN.text,
-    fontSize: "13px",
-    outline: "none",
-    width: "100%",
-    fontFamily: "inherit",
-  },
-  select: {
-    background: "#FFFFFF",
-    border: `1px solid ${TOKEN.border2}`,
-    borderRadius: "10px",
-    padding: "8px 14px",
-    color: TOKEN.text,
-    fontSize: "13px",
-    outline: "none",
-    cursor: "pointer",
-    fontFamily: "inherit",
-    minWidth: "140px",
-  },
-  btn: (primary) => ({
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-    padding: "9px 18px",
-    borderRadius: "10px",
-    fontWeight: 600,
-    fontSize: "13px",
-    cursor: "pointer",
-    border: "none",
-    fontFamily: "inherit",
-    transition: "all 0.2s",
-    background: primary ? TOKEN.accent : "#FFFFFF",
-    color: primary ? "#fff" : TOKEN.text,
-    border: primary ? "none" : `1px solid ${TOKEN.border2}`,
-  }),
   table: { width: "100%", borderCollapse: "collapse", fontSize: "13px" },
   th: {
     padding: "10px 14px",
@@ -230,13 +181,6 @@ const S = {
     gap: "10px",
     marginBottom: "16px",
   },
-  dot: (color) => ({
-    width: "8px",
-    height: "8px",
-    borderRadius: "50%",
-    background: color,
-    flexShrink: 0,
-  }),
   tab: (active) => ({
     padding: "8px 16px",
     borderRadius: "8px",
@@ -248,6 +192,21 @@ const S = {
     background: active ? TOKEN.accent : "transparent",
     color: active ? "#fff" : TOKEN.muted,
     transition: "all 0.15s",
+  }),
+  btn: (primary) => ({
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "8px 16px",
+    borderRadius: "10px",
+    fontWeight: 600,
+    fontSize: "13px",
+    cursor: "pointer",
+    border: primary ? "none" : `1px solid ${TOKEN.border2}`,
+    fontFamily: "inherit",
+    transition: "all 0.2s",
+    background: primary ? TOKEN.accent : "#FFFFFF",
+    color: primary ? "#fff" : TOKEN.text,
   }),
 };
 
@@ -299,7 +258,6 @@ const KpiCard = ({ label, value, sub, icon: Icon, color, trend }) => {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Glow accent */}
       <div
         style={{
           position: "absolute",
@@ -400,16 +358,28 @@ const RankBadge = ({ rank }) => {
 
 /* ─── Main Component ────────────────────────────────────────────────────── */
 const FmsReports = () => {
-  const { dropdownUsers } = useSelector((state) => state.users);
+  const dropdownUsers = useSelector(
+    (state) => state.users?.dropdownUsers || [],
+  );
   const dispatch = useDispatch();
 
+  // Filter States
   const [period, setPeriod] = useState("weekly");
   const [memberIdsMode, setMemberIdsMode] = useState(["all"]);
+  const [selectedTemplate, setSelectedTemplate] = useState("all");
+  const [instanceStatus, setInstanceStatus] = useState("all");
+  const [dateRange, setDateRange] = useState(null);
+
+  // Pagination & Display States
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
-  const [dateRange, setDateRange] = useState(null);
+
+  // Options State
+  const [templatesList, setTemplatesList] = useState([]);
+
+  // Data State
   const [data, setData] = useState({
     tasks: [],
     topPerformers: [],
@@ -421,14 +391,23 @@ const FmsReports = () => {
 
   useEffect(() => {
     dispatch(getUserForDrop());
+    fetchTemplates();
   }, [dispatch]);
 
-  // Reset to page 1 when filters change (not when page itself changes)
+  const fetchTemplates = async () => {
+    try {
+      const res = await api.get("/fms/all-templates");
+      setTemplatesList(res.data?.data || res.data || []);
+    } catch (e) {
+      console.error("Failed to load templates", e);
+    }
+  };
+
   useEffect(() => {
     setPage(1);
-  }, [period, memberIdsMode]);
+  }, [period, memberIdsMode, selectedTemplate, instanceStatus, dateRange]);
 
-  // Auto-fetch whenever period, member, or page changes
+  // Main Report Fetch Logic
   useEffect(() => {
     const fetchReport = async () => {
       try {
@@ -439,9 +418,12 @@ const FmsReports = () => {
           limit: 10,
           page,
           memberIds: memberIdsMode.includes("all") ? ["all"] : memberIdsMode,
+          templateId: selectedTemplate === "all" ? null : selectedTemplate,
+          instanceStatus: instanceStatus === "all" ? null : instanceStatus,
           startDate: dateRange?.[0]?.format("YYYY-MM-DD") || null,
           endDate: dateRange?.[1]?.format("YYYY-MM-DD") || null,
         });
+
         const d = res.data;
         setData({
           tasks: d.tasks || [],
@@ -463,28 +445,36 @@ const FmsReports = () => {
       }
     };
     fetchReport();
-  }, [period, memberIdsMode, page, dateRange]);
+  }, [
+    period,
+    memberIdsMode,
+    selectedTemplate,
+    instanceStatus,
+    page,
+    dateRange,
+  ]);
 
-  /* ── Derived metrics ── */
+  /* ── 🟢 FIXED Metrics (Uses global templateStats instead of paginated tasks) ── */
   const metrics = useMemo(() => {
-    const tasks = data.tasks;
-    const total = data.pagination.total || tasks.length;
-    const overdue = tasks.filter((t) => t.status === "Overdue").length;
-    const completed = tasks.filter((t) => t.status === "Completed").length;
-    const pending = tasks.filter(
-      (t) => t.status === "Pending" || t.status === "In Progress",
-    ).length;
+    const stats = data.templateStats || [];
+    const total = data.pagination.total || 0;
+
+    // Aggregate global overdue, completed, and pending counts from templateStats
+    const overdue = stats.reduce((acc, curr) => acc + (curr.overdue || 0), 0);
+    const completed = stats.reduce((acc, curr) => acc + (curr.completed || 0), 0);
+    const pending = stats.reduce((acc, curr) => acc + (curr.pending || 0), 0);
+
     const ongoingInstances = [
-      ...new Set(tasks.map((t) => t.fmsInstanceId?._id)),
-    ].length;
+      ...new Set((data.tasks || []).map((t) => t.fmsInstanceId?._id)),
+    ].filter(Boolean).length;
 
     return { total, overdue, completed, pending, ongoingInstances };
   }, [data]);
 
-  /* ── Status breakdown for pie ── */
+  /* ── Status Pie Data ── */
   const statusPieData = useMemo(() => {
     const counts = {};
-    data.tasks.forEach((t) => {
+    (data.tasks || []).forEach((t) => {
       counts[t.status] = (counts[t.status] || 0) + 1;
     });
     return Object.entries(counts).map(([name, value]) => ({
@@ -494,32 +484,32 @@ const FmsReports = () => {
     }));
   }, [data.tasks]);
 
-  /* ── Template bar chart ── */
+  /* ── Template Bar Data ── */
   const templateBarData = useMemo(
     () =>
-      data.templateStats.map((ts) => ({
+      (data.templateStats || []).map((ts) => ({
         name:
           ts.templateName?.length > 18
             ? ts.templateName.slice(0, 18) + "…"
-            : ts.templateName,
-        Assigned: ts.assigned,
-        Completed: ts.completed,
-        "On Time": ts.onTime,
-        Late: ts.late,
+            : ts.templateName || "Unknown",
+        Assigned: ts.assigned || 0,
+        Completed: ts.completed || 0,
+        Overdue: ts.overdue || 0,
+        Pending: ts.pending || 0,
       })),
     [data.templateStats],
   );
 
-  /* ── Frequency line data from tasks ── */
+  /* ── Frequency Line Chart Data ── */
   const freqData = useMemo(() => {
     const byDate = {};
-    data.tasks.forEach((t) => {
+    (data.tasks || []).forEach((t) => {
       const d = t.plannedDueDate
         ? new Date(t.plannedDueDate).toLocaleDateString("en-GB", {
             day: "2-digit",
             month: "short",
           })
-        : "N/A";
+        : "Pending";
       if (!byDate[d]) byDate[d] = { date: d, total: 0, overdue: 0 };
       byDate[d].total++;
       if (t.status === "Overdue") byDate[d].overdue++;
@@ -527,12 +517,12 @@ const FmsReports = () => {
     return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date));
   }, [data.tasks]);
 
-  /* ── Performer radial data ── */
+  /* ── Radial Performer Scores ── */
   const performerRadial = useMemo(
     () =>
-      data.topPerformers.slice(0, 5).map((p, i) => ({
-        name: p.userName,
-        score: p.score,
+      (data.topPerformers || []).slice(0, 5).map((p, i) => ({
+        name: p.userName || "User",
+        score: p.score || 0,
         fill: CHART_COLORS[i % CHART_COLORS.length],
       })),
     [data.topPerformers],
@@ -547,7 +537,7 @@ const FmsReports = () => {
 
   return (
     <div style={S.page}>
-      {/* ── Page header ── */}
+      {/* ── Page Header ── */}
       <div style={{ marginBottom: "24px" }}>
         <div
           style={{
@@ -590,7 +580,7 @@ const FmsReports = () => {
                 FMS Reports
               </h1>
             </div>
-            {data.dateRange.start && (
+            {data.dateRange?.start && (
               <div
                 style={{
                   display: "flex",
@@ -605,7 +595,7 @@ const FmsReports = () => {
               </div>
             )}
           </div>
-          {!loading && data.tasks.length > 0 && (
+          {!loading && data.pagination.total > 0 && (
             <div style={{ display: "flex", gap: "8px" }}>
               <span style={S.badge(TOKEN.green, "rgba(16,185,129,0.1)")}>
                 {data.pagination.total} records
@@ -618,16 +608,14 @@ const FmsReports = () => {
         </div>
       </div>
 
-      {/* ── Filters ── */}
+      {/* ── Filter Bar ── */}
       <div style={S.filterBar}>
         <div>
           <div style={{ ...S.label, marginBottom: "6px" }}>Period</div>
           <AntdSelect
             value={period}
             onChange={(value) => setPeriod(value)}
-            style={{
-              width: 180,
-            }}
+            style={{ width: 140 }}
             options={[
               { value: "weekly", label: "Weekly" },
               { value: "monthly", label: "Monthly" },
@@ -636,22 +624,9 @@ const FmsReports = () => {
             ]}
           />
         </div>
-        <div className="w-100">
+
+        <div style={{ minWidth: "180px" }}>
           <div style={{ ...S.label, marginBottom: "6px" }}>Doers</div>
-          {/* <select
-            style={S.select}
-            value={memberIdsMode}
-            onChange={(e) => setMemberIdsMode(e.target.value)}
-          >
-            <option value="all">All Members</option>
-            {dropdownUsers
-              .filter((item) => item.role.name != "Owner")
-              .map((u) => (
-                <option key={u._id} value={u._id}>
-                  {u.name} — {u.role?.name}
-                </option>
-              ))}
-          </select> */}
           <AntdSelect
             mode="multiple"
             showSearch
@@ -659,21 +634,16 @@ const FmsReports = () => {
             value={memberIdsMode}
             onChange={(values) => {
               if (values.length === 0) {
-                // nothing selected → fallback to ALL
                 setMemberIdsMode(["all"]);
               } else {
-                // remove "all" if any user is selected
                 const filtered = values.filter((v) => v !== "all");
                 setMemberIdsMode(filtered.length ? filtered : ["all"]);
               }
             }}
-            style={{
-              width: "100%",
-              // minHeight: 38,
-            }}
+            style={{ width: "100%" }}
             optionFilterProp="label"
             options={[
-              { value: "all", label: "All Members" }, // 👈 important
+              { value: "all", label: "All Members" },
               ...dropdownUsers
                 .filter((item) => item.role?.name !== "Owner")
                 .map((u) => ({
@@ -683,19 +653,50 @@ const FmsReports = () => {
             ]}
           />
         </div>
-        <div className="w-100">
-          <div style={{ ...S.label, marginBottom: "6px" }}>Date</div>
 
+        <div>
+          <div style={{ ...S.label, marginBottom: "6px" }}>FMS Template</div>
+          <AntdSelect
+            value={selectedTemplate}
+            onChange={(val) => setSelectedTemplate(val)}
+            style={{ width: 160 }}
+            options={[
+              { value: "all", label: "All Templates" },
+              ...templatesList.map((t) => ({
+                value: t._id,
+                label: t.templateName,
+              })),
+            ]}
+          />
+        </div>
+
+        <div>
+          <div style={{ ...S.label, marginBottom: "6px" }}>Instance Status</div>
+          <AntdSelect
+            value={instanceStatus}
+            onChange={(val) => setInstanceStatus(val)}
+            style={{ width: 140 }}
+            options={[
+              { value: "all", label: "All Statuses" },
+              { value: "ongoing", label: "Ongoing" },
+              { value: "completed", label: "Completed" },
+              { value: "onhold", label: "On Hold" },
+              { value: "stopped", label: "Stopped" },
+              { value: "upcoming", label: "Upcoming" },
+            ]}
+          />
+        </div>
+
+        <div>
+          <div style={{ ...S.label, marginBottom: "6px" }}>Date</div>
           <RangePicker
             value={dateRange}
             onChange={(dates) => setDateRange(dates)}
             format="DD MMM YYYY"
-            style={{
-              borderRadius: 6,
-            }}
+            style={{ borderRadius: 6 }}
           />
         </div>
-        {/* Auto-loads — show spinner when fetching */}
+
         {loading && (
           <div
             style={{
@@ -723,8 +724,8 @@ const FmsReports = () => {
         )}
       </div>
 
-      {/* ── KPI strip ── */}
-      {data.tasks.length > 0 && (
+      {/* ── KPI Cards (🟢 Fixed Accurate Totals) ── */}
+      {data.pagination.total > 0 && (
         <div
           style={{
             display: "flex",
@@ -749,9 +750,16 @@ const FmsReports = () => {
             trend="down"
           />
           <KpiCard
+            label="Pending"
+            value={metrics.pending}
+            sub="Waiting / In Process"
+            icon={Hourglass}
+            color={TOKEN.amber}
+          />
+          <KpiCard
             label="Completed"
             value={metrics.completed}
-            sub="On time"
+            sub="Closed"
             icon={CheckCircle2}
             color={TOKEN.green}
             trend="up"
@@ -764,24 +772,17 @@ const FmsReports = () => {
             color={TOKEN.purple}
           />
           <KpiCard
-            label="Members"
-            value={data.topPerformers.length}
-            sub="Contributing"
-            icon={Users}
-            color={TOKEN.teal}
-          />
-          <KpiCard
             label="Templates"
             value={data.templateStats.length}
             sub="In this report"
             icon={Target}
-            color={TOKEN.amber}
+            color={TOKEN.teal}
           />
         </div>
       )}
 
-      {/* ── Tabs ── */}
-      {data.tasks.length > 0 && (
+      {/* ── Tabs Navigation ── */}
+      {data.pagination.total > 0 && (
         <>
           <div
             style={{
@@ -815,7 +816,7 @@ const FmsReports = () => {
           </div>
 
           {/* ════════════════════════════════════════
-              TAB: OVERVIEW
+              TAB 1: OVERVIEW
           ════════════════════════════════════════ */}
           {activeTab === "overview" && (
             <div
@@ -825,7 +826,7 @@ const FmsReports = () => {
                 gap: "16px",
               }}
             >
-              {/* Template performance bar */}
+              {/* Template Performance Bar Chart */}
               <div
                 style={{
                   ...S.card(false),
@@ -871,13 +872,18 @@ const FmsReports = () => {
                         radius={[4, 4, 0, 0]}
                       />
                       <Bar
-                        dataKey="Completed"
-                        fill={TOKEN.green}
+                        dataKey="Overdue"
+                        fill={TOKEN.red}
                         radius={[4, 4, 0, 0]}
                       />
                       <Bar
-                        dataKey="Late"
-                        fill={TOKEN.red}
+                        dataKey="Pending"
+                        fill={TOKEN.amber}
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="Completed"
+                        fill={TOKEN.green}
                         radius={[4, 4, 0, 0]}
                       />
                     </BarChart>
@@ -896,7 +902,7 @@ const FmsReports = () => {
                 )}
               </div>
 
-              {/* Status pie */}
+              {/* Status Pie Chart */}
               <div style={{ ...S.card(false), padding: "20px" }}>
                 <div style={S.sectionTitle}>
                   <PieChartIcon size={16} color={TOKEN.purple} /> Task Status
@@ -942,12 +948,12 @@ const FmsReports = () => {
                       textAlign: "center",
                     }}
                   >
-                    No data
+                    No status data
                   </div>
                 )}
               </div>
 
-              {/* Timeline line chart */}
+              {/* Timeline Line Chart */}
               <div
                 style={{
                   ...S.card(false),
@@ -1008,7 +1014,7 @@ const FmsReports = () => {
           )}
 
           {/* ════════════════════════════════════════
-              TAB: TASK DETAILS
+              TAB 2: TASK DETAILS TABLE
           ════════════════════════════════════════ */}
           {activeTab === "tasks" && (
             <div style={{ ...S.card(false), overflow: "hidden" }}>
@@ -1044,8 +1050,6 @@ const FmsReports = () => {
                         "Planned Start",
                         "Due Date",
                         "Status",
-                        // "Checklist",
-                        // "Form Fields",
                       ].map((h) => (
                         <th key={h} style={S.th}>
                           {h}
@@ -1063,7 +1067,7 @@ const FmsReports = () => {
                       const row = idx % 2 === 0;
                       return (
                         <tr
-                          key={t._id}
+                          key={t._id || idx}
                           style={{
                             background: row ? "transparent" : "#F8FAFC",
                           }}
@@ -1092,7 +1096,7 @@ const FmsReports = () => {
                                 border: `1px solid #BFDBFE`,
                               }}
                             >
-                              {t.taskId}
+                              {t.taskId || t.TaskId}
                             </span>
                           </td>
                           <td style={{ ...S.td, maxWidth: "200px" }}>
@@ -1105,7 +1109,7 @@ const FmsReports = () => {
                                 whiteSpace: "nowrap",
                               }}
                             >
-                              {t.description}
+                              {t.description || t.title}
                             </div>
                           </td>
                           <td style={S.td}>
@@ -1113,24 +1117,6 @@ const FmsReports = () => {
                               style={{ fontSize: "12px", color: TOKEN.muted }}
                             >
                               {t.fmsInstanceId?.instanceName || "—"}
-                            </div>
-                            <div
-                              style={{ fontSize: "10px", color: TOKEN.muted2 }}
-                            >
-                              {t.fmsInstanceId?.status && (
-                                <span
-                                  style={{
-                                    ...S.badge(
-                                      TOKEN.accent,
-                                      "rgba(59,130,246,0.08)",
-                                    ),
-                                    fontSize: "10px",
-                                    padding: "1px 6px",
-                                  }}
-                                >
-                                  {t.fmsInstanceId.status}
-                                </span>
-                              )}
                             </div>
                           </td>
                           <td style={S.td}>
@@ -1152,39 +1138,26 @@ const FmsReports = () => {
                                   justifyContent: "center",
                                   fontSize: "11px",
                                   fontWeight: 700,
-                                  flexShrink: 0,
+                                  color: "#fff",
                                 }}
                               >
                                 {t.assignedTo?.name?.charAt(0) || "?"}
                               </div>
                               <div>
                                 <div
-                                  style={{ fontSize: "13px", fontWeight: 500 }}
-                                >
-                                  {t.assignedTo?.name || "—"}
-                                </div>
-                                <div
                                   style={{
-                                    fontSize: "11px",
-                                    color: TOKEN.muted2,
+                                    fontSize: "13px",
+                                    fontWeight: 500,
                                   }}
                                 >
-                                  {t.assignedTo?.email}
+                                  {t.assignedTo?.name || "—"}
                                 </div>
                               </div>
                             </div>
                           </td>
+                          <td style={S.td}>{t.assignedBy?.name || "—"}</td>
                           <td style={S.td}>
-                            <div style={{ fontSize: "13px" }}>
-                              {t.assignedBy?.name || "—"}
-                            </div>
-                          </td>
-                          <td style={S.td}>
-                            <div
-                              style={{ fontSize: "12px", color: TOKEN.muted }}
-                            >
-                              {t.departmentOfAssignToUser?.name || "—"}
-                            </div>
+                            {t.departmentOfAssignToUser?.name || "—"}
                           </td>
                           <td style={S.td}>
                             <span
@@ -1217,7 +1190,7 @@ const FmsReports = () => {
                                     year: "numeric",
                                   },
                                 )
-                              : "—"}
+                              : "Pending"}
                           </td>
                           <td
                             style={{
@@ -1243,86 +1216,14 @@ const FmsReports = () => {
                                       year: "numeric",
                                     },
                                   )
-                                : "—"}
+                                : "Pending"}
                             </div>
-                            {t.plannedDueDate && (
-                              <div
-                                style={{
-                                  fontSize: "10px",
-                                  color: TOKEN.muted2,
-                                }}
-                              >
-                                {new Date(t.plannedDueDate).toLocaleTimeString(
-                                  "en-GB",
-                                  { hour: "2-digit", minute: "2-digit" },
-                                )}
-                              </div>
-                            )}
                           </td>
                           <td style={S.td}>
                             <span style={S.badge(sm.color, sm.bg)}>
                               {sm.label}
                             </span>
                           </td>
-                          {/* <td style={S.td}>
-                            {t.checklist?.length > 0 ? (
-                              <div>
-                                <div
-                                  style={{
-                                    fontSize: "12px",
-                                    color: TOKEN.muted,
-                                    marginBottom: "4px",
-                                  }}
-                                >
-                                  {
-                                    t.checklist.filter((c) => c.completed)
-                                      .length
-                                  }
-                                  /{t.checklist.length}
-                                </div>
-                                <ProgressBar
-                                  value={
-                                    (t.checklist.filter((c) => c.completed)
-                                      .length /
-                                      t.checklist.length) *
-                                    100
-                                  }
-                                  color={TOKEN.green}
-                                  height={4}
-                                />
-                              </div>
-                            ) : (
-                              <span
-                                style={{
-                                  color: TOKEN.muted2,
-                                  fontSize: "12px",
-                                }}
-                              >
-                                —
-                              </span>
-                            )}
-                          </td>
-                          <td style={S.td}>
-                            {t.createdForm?.length > 0 ? (
-                              <span
-                                style={S.badge(
-                                  TOKEN.purple,
-                                  "rgba(139,92,246,0.1)",
-                                )}
-                              >
-                                {t.createdForm.length} fields
-                              </span>
-                            ) : (
-                              <span
-                                style={{
-                                  color: TOKEN.muted2,
-                                  fontSize: "12px",
-                                }}
-                              >
-                                —
-                              </span>
-                            )}
-                          </td> */}
                         </tr>
                       );
                     })}
@@ -1340,36 +1241,29 @@ const FmsReports = () => {
                   justifyContent: "space-between",
                 }}
               >
-                {/* LEFT: Showing count */}
                 <div style={{ fontSize: "12px", color: TOKEN.muted }}>
-                  {data.pagination.total === 0 ? (
-                    "No records"
-                  ) : (
-                    <>
-                      Showing{" "}
-                      {(data.pagination.current - 1) * data.pagination.limit +
-                        1}
-                      {" – "}
-                      {Math.min(
+                  {data.pagination.total === 0
+                    ? "No records"
+                    : `Showing ${
+                        (data.pagination.current - 1) * data.pagination.limit +
+                        1
+                      } – ${Math.min(
                         data.pagination.current * data.pagination.limit,
                         data.pagination.total,
-                      )}{" "}
-                      of {data.pagination.total}
-                    </>
-                  )}
+                      )} of ${data.pagination.total}`}
                 </div>
 
-                {/* RIGHT: Controls */}
                 <div
-                  style={{ display: "flex", gap: "10px", alignItems: "center" }}
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    alignItems: "center",
+                  }}
                 >
                   <button
                     style={S.btn(false)}
                     disabled={data.pagination.current <= 1 || loading}
-                    onClick={() => {
-                      const newPage = Math.max(1, data.pagination.current - 1);
-                      setPage(newPage);
-                    }}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
                   >
                     <ChevronLeft size={14} /> Prev
                   </button>
@@ -1392,13 +1286,7 @@ const FmsReports = () => {
                       data.pagination.current >= data.pagination.pages ||
                       loading
                     }
-                    onClick={() => {
-                      const newPage = Math.min(
-                        data.pagination.pages,
-                        data.pagination.current + 1,
-                      );
-                      setPage(newPage);
-                    }}
+                    onClick={() => setPage((p) => p + 1)}
                   >
                     Next <ChevronRight size={14} />
                   </button>
@@ -1408,7 +1296,7 @@ const FmsReports = () => {
           )}
 
           {/* ════════════════════════════════════════
-              TAB: PERFORMERS
+              TAB 3: PERFORMERS
           ════════════════════════════════════════ */}
           {activeTab === "performers" && (
             <div
@@ -1418,7 +1306,7 @@ const FmsReports = () => {
                 gap: "16px",
               }}
             >
-              {/* Leaderboard table */}
+              {/* Leaderboard Table */}
               <div style={{ ...S.card(false), padding: "20px" }}>
                 <div style={S.sectionTitle}>
                   <Award size={16} color={TOKEN.amber} /> Leaderboard
@@ -1444,7 +1332,7 @@ const FmsReports = () => {
                   >
                     {data.topPerformers.map((p, i) => (
                       <div
-                        key={p.userId}
+                        key={p.userId || i}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -1453,15 +1341,23 @@ const FmsReports = () => {
                           background:
                             i === 0 ? "rgba(245,158,11,0.06)" : "#F8FAFC",
                           borderRadius: "12px",
-                          border: `1px solid ${i === 0 ? "rgba(217,119,6,0.25)" : TOKEN.border}`,
+                          border: `1px solid ${
+                            i === 0
+                              ? "rgba(217,119,6,0.25)"
+                              : TOKEN.border
+                          }`,
                         }}
                       >
                         <RankBadge rank={i + 1} />
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: "14px" }}>
+                          <div
+                            style={{ fontWeight: 600, fontSize: "14px" }}
+                          >
                             {p.userName}
                           </div>
-                          <div style={{ fontSize: "11px", color: TOKEN.muted }}>
+                          <div
+                            style={{ fontSize: "11px", color: TOKEN.muted }}
+                          >
                             {p.role} · {p.totalTasks} tasks
                           </div>
                           <div style={{ marginTop: "6px" }}>
@@ -1471,8 +1367,8 @@ const FmsReports = () => {
                                 p.score >= 80
                                   ? TOKEN.green
                                   : p.score >= 50
-                                    ? TOKEN.amber
-                                    : TOKEN.red
+                                  ? TOKEN.amber
+                                  : TOKEN.red
                               }
                             />
                           </div>
@@ -1486,13 +1382,15 @@ const FmsReports = () => {
                                 p.score >= 80
                                   ? TOKEN.green
                                   : p.score >= 50
-                                    ? TOKEN.amber
-                                    : TOKEN.red,
+                                  ? TOKEN.amber
+                                  : TOKEN.red,
                             }}
                           >
                             {p.score}%
                           </div>
-                          <div style={{ fontSize: "10px", color: TOKEN.muted }}>
+                          <div
+                            style={{ fontSize: "10px", color: TOKEN.muted }}
+                          >
                             score
                           </div>
                         </div>
@@ -1502,7 +1400,7 @@ const FmsReports = () => {
                 )}
               </div>
 
-              {/* Radial chart */}
+              {/* Radial Chart */}
               <div style={{ ...S.card(false), padding: "20px" }}>
                 <div style={S.sectionTitle}>
                   <Target size={16} color={TOKEN.teal} /> Score Distribution
@@ -1552,12 +1450,12 @@ const FmsReports = () => {
                 )}
               </div>
 
-              {/* Score stats cards */}
+              {/* Score Stats Summary Strip */}
               <div
                 style={{
                   gridColumn: "span 2",
                   display: "grid",
-                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gridTemplateColumns: "repeat(5, 1fr)",
                   gap: "12px",
                 }}
               >
@@ -1566,26 +1464,32 @@ const FmsReports = () => {
                   .flatMap((p) => [
                     {
                       label: "Done On Time",
-                      value: p.doneOnTime,
+                      value: p.doneOnTime || 0,
                       color: TOKEN.green,
                       icon: CheckCircle2,
                     },
                     {
-                      label: "Not On Time",
-                      value: p.notDoneOnTime,
-                      color: TOKEN.amber,
-                      icon: Clock,
-                    },
-                    {
-                      label: "Not Done",
-                      value: p.notDone,
+                      label: "Overdue",
+                      value: p.overdueCount || 0,
                       color: TOKEN.red,
                       icon: AlertCircle,
                     },
                     {
+                      label: "Pending",
+                      value: p.pendingCount || 0,
+                      color: TOKEN.amber,
+                      icon: Hourglass,
+                    },
+                    {
+                      label: "Not On Time",
+                      value: p.notDoneOnTime || 0,
+                      color: TOKEN.purple,
+                      icon: Clock,
+                    },
+                    {
                       label: "Late Score",
                       value: `${p.lateScore}%`,
-                      color: TOKEN.purple,
+                      color: TOKEN.red,
                       icon: TrendingDown,
                     },
                   ])
@@ -1615,7 +1519,9 @@ const FmsReports = () => {
                         </div>
                         <Icon size={14} color={color} />
                       </div>
-                      <div style={{ fontSize: "28px", fontWeight: 800, color }}>
+                      <div
+                        style={{ fontSize: "28px", fontWeight: 800, color }}
+                      >
                         {value}
                       </div>
                     </div>
@@ -1625,11 +1531,15 @@ const FmsReports = () => {
           )}
 
           {/* ════════════════════════════════════════
-              TAB: TEMPLATES
+              TAB 4: TEMPLATES
           ════════════════════════════════════════ */}
           {activeTab === "templates" && (
             <div
-              style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "16px",
+              }}
             >
               {data.templateStats.length === 0 ? (
                 <div
@@ -1641,7 +1551,7 @@ const FmsReports = () => {
                     fontSize: "14px",
                   }}
                 >
-                  No template data. Click Get Report.
+                  No template data available
                 </div>
               ) : (
                 data.templateStats.map((ts, i) => {
@@ -1650,7 +1560,7 @@ const FmsReports = () => {
                   const latePct = ts.lateRate || 0;
                   return (
                     <div
-                      key={ts.fmsTemplateId}
+                      key={ts.fmsTemplateId || i}
                       style={{ ...S.card(false), padding: "20px" }}
                     >
                       <div
@@ -1717,17 +1627,29 @@ const FmsReports = () => {
                             {ts.assigned} assigned
                           </span>
                           <span
-                            style={S.badge(TOKEN.green, "rgba(16,185,129,0.1)")}
+                            style={S.badge(
+                              TOKEN.green,
+                              "rgba(16,185,129,0.1)",
+                            )}
                           >
                             {ts.completed} done
                           </span>
-                          {ts.late > 0 && (
-                            <span
-                              style={S.badge(TOKEN.red, "rgba(239,68,68,0.1)")}
-                            >
-                              {ts.late} late
-                            </span>
-                          )}
+                          <span
+                            style={S.badge(
+                              TOKEN.red,
+                              "rgba(239,68,68,0.1)",
+                            )}
+                          >
+                            {ts.overdue || 0} overdue
+                          </span>
+                          <span
+                            style={S.badge(
+                              TOKEN.amber,
+                              "rgba(245,158,11,0.1)",
+                            )}
+                          >
+                            {ts.pending || 0} pending
+                          </span>
                         </div>
                       </div>
                       <div
@@ -1810,61 +1732,8 @@ const FmsReports = () => {
         </>
       )}
 
-      {/* ── Loading skeleton ── */}
-      {loading && data.tasks.length === 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              style={{ ...S.card(false), padding: "20px", opacity: 1 }}
-            >
-              <div
-                style={{ display: "flex", gap: "12px", alignItems: "center" }}
-              >
-                <div
-                  style={{
-                    width: "40px",
-                    height: "40px",
-                    borderRadius: "10px",
-                    background: TOKEN.border,
-                    animation: "pulse 1.5s ease-in-out infinite",
-                  }}
-                />
-                <div
-                  style={{
-                    flex: 1,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "12px",
-                      background: TOKEN.border,
-                      borderRadius: "6px",
-                      width: "60%",
-                      animation: "pulse 1.5s ease-in-out infinite",
-                    }}
-                  />
-                  <div
-                    style={{
-                      height: "10px",
-                      background: TOKEN.border,
-                      borderRadius: "6px",
-                      width: "40%",
-                      animation: "pulse 1.5s ease-in-out infinite",
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Empty state (after load, no data) ── */}
-      {!loading && data.tasks.length === 0 && (
+      {/* ── Empty State ── */}
+      {!loading && data.pagination.total === 0 && (
         <div
           style={{
             ...S.card(false),
@@ -1881,7 +1750,7 @@ const FmsReports = () => {
             No data for this period
           </div>
           <div style={{ fontSize: "14px", color: TOKEN.muted }}>
-            Try changing the period or member filter above.
+            Try changing the period, template, or member filter above.
           </div>
         </div>
       )}
@@ -1889,12 +1758,10 @@ const FmsReports = () => {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: ${TOKEN.bg}; }
         ::-webkit-scrollbar-thumb { background: ${TOKEN.border2}; border-radius: 2px; }
-        select option { background: #ffffff; color: ${TOKEN.text}; }
         button:disabled { opacity: 0.4; cursor: not-allowed; }
       `}</style>
     </div>

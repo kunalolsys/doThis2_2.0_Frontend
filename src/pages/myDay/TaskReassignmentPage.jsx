@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Card,
   Select,
@@ -33,6 +33,7 @@ import {
   AlertOutlined,
   ThunderboltOutlined,
   ClockCircleOutlined,
+  BankOutlined,
 } from "@ant-design/icons";
 import api from "../../lib/api";
 import { formatLabel } from "../../lib/utilFunctions";
@@ -43,31 +44,50 @@ export default function TaskReassignmentPage() {
   const { token } = theme.useToken();
   const [tasks, setTasks] = useState([]);
   const [users, setUsers] = useState([]);
+  const [departments, setDepartments] = useState([]);
+
   const [fromUserId, setFromUserId] = useState(null);
+  const [toDepartmentId, setToDepartmentId] = useState(null); // 🟢 NEW: Target Department ID
   const [toUserId, setToUserId] = useState(null);
+
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [selectedRowData, setSelectedRowData] = useState([]);
-  // console.log(selectedRowData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [taskFrequency, setTaskFrequency] = useState("one-time");
+
+  // 1. Fetch Departments
+  const fetchDepartments = async () => {
+    try {
+      const response = await api.get("/setup/departments/allDepartmentsForFMS");
+      setDepartments(response.data?.data || []);
+    } catch (error) {
+      console.error("Failed to fetch departments:", error);
+    }
+  };
+
+  // 2. Fetch Users
   const fetchUsers = async () => {
     try {
       const res = await api.get("/users/filter-allUsers");
       const data = res.data.data || [];
       setUsers(data);
     } catch (err) {
-      console.log(err);
+      console.error("Failed to fetch users:", err);
     }
   };
+
   useEffect(() => {
     fetchUsers();
+    fetchDepartments();
   }, []);
+
+  // 3. Fetch Assigned Tasks
   const fetchTask = async () => {
     try {
       const res = await api.post("/tasks/filter", {
         userId: fromUserId,
         filters: {
-          taskType: taskFrequency == "recurring" ? "recurring" : "All",
+          taskType: taskFrequency === "recurring" ? "recurring" : "All",
         },
         limit: 100000,
         page: 1,
@@ -75,9 +95,10 @@ export default function TaskReassignmentPage() {
       const task = res.data.data;
       setTasks(task);
     } catch (error) {
-      console.log(error);
+      console.error(error);
     }
   };
+
   useEffect(() => {
     if (!fromUserId) return;
     fetchTask();
@@ -88,14 +109,36 @@ export default function TaskReassignmentPage() {
     (task) => task.assignedTo?._id === fromUserId,
   );
   const finalTasks = useMemo(
-    () => filteredTasks.filter((item) => item.status != "Completed"),
+    () => filteredTasks.filter((item) => item.status !== "Completed"),
     [filteredTasks],
   );
-  const activeUserProfile = users.find((u) => u.oid === fromUserId);
   const totalTasksCount = finalTasks.length;
   const delayedTasksCount = finalTasks.filter(
     (t) => t.status === "Delayed",
   ).length;
+
+  // 🟢 Target Department badalne par Target User reset hoga aur Filter honge
+  const handleToDepartmentChange = (deptId) => {
+    setToDepartmentId(deptId);
+    setToUserId(null); // Clear selected user when department changes
+  };
+
+  // 🟢 Filter users belonging to selected target department
+  const availableTargetUsers = useMemo(() => {
+    if (!toDepartmentId) return [];
+
+    return users.filter((u) => {
+      // Exclude Owner roles & Source User
+      if (u?.role?.name === "Owner") return false;
+      if ((u?._id || u?.id) === fromUserId) return false;
+
+      // Check if user belongs to selected department
+      const userDepts = Array.isArray(u.department) ? u.department : [];
+      return userDepts.some(
+        (d) => String(d?._id || d) === String(toDepartmentId),
+      );
+    });
+  }, [users, toDepartmentId, fromUserId]);
 
   const handleFromUserChange = (value) => {
     setFromUserId(value);
@@ -104,6 +147,10 @@ export default function TaskReassignmentPage() {
   };
 
   const handleReassignmentSave = async () => {
+    if (!toDepartmentId) {
+      message.error("Please select a target department first.");
+      return;
+    }
     if (!toUserId) {
       message.error("Please select a target destination user.");
       return;
@@ -113,21 +160,19 @@ export default function TaskReassignmentPage() {
       return;
     }
 
-    // 1. Locate the complete user record of our target to fetch their department OID
-    const targetUserObj = users.find((u) => u._id === toUserId);
+    const targetUserObj = users.find((u) => (u._id || u.id) === toUserId);
 
-    // Construct the payload structure your backend expects from your curl log
+    // 🟢 Payload includes both newly assigned user & their target department
     const payload = {
       assignedTo: toUserId,
-      //   departmentOfAssignToUser: targetUserObj?.departmentId || null, // Fallback fallback dept OID
+      departmentOfAssignToUser: toDepartmentId,
     };
 
     setIsSubmitting(true);
 
     try {
-      // 2. Fire concurrent API requests for all selected task IDs
       const updatePromises = selectedRowData.map((task) =>
-        task.taskType == "FmsInstanceTask"
+        task.taskType === "FmsInstanceTask"
           ? api.patch(
               `/fms/instances/${task.fmsInstanceId}/tasks/${task.taskId}`,
               payload,
@@ -135,14 +180,12 @@ export default function TaskReassignmentPage() {
           : api.put(`/tasks/${task._id}`, payload),
       );
 
-      // 3. Await for all network responses to finish successfully
       await Promise.all(updatePromises);
 
       message.success(
         `Tasks were successfully reassigned to ${targetUserObj?.name}.`,
       );
       fetchTask();
-      // 5. Tear down tracking configurations
       setSelectedRowKeys([]);
     } catch (error) {
       console.error("Reassignment batch execution error:", error);
@@ -216,7 +259,7 @@ export default function TaskReassignmentPage() {
       render: (_, record) => (
         <Space direction="vertical" size={2}>
           <Text style={{ fontWeight: 600, fontSize: "14px" }}>
-            {record.taskType == "FmsInstanceTask"
+            {record.taskType === "FmsInstanceTask"
               ? "FMS"
               : formatLabel(record.taskType)}
           </Text>
@@ -230,65 +273,18 @@ export default function TaskReassignmentPage() {
       width: "160px",
       render: (status) => {
         const statusConfig = {
-          Pending: {
-            color: "warning",
-            textColor: "#d97706",
-          },
-
-          "In Progress": {
-            color: "processing",
-            textColor: "#1677ff",
-          },
-
-          Completed: {
-            color: "success",
-            textColor: "#16a34a",
-          },
-
-          Delayed: {
-            color: "error",
-            textColor: "#dc2626",
-          },
-
-          Overdue: {
-            color: "error",
-            textColor: "#b91c1c",
-          },
-
-          Upcoming: {
-            color: "default",
-            textColor: "#52b1ff",
-          },
-
-          Delegated: {
-            color: "processing",
-            textColor: "#7c3aed",
-          },
-
-          Cancelled: {
-            color: "default",
-            textColor: "#6b7280",
-          },
-
-          Rejected: {
-            color: "error",
-            textColor: "#ef4444",
-          },
-
-          Approved: {
-            color: "success",
-            textColor: "#22c55e",
-          },
-
-          Review: {
-            color: "warning",
-            textColor: "#f59e0b",
-          },
-
-          Hold: {
-            color: "warning",
-            textColor: "#ca8a04",
-          },
+          Pending: { color: "warning", textColor: "#d97706" },
+          "In Progress": { color: "processing", textColor: "#1677ff" },
+          Completed: { color: "success", textColor: "#16a34a" },
+          Delayed: { color: "error", textColor: "#dc2626" },
+          Overdue: { color: "error", textColor: "#b91c1c" },
+          Upcoming: { color: "default", textColor: "#52b1ff" },
+          Delegated: { color: "processing", textColor: "#7c3aed" },
+          Cancelled: { color: "default", textColor: "#6b7280" },
+          Rejected: { color: "error", textColor: "#ef4444" },
+          Approved: { color: "success", textColor: "#22c55e" },
+          Review: { color: "warning", textColor: "#f59e0b" },
+          Hold: { color: "warning", textColor: "#ca8a04" },
         };
 
         const currentStatus = statusConfig[status] || {
@@ -314,42 +310,6 @@ export default function TaskReassignmentPage() {
         );
       },
     },
-    // {
-    //   title: "Subtask Checklist Met",
-    //   key: "checklist",
-    //   width: "200px",
-    //   render: (_, record) => {
-    //     const total = record.checklist?.length || 0;
-    //     const complete =
-    //       record.checklist?.filter((i) => i.isCompleted).length || 0;
-    //     const progressPercent =
-    //       total > 0 ? Math.round((complete / total) * 100) : 0;
-    //     return (
-    //       <div style={{ paddingRight: "16px" }}>
-    //         <div
-    //           style={{
-    //             display: "flex",
-    //             justifyContent: "space-between",
-    //             marginBottom: "4px",
-    //             fontSize: "11px",
-    //           }}
-    //         >
-    //           <Text type="secondary">Progress</Text>
-    //           <Text type="secondary" strong>
-    //             {complete}/{total}
-    //           </Text>
-    //         </div>
-    //         <Progress
-    //           percent={progressPercent}
-    //           size="small"
-    //           showInfo={false}
-    //           strokeWidth={4}
-    //           strokeColor={token.colorInfo}
-    //         />
-    //       </div>
-    //     );
-    //   },
-    // },
     {
       title: "Target Due Date",
       key: "dueDate",
@@ -371,6 +331,7 @@ export default function TaskReassignmentPage() {
       },
     },
   ];
+
   return (
     <div
       style={{
@@ -379,7 +340,7 @@ export default function TaskReassignmentPage() {
         padding: "24px",
       }}
     >
-      {/* 1. Header Area with Inline Status Summary Counters */}
+      {/* 1. Header Area */}
       <div
         style={{
           borderBottom: `1px solid ${token.colorBorderSecondary}`,
@@ -398,26 +359,20 @@ export default function TaskReassignmentPage() {
               level={3}
               style={{ margin: 0, fontWeight: 700, letterSpacing: "-0.3px" }}
             >
-              Task Allocation & Transfer Management{" "}
+              Task Allocation & Transfer Management
             </Title>
             <Text type="secondary" style={{ fontSize: "13px" }}>
               Smart administrative workspace for bulk task reassignment,
               workload balancing, and operational continuity management.
             </Text>
           </div>
-          <div
-            style={{
-              marginTop: "5px",
-              //   padding: "4px",
-              borderRadius: "8px",
-            }}
-          >
+          <div style={{ marginTop: "5px" }}>
             <Segmented
               size="large"
               value={taskFrequency}
               onChange={(value) => {
                 setTaskFrequency(value);
-                setSelectedRowKeys([]); // Flush memory array references
+                setSelectedRowKeys([]);
               }}
               options={[
                 {
@@ -434,9 +389,9 @@ export default function TaskReassignmentPage() {
             />
           </div>
         </div>
+
         {fromUserId && (
           <Space size={16} wrap>
-            {/* Total Tasks Metric Card */}
             <div
               style={{
                 background: "#ffffff",
@@ -458,7 +413,6 @@ export default function TaskReassignmentPage() {
                     fontSize: "12px",
                     fontWeight: 500,
                     letterSpacing: "0.3px",
-                    uppercase: true,
                   }}
                 >
                   Workload Balance
@@ -496,11 +450,12 @@ export default function TaskReassignmentPage() {
               </div>
             </div>
 
-            {/* Delayed Flags Metric Card */}
             <div
               style={{
                 background: delayedTasksCount > 0 ? "#fff1f0" : "#ffffff",
-                border: `1px solid ${delayedTasksCount > 0 ? "#ffccc7" : "#f1f5f9"}`,
+                border: `1px solid ${
+                  delayedTasksCount > 0 ? "#ffccc7" : "#f1f5f9"
+                }`,
                 borderRadius: "12px",
                 padding: "12px 20px",
                 minWidth: "200px",
@@ -575,7 +530,7 @@ export default function TaskReassignmentPage() {
         )}
       </div>
 
-      {/* 2. TOP FILTER CONTROLS BAR */}
+      {/* 2. TOP FILTER CONTROLS BAR (3 STEPS: Source User -> Target Dept -> Target User) */}
       <Card
         bordered={false}
         style={{
@@ -588,14 +543,15 @@ export default function TaskReassignmentPage() {
         }}
         bodyStyle={{ padding: "16px 24px" }}
       >
-        <Row gutter={24} align="middle">
-          <Col xs={24} md={10}>
+        <Row gutter={[16, 16]} align="middle">
+          {/* STEP 1: Source User */}
+          <Col xs={24} md={8}>
             <Space direction="vertical" size={4} style={{ width: "100%" }}>
               <Text
                 strong
                 style={{ color: token.colorTextHeading, fontSize: "13px" }}
               >
-                1. Filter Source Account Assignee
+                1. Select Source Account Assignee
               </Text>
               <Select
                 showSearch
@@ -608,7 +564,6 @@ export default function TaskReassignmentPage() {
                 suffixIcon={<UserOutlined />}
                 optionFilterProp="searchLabel"
                 popupMatchSelectWidth={false}
-                // FIXED SEARCH ISSUE
                 autoClearSearchValue
                 filterOption={(input, option) =>
                   option?.searchLabel
@@ -619,17 +574,10 @@ export default function TaskReassignmentPage() {
                   .filter((item) => item?.role?.name !== "Owner")
                   .map((u) => ({
                     value: u?._id || u?.id,
-
-                    // IMPORTANT
                     label: `${u?.name}`,
-
-                    searchLabel: `
-        ${u?.name || ""}
-        ${u?.email || ""}
-        ${u?.role?.name || ""}
-      `,
-
-                    // CUSTOM DROPDOWN UI
+                    searchLabel: `${u?.name || ""} ${u?.email || ""} ${
+                      u?.role?.name || ""
+                    }`,
                     customLabel: (
                       <div
                         style={{
@@ -640,15 +588,9 @@ export default function TaskReassignmentPage() {
                         }}
                       >
                         <div>
-                          <div
-                            style={{
-                              fontWeight: 600,
-                              fontSize: "14px",
-                            }}
-                          >
+                          <div style={{ fontWeight: 600, fontSize: "14px" }}>
                             {u?.name}
                           </div>
-
                           <div
                             style={{
                               fontSize: "12px",
@@ -659,7 +601,6 @@ export default function TaskReassignmentPage() {
                             {u?.email}
                           </div>
                         </div>
-
                         <Tag color="blue">{u?.role?.name}</Tag>
                       </div>
                     ),
@@ -669,42 +610,14 @@ export default function TaskReassignmentPage() {
             </Space>
           </Col>
 
-          <Col
-            xs={24}
-            md={4}
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              paddingTop: "20px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "6px 12px",
-                background: "#f1f5f9",
-                borderRadius: "20px",
-              }}
-            >
-              <SwapOutlined style={{ color: token.colorTextDescription }} />
-              <Text
-                type="secondary"
-                style={{ fontSize: "11px", fontWeight: 600, uppercase: true }}
-              >
-                Routing Link
-              </Text>
-            </div>
-          </Col>
-
-          <Col xs={24} md={10}>
+          {/* STEP 2: Target Department Dropdown (NEW) */}
+          <Col xs={24} md={8}>
             <Space direction="vertical" size={4} style={{ width: "100%" }}>
               <Text
                 strong
                 style={{ color: token.colorTextHeading, fontSize: "13px" }}
               >
-                2. Specify Destination Target Account
+                2. Target Department
               </Text>
               <Select
                 showSearch
@@ -712,13 +625,45 @@ export default function TaskReassignmentPage() {
                 size="large"
                 placeholder={
                   fromUserId
-                    ? "Select recipient user profile..."
-                    : "Awaiting step 1 parameters..."
+                    ? "Select target department..."
+                    : "Awaiting step 1..."
+                }
+                style={{ width: "100%" }}
+                value={toDepartmentId}
+                onChange={handleToDepartmentChange}
+                disabled={!fromUserId}
+                suffixIcon={<BankOutlined />}
+                optionFilterProp="label"
+                options={departments.map((d) => ({
+                  value: d._id,
+                  label: d.name,
+                }))}
+              />
+            </Space>
+          </Col>
+
+          {/* STEP 3: Target Destination User (Filtered by Selected Department) */}
+          <Col xs={24} md={8}>
+            <Space direction="vertical" size={4} style={{ width: "100%" }}>
+              <Text
+                strong
+                style={{ color: token.colorTextHeading, fontSize: "13px" }}
+              >
+                3. Specify Destination Target Account
+              </Text>
+              <Select
+                showSearch
+                allowClear
+                size="large"
+                placeholder={
+                  toDepartmentId
+                    ? "Select recipient user in department..."
+                    : "Awaiting step 2 (Department)..."
                 }
                 style={{ width: "100%" }}
                 value={toUserId}
                 onChange={(v) => setToUserId(v)}
-                disabled={!fromUserId}
+                disabled={!toDepartmentId}
                 suffixIcon={<UserOutlined />}
                 optionFilterProp="searchLabel"
                 popupMatchSelectWidth={false}
@@ -728,72 +673,39 @@ export default function TaskReassignmentPage() {
                     ?.toLowerCase()
                     ?.includes(input.toLowerCase())
                 }
-                options={users
-                  .filter((item) => item?.role?.name !== "Owner")
-                  .map((u) => ({
-                    value: u?._id || u?.id,
-
-                    // clean selected label
-                    label: `${u?.name}`,
-
-                    disabled: (u?._id || u?.id) === fromUserId,
-
-                    // searchable text
-                    searchLabel: `
-        ${u?.name || ""}
-        ${u?.email || ""}
-        ${u?.role?.name || ""}
-      `,
-
-                    // custom dropdown design
-                    customLabel: (
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          gap: "12px",
-                          opacity: (u?._id || u?.id) === fromUserId ? 0.5 : 1,
-                        }}
-                      >
-                        <div>
-                          <div
-                            style={{
-                              fontWeight: 600,
-                              fontSize: "14px",
-                            }}
-                          >
-                            {u?.name}
-                          </div>
-
-                          <div
-                            style={{
-                              fontSize: "12px",
-                              color: "#6b7280",
-                              marginTop: "2px",
-                            }}
-                          >
-                            {u?.email}
-                          </div>
+                options={availableTargetUsers.map((u) => ({
+                  value: u?._id || u?.id,
+                  label: `${u?.name}`,
+                  searchLabel: `${u?.name || ""} ${u?.email || ""} ${
+                    u?.role?.name || ""
+                  }`,
+                  customLabel: (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: "12px",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: "14px" }}>
+                          {u?.name}
                         </div>
-
-                        <Tag
-                          color={
-                            (u?._id || u?.id) === fromUserId
-                              ? "default"
-                              : "blue"
-                          }
+                        <div
                           style={{
-                            borderRadius: "20px",
-                            paddingInline: "10px",
-                            fontWeight: 500,
+                            fontSize: "12px",
+                            color: "#6b7280",
+                            marginTop: "2px",
                           }}
                         >
-                          {u?.role?.name}
-                        </Tag>
+                          {u?.email}
+                        </div>
                       </div>
-                    ),
-                  }))}
+                      <Tag color="blue">{u?.role?.name}</Tag>
+                    </div>
+                  ),
+                }))}
                 optionRender={(option) => option.data.customLabel}
               />
             </Space>
@@ -1032,26 +944,18 @@ export default function TaskReassignmentPage() {
                     </div>
 
                     {/* BODY */}
-                    <div
-                      style={{
-                        padding: 24,
-                      }}
-                    >
+                    <div style={{ padding: 24 }}>
                       <Row gutter={[20, 20]}>
-                        {/* LEFT */}
                         <Col xs={24} lg={16}>
                           <Space
                             direction="vertical"
                             size={20}
                             style={{ width: "100%" }}
                           >
-                            {/* TASK INFO */}
                             <Card
                               size="small"
                               title="Task Information"
-                              style={{
-                                borderRadius: 16,
-                              }}
+                              style={{ borderRadius: 16 }}
                             >
                               <Row gutter={[16, 16]}>
                                 <Col xs={24} md={12}>
@@ -1060,7 +964,6 @@ export default function TaskReassignmentPage() {
                                     value={record?.assignedTo?.name || "-"}
                                     valueStyle={{ fontSize: 15 }}
                                   />
-
                                   <Text
                                     type="secondary"
                                     style={{ fontSize: 12 }}
@@ -1075,7 +978,6 @@ export default function TaskReassignmentPage() {
                                     value={record?.assignedBy?.name || "-"}
                                     valueStyle={{ fontSize: 15 }}
                                   />
-
                                   <Text
                                     type="secondary"
                                     style={{ fontSize: 12 }}
@@ -1114,7 +1016,6 @@ export default function TaskReassignmentPage() {
                               </Row>
                             </Card>
 
-                            {/* CHECKLIST */}
                             <Card
                               size="small"
                               title="Task Checklist"
@@ -1124,9 +1025,7 @@ export default function TaskReassignmentPage() {
                                   Completed
                                 </Tag>
                               }
-                              style={{
-                                borderRadius: 16,
-                              }}
+                              style={{ borderRadius: 16 }}
                             >
                               <Progress
                                 percent={
@@ -1179,30 +1078,23 @@ export default function TaskReassignmentPage() {
                               />
                             </Card>
 
-                            {/* REOPEN */}
                             {record?.isReopen && record?.reopenedReason && (
                               <Alert
                                 type="warning"
                                 showIcon
                                 message="Task Reopened"
                                 description={record?.reopenedReason}
-                                style={{
-                                  borderRadius: 14,
-                                }}
+                                style={{ borderRadius: 14 }}
                               />
                             )}
                           </Space>
                         </Col>
 
-                        {/* RIGHT */}
                         <Col xs={24} lg={8}>
                           <Card
                             size="small"
                             title="Timeline & Activity"
-                            style={{
-                              borderRadius: 16,
-                              height: "100%",
-                            }}
+                            style={{ borderRadius: 16, height: "100%" }}
                           >
                             <Space
                               direction="vertical"
@@ -1275,7 +1167,6 @@ export default function TaskReassignmentPage() {
                   </Card>
                 );
               },
-
               rowExpandable: () => true,
             }}
           />
