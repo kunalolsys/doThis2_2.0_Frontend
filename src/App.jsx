@@ -64,6 +64,7 @@ import PendingBucketRequest from "./pages/task-distribution/PendingBucketReques"
 import FmsTasks from "./pages/myDay/FmsTask";
 import PCView from "./pages/myDay/PcView";
 import ViewFmsTemp from "./pages/fmsEngine/ViewFmsTemp";
+import FmsTask360AuditPage from "./pages/reports/FmsTask360AuditPage";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -241,6 +242,14 @@ function App() {
                   element={
                     <PermissionRoute requiredPermission="reports_view">
                       <FmsReports />
+                    </PermissionRoute>
+                  }
+                />{" "}
+                <Route
+                  path="/reports/360"
+                  element={
+                    <PermissionRoute requiredPermission="reports_view">
+                      <FmsTask360AuditPage />
                     </PermissionRoute>
                   }
                 />
