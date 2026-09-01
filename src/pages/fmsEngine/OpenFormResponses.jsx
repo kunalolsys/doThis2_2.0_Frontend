@@ -5,21 +5,15 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  CheckCircle2,
   AlertTriangle,
   Inbox,
   Edit3,
   RefreshCw,
-  User,
   ShieldCheck,
-  Building2,
+  CheckCircle2,
   XCircle,
-  Sparkles,
-  Zap,
-  List,
-  Layers,
-  Send,
-  CheckCircle,
+  Hash,
+  UserCheck,
 } from "lucide-react";
 import api from "../../lib/api";
 import {
@@ -30,14 +24,38 @@ import {
   InputNumber,
   DatePicker,
   message,
-  Spin,
   Tag,
-  Tooltip,
 } from "antd";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
+import { motion, AnimatePresence } from "framer-motion";
 
-/* ─── Field Response Renderer ─── */
+// --- Animation Variants ---
+const fadeUpVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
+};
+
+/* ─── Skeleton Loader for Table ─── */
+const SkeletonRow = () => (
+  <tr className="animate-pulse border-b border-slate-100">
+    <td className="py-3 px-5"><div className="h-3 w-4 bg-slate-200 rounded"></div></td>
+    <td className="py-3 px-5">
+      <div className="flex items-center gap-3">
+        <div className="h-8 w-8 bg-slate-200 rounded-full shrink-0"></div>
+        <div className="space-y-1.5 flex-1">
+          <div className="h-3.5 w-28 bg-slate-200 rounded"></div>
+          <div className="h-2.5 w-16 bg-slate-100 rounded"></div>
+        </div>
+      </div>
+    </td>
+    <td className="py-3 px-5"><div className="h-3.5 w-28 bg-slate-200 rounded"></div></td>
+    <td className="py-3 px-5"><div className="h-3.5 w-24 bg-slate-200 rounded"></div></td>
+    <td className="py-3 px-5 text-right"><div className="h-5 w-16 bg-slate-200 rounded-md ml-auto"></div></td>
+  </tr>
+);
+
+/* ─── Field Response Renderer for Right Inspector ─── */
 const SubmissionFieldCard = ({ fieldKey, field }) => {
   const labelText = useMemo(() => {
     if (typeof field === "object" && field !== null && field?.label) {
@@ -74,11 +92,14 @@ const SubmissionFieldCard = ({ fieldKey, field }) => {
   }, [field]);
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 space-y-1">
-      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-        {labelText}
-      </span>
-      <span className="text-sm font-semibold text-slate-800 whitespace-pre-wrap leading-relaxed block">
+    <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 space-y-1 hover:border-indigo-300 transition-colors">
+      <div className="flex items-center gap-1.5">
+        <Hash className="w-3 h-3 text-indigo-500" />
+        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+          {labelText}
+        </span>
+      </div>
+      <span className="text-xs font-semibold text-slate-800 whitespace-pre-wrap leading-relaxed block pl-4.5">
         {renderedValue}
       </span>
     </div>
@@ -99,8 +120,7 @@ const EditSubmissionModal = ({ open, submission, onClose, onSuccess }) => {
         typeof item === "object" && item !== null && "value" in item
           ? item.value
           : item,
-      fieldType:
-        typeof item === "object" && item?.fieldType ? item.fieldType : "text",
+      fieldType: typeof item === "object" && item?.fieldType ? item.fieldType : "text",
     }));
   }, [submission]);
 
@@ -136,14 +156,13 @@ const EditSubmissionModal = ({ open, submission, onClose, onSuccess }) => {
       );
 
       message.success(
-        res.data?.message || "Response updated and synced to all FMS tasks!"
+        res.data?.message || "Response updated and synced to all tasks!"
       );
       if (onSuccess) await onSuccess(submission._id, payloadData);
       onClose();
     } catch (err) {
       message.error(
-        err.response?.data?.message ||
-          "Failed to update response. Admin authorization required."
+        err.response?.data?.message || "Failed to update response."
       );
     } finally {
       setSaving(false);
@@ -153,9 +172,9 @@ const EditSubmissionModal = ({ open, submission, onClose, onSuccess }) => {
   return (
     <Modal
       title={
-        <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
-          <Edit3 size={16} className="text-blue-600" />
-          Edit Open Form Response & Sync Tasks
+        <div className="flex items-center gap-2 text-slate-800 font-bold text-sm pb-2 border-b border-slate-100">
+          <Edit3 size={16} className="text-indigo-600" />
+          Edit Open Form Response
         </div>
       }
       open={open}
@@ -163,32 +182,30 @@ const EditSubmissionModal = ({ open, submission, onClose, onSuccess }) => {
       onOk={() => form.submit()}
       confirmLoading={saving}
       okText="Save & Cascade Sync"
+      okButtonProps={{
+        className: "bg-indigo-600 hover:bg-indigo-700 font-semibold rounded-lg text-xs",
+      }}
+      cancelButtonProps={{ className: "rounded-lg text-xs font-medium" }}
       destroyOnClose
-      width={540}
+      width={500}
+      closeIcon={<XCircle size={16} className="text-slate-400 hover:text-slate-600" />}
     >
-      <Form form={form} layout="vertical" onFinish={handleSave} className="mt-4">
+      <Form form={form} layout="vertical" onFinish={handleSave} className="mt-4 space-y-3">
         {fields.map((f) => (
           <Form.Item
             key={f.key}
             name={f.key}
-            label={
-              <span className="font-semibold text-xs text-slate-600">
-                {f.label}
-              </span>
-            }
+            label={<span className="font-semibold text-xs text-slate-600">{f.label}</span>}
+            className="mb-0"
           >
             {f.fieldType === "number" ? (
               <InputNumber style={{ width: "100%" }} className="rounded-lg" />
             ) : f.fieldType === "textarea" ? (
-              <Input.TextArea rows={3} className="rounded-lg" />
+              <Input.TextArea rows={2} className="rounded-lg text-xs" />
             ) : f.fieldType === "date" ? (
-              <DatePicker
-                style={{ width: "100%" }}
-                format="YYYY-MM-DD"
-                className="rounded-lg"
-              />
+              <DatePicker style={{ width: "100%" }} format="YYYY-MM-DD" className="rounded-lg" />
             ) : (
-              <Input className="rounded-lg" />
+              <Input className="rounded-lg text-xs" />
             )}
           </Form.Item>
         ))}
@@ -228,7 +245,7 @@ export default function OpenFormResponses() {
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
-      hour12: false,
+      hour12: true,
     });
   };
 
@@ -243,9 +260,7 @@ export default function OpenFormResponses() {
 
       if (formsList.length > 0) {
         const results = await Promise.allSettled(
-          formsList.map((form) =>
-            api.get(`/open-forms/${form._id}/submissions`)
-          )
+          formsList.map((form) => api.get(`/open-forms/${form._id}/submissions`))
         );
 
         const combined = results.flatMap((result, index) => {
@@ -282,15 +297,11 @@ export default function OpenFormResponses() {
   // Filter Pipeline
   const filteredSubmissions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-
     return submissions.filter((item) => {
-      const matchesForm =
-        selectedFormId === "all" || item.parentFormId === selectedFormId;
-
+      const matchesForm = selectedFormId === "all" || item.parentFormId === selectedFormId;
       const name = item?.submittedBy?.name?.toLowerCase() || "";
       const code = item?.submittedBy?.employeeCode?.toLowerCase() || "";
-      const matchesSearch =
-        !query || name.includes(query) || code.includes(query);
+      const matchesSearch = !query || name.includes(query) || code.includes(query);
 
       const isTriggered = item.status === "Triggered";
       const matchesStatus =
@@ -302,29 +313,29 @@ export default function OpenFormResponses() {
     });
   }, [submissions, selectedFormId, searchQuery, statusFilter]);
 
-  // Auto-Select First Entry
+  // FIX: Keep Right-Side Inspector Card Refreshed Live
   useEffect(() => {
+    if (selectedSubmission?._id) {
+      const updatedMatch = submissions.find((s) => s._id === selectedSubmission._id);
+      if (updatedMatch) {
+        setSelectedSubmission(updatedMatch);
+        return;
+      }
+    }
     if (filteredSubmissions.length > 0) {
-      const exists = filteredSubmissions.some(
-        (s) => s._id === selectedSubmission?._id
-      );
-      if (!exists) setSelectedSubmission(filteredSubmissions[0]);
+      setSelectedSubmission(filteredSubmissions[0]);
     } else {
       setSelectedSubmission(null);
     }
-  }, [filteredSubmissions, selectedFormId]);
+  }, [submissions, filteredSubmissions]);
 
-  // Metric Stats
   const stats = useMemo(() => {
     const total = filteredSubmissions.length;
-    const triggered = filteredSubmissions.filter(
-      (s) => s.status === "Triggered"
-    ).length;
+    const triggered = filteredSubmissions.filter((s) => s.status === "Triggered").length;
     const failed = total - triggered;
     return { total, triggered, failed };
   }, [filteredSubmissions]);
 
-  // Paginated List
   const paginatedSubmissions = useMemo(() => {
     const start = (page - 1) * limit;
     return filteredSubmissions.slice(start, start + limit);
@@ -334,7 +345,7 @@ export default function OpenFormResponses() {
 
   const formOptions = useMemo(
     () => [
-      { value: "all", label: "All Form Registries Combined" },
+      { value: "all", label: "All Form Registries" },
       ...forms.map((f) => ({
         value: f._id,
         label: f.formName || "Untitled Form",
@@ -343,167 +354,137 @@ export default function OpenFormResponses() {
     [forms]
   );
 
-  // Auto Refresh Callback
   const handleEditSuccess = async (subId, updatedData) => {
     await fetchInitialData();
-    if (selectedSubmission?._id === subId) {
-      setSelectedSubmission((prev) => {
-        if (!prev) return null;
-        const newSubmissionData = { ...prev.submissionData };
-        Object.entries(updatedData).forEach(([k, val]) => {
-          if (
-            typeof newSubmissionData[k] === "object" &&
-            newSubmissionData[k] !== null
-          ) {
-            newSubmissionData[k].value = val;
-          } else {
-            newSubmissionData[k] = val;
-          }
-        });
-        return { ...prev, submissionData: newSubmissionData };
-      });
-    }
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7fb] p-6 space-y-6">
-      {/* ── GRADIENT HERO BANNER ── */}
-      <div className="relative overflow-hidden rounded-[36px] bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-500 p-8 shadow-2xl">
-        <div className="absolute right-[-50px] top-[-50px] opacity-10">
-          <Sparkles className="w-80 h-80 text-white" />
+    <div className="min-h-screen bg-[#f8fafc] p-5 space-y-5 font-sans">
+      
+      {/* ── 1. COMPACT & PROFESSIONAL TOP BAR ── */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-600">
+            <ShieldCheck size={20} />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-tight">
+              Open Form Submissions
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Real-time response audit trail & cascade synced tasks
+            </p>
+          </div>
         </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-start gap-5">
-            <div className="bg-white/20 backdrop-blur-xl p-4 rounded-3xl border border-white/20">
-              <ShieldCheck className="w-8 h-8 text-white" />
-            </div>
-
-            <div>
-              <h1 className="text-4xl font-bold text-white tracking-tight">
-                Open Form Submissions
-              </h1>
-              <p className="text-blue-100 mt-2 text-base max-w-2xl leading-relaxed">
-                Monitor live form response ingress, pipeline execution statuses, and cascade-synced FMS tasks.
-              </p>
-            </div>
+        {/* Compact Quick Stats */}
+        <div className="flex items-center gap-2">
+          <div className="bg-slate-50 border border-slate-200/70 px-3 py-1.5 rounded-xl flex items-center gap-2">
+            <CheckCircle2 size={14} className="text-emerald-500" />
+            <span className="text-xs text-slate-600 font-medium">Triggered: <b className="text-slate-900">{stats.triggered}</b></span>
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-white text-xs font-semibold flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-300" />
-              <span>Triggered: <b>{stats.triggered}</b></span>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20 text-white text-xs font-semibold flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-rose-300" />
-              <span>Failed: <b>{stats.failed}</b></span>
-            </div>
+          <div className="bg-slate-50 border border-slate-200/70 px-3 py-1.5 rounded-xl flex items-center gap-2">
+            <AlertTriangle size={14} className="text-rose-500" />
+            <span className="text-xs text-slate-600 font-medium">Failed: <b className="text-slate-900">{stats.failed}</b></span>
           </div>
         </div>
       </div>
 
-      {/* ── FILTER & CONTROL BAR CARD ── */}
-      <div className="bg-white rounded-[30px] p-6 shadow-xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-4 flex-1">
-            <div className="w-64">
-              <AntdSelect
-                size="large"
-                value={selectedFormId}
-                onChange={(v) => {
-                  setSelectedFormId(v);
-                  setPage(1);
-                }}
-                className="w-full"
-                options={formOptions}
-              />
-            </div>
-
-            <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200/80">
-              {[
-                { id: "all", label: "All Items" },
-                { id: "success", label: "Triggered" },
-                { id: "failed", label: "Failed" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setStatusFilter(tab.id);
-                    setPage(1);
-                  }}
-                  className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                    statusFilter === tab.id
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "text-slate-500 hover:text-slate-900"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2 border border-slate-200 bg-slate-50 px-4 py-2 rounded-2xl w-64 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500 transition-all">
-              <Search size={15} className="text-slate-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search submitter or code..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(1);
-                }}
-                className="bg-transparent border-none outline-none flex-1 text-xs text-slate-800 font-medium"
-              />
-            </div>
+      {/* ── 2. FILTER & CONTROL STRIP ── */}
+      <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3 flex-1">
+          
+          <div className="w-56">
+            <AntdSelect
+              size="middle"
+              value={selectedFormId}
+              onChange={(v) => { setSelectedFormId(v); setPage(1); }}
+              className="w-full text-xs"
+              options={formOptions}
+              popupClassName="rounded-xl"
+            />
           </div>
 
-          <button
-            onClick={fetchInitialData}
-            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200/80 rounded-2xl text-xs font-bold text-slate-700 cursor-pointer transition-colors flex items-center gap-2"
-          >
-            <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            Sync Records
-          </button>
+          {/* Segmented Filter Pills */}
+          <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
+            {[
+              { id: "all", label: "All Items" },
+              { id: "success", label: "Triggered" },
+              { id: "failed", label: "Failed" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => { setStatusFilter(tab.id); setPage(1); }}
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                  statusFilter === tab.id
+                    ? "bg-white text-indigo-600 shadow-xs"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Box */}
+          <div className="flex items-center gap-2 border border-slate-200 bg-slate-50/50 px-3 py-1.5 rounded-xl w-60 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-400 transition-all">
+            <Search size={14} className="text-slate-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search submitter name or ID..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+              className="bg-transparent border-none outline-none flex-1 text-xs text-slate-800 font-medium placeholder:text-slate-400"
+            />
+          </div>
         </div>
+
+        <button
+          onClick={fetchInitialData}
+          className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200/70 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer transition-colors flex items-center gap-1.5"
+        >
+          <RefreshCw size={13} className={loading ? "animate-spin text-indigo-600" : "text-slate-500"} />
+          Refresh
+        </button>
       </div>
 
-      {/* ── 4-COLUMN WORKSPACE GRID ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
-        {/* 3-COLUMN MASTER LEDGER */}
-        <div className="xl:col-span-3 bg-white rounded-[30px] shadow-xl overflow-hidden flex flex-col">
-          <div className="p-6 border-b bg-slate-50/50 flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-600" /> Submission Ingress Audit Ledger
+      {/* ── 3. MAIN WORKSPACE ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+        
+        {/* ── LEFT LEDGER TABLE (SPAN 8) ── */}
+        <div className="xl:col-span-8 bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col min-h-[520px]">
+          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/40 flex items-center justify-between">
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+              <FileText size={14} className="text-indigo-600" /> Submissions List
             </h3>
-            <span className="text-xs font-bold text-slate-400">
-              Showing {filteredSubmissions.length} Total Submissions
+            <span className="text-[11px] font-semibold text-slate-400">
+              Showing {filteredSubmissions.length} records
             </span>
           </div>
 
-          {loading ? (
-            <div className="py-20 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
-              <Spin size="large" />
-              <span>Fetching submission records...</span>
-            </div>
-          ) : filteredSubmissions.length === 0 ? (
-            <div className="py-20 flex flex-col items-center justify-center text-center text-slate-400 text-xs">
-              <Inbox size={32} className="mb-2 text-slate-300" />
-              <span>No submissions located</span>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    <th className="py-3.5 px-6">#</th>
-                    <th className="py-3.5 px-6">Submitted By</th>
-                    <th className="py-3.5 px-6">Form Name</th>
-                    <th className="py-3.5 px-6">Submitted At</th>
-                    <th className="py-3.5 px-6 text-right">Pipeline Status</th>
+          <div className="flex-1 overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  <th className="py-2.5 px-5 w-12">#</th>
+                  <th className="py-2.5 px-5">Submitter Details</th>
+                  <th className="py-2.5 px-5">Form Name</th>
+                  <th className="py-2.5 px-5">Timestamp</th>
+                  <th className="py-2.5 px-5 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {loading ? (
+                  [...Array(6)].map((_, i) => <SkeletonRow key={i} />)
+                ) : filteredSubmissions.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-20 text-center text-slate-400">
+                      <Inbox size={28} className="mx-auto mb-2 text-slate-300" />
+                      <span className="text-xs font-medium">No submission logs found</span>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {paginatedSubmissions.map((item, idx) => {
+                ) : (
+                  paginatedSubmissions.map((item, idx) => {
                     const isSelected = selectedSubmission?._id === item._id;
                     const isTriggered = item.status === "Triggered";
 
@@ -513,106 +494,105 @@ export default function OpenFormResponses() {
                         onClick={() => setSelectedSubmission(item)}
                         className={`cursor-pointer transition-all ${
                           isSelected
-                            ? "bg-blue-50/70 border-l-4 border-l-blue-600"
-                            : "hover:bg-slate-50/60"
+                            ? "bg-indigo-50/70 border-l-4 border-l-indigo-600"
+                            : "hover:bg-slate-50/70"
                         }`}
                       >
-                        <td className="py-4 px-6 text-slate-400 font-mono">
+                        <td className="py-3 px-5 text-slate-400 font-mono text-[11px]">
                           {(page - 1) * limit + idx + 1}
                         </td>
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold text-xs flex items-center justify-center shrink-0">
+                        <td className="py-3 px-5">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${
+                              isSelected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
+                            }`}>
                               {item?.submittedBy?.name?.charAt(0) || "U"}
                             </div>
                             <div className="flex flex-col">
-                              <span className="font-bold text-slate-900 text-xs">
+                              <span className="font-semibold text-slate-800 text-xs leading-tight">
                                 {item?.submittedBy?.name || "Anonymous User"}
                               </span>
                               <span className="text-[10px] text-slate-400 font-mono">
-                                {item?.submittedBy?.employeeCode || "—"}
+                                ID: {item?.submittedBy?.employeeCode || "—"}
                               </span>
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-6 font-semibold text-slate-700">
+                        <td className="py-3 px-5 font-medium text-slate-700 text-xs">
                           {item.parentFormName}
                         </td>
-                        <td className="py-4 px-6 text-slate-400 font-mono">
+                        <td className="py-3 px-5 text-slate-400 font-mono text-[11px]">
                           {formatDate(item.createdAt)}
                         </td>
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-3 px-5 text-right">
                           <Tag
                             color={isTriggered ? "success" : "error"}
-                            className="rounded-full px-3 py-0.5 font-bold text-[10px] m-0"
+                            className="rounded-full px-2.5 py-0.5 font-bold text-[10px] m-0 border-0"
                           >
                             {isTriggered ? "Triggered" : "Failed"}
                           </Tag>
                         </td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination Controls */}
-          <div className="p-4 border-t bg-slate-50/50 flex items-center justify-between text-xs">
-            <span className="text-slate-500 font-medium">
-              Showing {((page - 1) * limit) + 1} –{" "}
-              {Math.min(page * limit, filteredSubmissions.length)} of{" "}
-              {filteredSubmissions.length}
+          <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between text-xs">
+            <span className="text-slate-400 text-[11px]">
+              Showing {filteredSubmissions.length > 0 ? ((page - 1) * limit) + 1 : 0}–{Math.min(page * limit, filteredSubmissions.length)} of {filteredSubmissions.length}
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 shadow-xs"
+                className="p-1 bg-white border border-slate-200 rounded-lg text-slate-600 disabled:opacity-30 cursor-pointer hover:bg-slate-50"
               >
-                <ChevronLeft size={14} /> Prev
+                <ChevronLeft size={14} />
               </button>
-              <span className="text-xs font-bold text-slate-600 px-2">
-                {page} / {totalPages}
+              <span className="text-xs font-semibold text-slate-600 px-2 font-mono">
+                {page}/{totalPages}
               </span>
               <button
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1 shadow-xs"
+                className="p-1 bg-white border border-slate-200 rounded-lg text-slate-600 disabled:opacity-30 cursor-pointer hover:bg-slate-50"
               >
-                Next <ChevronRight size={14} />
+                <ChevronRight size={14} />
               </button>
             </div>
           </div>
         </div>
 
-        {/* 1-COLUMN STICKY DETAIL INSPECTION SIDEBAR */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-[30px] border-0 shadow-xl sticky top-6 overflow-hidden">
-            <div className="h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500" />
-
-            <div className="p-6 border-b bg-slate-50/80 flex items-center justify-between">
-              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-600" /> Submitter Inspector
+        {/* ── RIGHT INSPECTOR CARD (SPAN 4) ── */}
+        <div className="xl:col-span-4">
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs sticky top-5 overflow-hidden flex flex-col max-h-[82vh]">
+            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <UserCheck size={14} className="text-indigo-600" /> Response Inspector
               </h3>
               {isAdmin && selectedSubmission && (
                 <button
                   onClick={() => setEditModalOpen(true)}
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl cursor-pointer transition-colors shadow-xs flex items-center gap-1.5"
+                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-[11px] rounded-lg cursor-pointer transition-all flex items-center gap-1 shadow-xs"
                 >
-                  <Edit3 size={13} /> Edit Payload
+                  <Edit3 size={12} /> Edit
                 </button>
               )}
             </div>
 
-            <div className="p-6">
+            <div className="p-4 flex-1 overflow-y-auto space-y-4">
               {selectedSubmission ? (
-                <div className="space-y-5">
-                  <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-                      User Profile
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                  {/* User Profile Card */}
+                  <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
+                    <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest block mb-0.5">
+                      Submitter
                     </span>
-                    <h3 className="font-semibold text-slate-800 text-base mt-0.5">
+                    <h3 className="font-bold text-slate-900 text-sm">
                       {selectedSubmission.submittedBy?.name || "Anonymous User"}
                     </h3>
                     <p className="text-xs text-slate-500 font-mono mt-0.5">
@@ -620,9 +600,10 @@ export default function OpenFormResponses() {
                     </p>
                   </div>
 
-                  <div className="space-y-3 max-h-[460px] overflow-y-auto pr-1">
-                    <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block border-b border-slate-200/80 pb-1.5">
-                      Form Payload Fields
+                  {/* Field Values List */}
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-100 pb-1">
+                      Payload Data
                     </span>
 
                     {Object.entries(selectedSubmission?.submissionData || {}).map(
@@ -635,15 +616,16 @@ export default function OpenFormResponses() {
                       )
                     )}
                   </div>
-                </div>
+                </motion.div>
               ) : (
-                <div className="py-16 text-center text-slate-400 text-xs">
-                  Select a submission row from the left ledger to inspect form field details.
+                <div className="py-20 text-center text-slate-400 text-xs">
+                  Select a row from the left table to inspect form fields.
                 </div>
               )}
             </div>
           </div>
         </div>
+
       </div>
 
       {/* Admin Edit Modal */}
