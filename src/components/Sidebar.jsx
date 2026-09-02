@@ -48,9 +48,8 @@ const Sidebar = ({ children }) => {
 
   const { company } = useSelector((state) => state.company);
 
-  // 🟢 Synchronous Cookie State Hydration (Prevents Layout Janks & Double Renders)
+  // User Cookie State Hydration
   const role = useMemo(() => Cookies.get("role") || "", []);
-  const isSuper = role === "Super";
 
   const user = useMemo(
     () => ({
@@ -58,25 +57,42 @@ const Sidebar = ({ children }) => {
       role: { name: role },
       email: Cookies.get("email") || "",
     }),
-    [role],
+    [role]
   );
 
+  // Read Flat Map Object from LocalStorage or Cookie
   const permissions = useMemo(() => {
     try {
-      return JSON.parse(Cookies.get("permissions") || "{}");
-    } catch {
-      return {};
+      const rawCookie = Cookies.get("permissions");
+      const rawData = rawCookie
+        ? decodeURIComponent(rawCookie)
+        : localStorage.getItem("permissions");
+      if (rawData) {
+        return JSON.parse(rawData);
+      }
+    } catch (e) {
+      console.error("Failed to parse permissions in Sidebar:", e);
     }
+    return {};
   }, []);
 
-  // 🟢 Permission Helper
+  // ----------------------------------------------------
+  // 🔥 NO ROLE BYPASS: STRICT PERMISSION MATRIX CHECK
+  // ----------------------------------------------------
   const hasPermission = useCallback(
-    (permissionKey) => {
-      if (!user.name) return false;
-      if (user.role.name === "Owner") return true;
-      return !!permissions[permissionKey];
+    (submoduleKey) => {
+      if (!user.name || !permissions || typeof permissions !== "object") {
+        return false;
+      }
+
+      // Check strictly if view/read or key is true in permissions
+      const isViewTrue = permissions[`${submoduleKey}_view`] === true;
+      const isReadTrue = permissions[`${submoduleKey}_read`] === true;
+      const isDirectTrue = permissions[submoduleKey] === true;
+
+      return isViewTrue || isReadTrue || isDirectTrue;
     },
-    [user.name, user.role.name, permissions],
+    [user.name, permissions]
   );
 
   // Initial Dispatch Calls
@@ -90,7 +106,7 @@ const Sidebar = ({ children }) => {
           email: Cookies.get("email") || "",
           role: { name: Cookies.get("role") || "" },
           department: Cookies.get("departmentName"),
-        }),
+        })
       );
     }
     dispatch(fetchCompany());
@@ -104,10 +120,10 @@ const Sidebar = ({ children }) => {
         const res = await api.get("/setup/modules/list");
         const data = res.data?.data ?? res.data;
         if (isMounted) {
-          setModules(Array.isArray(data) ? data : (data?.modules ?? []));
+          setModules(Array.isArray(data) ? data : data?.modules ?? []);
         }
       } catch (e) {
-        console.error(e?.response?.data?.message || "Failed to load modules");
+        console.error("Failed to load modules list:", e);
       }
     };
     fetchModules();
@@ -133,15 +149,14 @@ const Sidebar = ({ children }) => {
   // Module Enabler Check
   const isModuleEnabled = useCallback(
     (moduleKey) => {
-      if (isSuper) return true;
       return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
     },
-    [isSuper, modules],
+    [modules]
   );
 
   const isBothDisable = useMemo(
     () => !isModuleEnabled("DO_THIS2") && !isModuleEnabled("FMS_ENGINE"),
-    [isModuleEnabled],
+    [isModuleEnabled]
   );
 
   // Dropdown Toggle
@@ -169,7 +184,7 @@ const Sidebar = ({ children }) => {
         [menu]: !prev[menu],
       }));
     },
-    [isCollapsed],
+    [isCollapsed]
   );
 
   // Logout Handler
@@ -178,42 +193,44 @@ const Sidebar = ({ children }) => {
     Object.keys(Cookies.get()).forEach((cookieName) => {
       Cookies.remove(cookieName);
     });
+    localStorage.removeItem("permissions");
     toast.success("Logged out successfully!");
+    navigate("/");
   };
 
   // Active Link Helpers
   const isActiveLink = useCallback(
     (path) => location.pathname === path,
-    [location.pathname],
+    [location.pathname]
   );
 
   const isDashboardDropdownActive = useMemo(
     () => location.pathname === "/dashboard",
-    [location.pathname],
+    [location.pathname]
   );
   const isMyBucketActive = useMemo(
     () => location.pathname === "/bucket/my-bucket",
-    [location.pathname],
+    [location.pathname]
   );
   const isMyDayDropdownActive = useMemo(
     () => location.pathname.startsWith("/my-day"),
-    [location.pathname],
+    [location.pathname]
   );
   const isFmsEngineDropdownActive = useMemo(
     () => location.pathname.startsWith("/fms-engine"),
-    [location.pathname],
+    [location.pathname]
   );
   const isReportsDropdownActive = useMemo(
     () => location.pathname.startsWith("/reports"),
-    [location.pathname],
+    [location.pathname]
   );
   const isDelegationDropdownActive = useMemo(
     () => location.pathname.startsWith("/delegate"),
-    [location.pathname],
+    [location.pathname]
   );
   const isSetupDropdownActive = useMemo(
     () => location.pathname.startsWith("/setup"),
-    [location.pathname],
+    [location.pathname]
   );
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
@@ -221,40 +238,38 @@ const Sidebar = ({ children }) => {
   // Role View Label Resolution
   const managerViewLabel = useMemo(() => {
     if (!user?.role?.name) return "";
-    switch (user.role.name) {
-      case "Super":
-        return "Super Admin";
-      case "Manager":
-        return "Manager View";
-      case "Sr. Manager":
-        return "Sr. Manager View";
-      case "Owner":
-        return "Owner View";
-      case "Admin":
-        return "Admin View";
-      case "PC":
-        return "PC View";
-      default:
-        return "";
-    }
+    const name = user.role.name;
+
+    if (name.includes("Super")) return "Super Admin";
+    if (name.includes("Sr. Manager")) return "Sr. Manager View";
+    if (name.includes("Manager")) return "Manager View";
+    if (name.includes("Owner")) return "Owner View";
+    if (name.includes("Admin")) return "Admin View";
+    if (name.includes("PC")) return "PC View";
+    return "";
   }, [user]);
 
-  // Dynamic "My Day" Links Array
+  // Dynamic "My Day" Submenu Links
   const myDayLinks = useMemo(() => {
-    const baseLinks = [
-      {
+    const baseLinks = [];
+
+    if (hasPermission("delegated_recurring")) {
+      baseLinks.push({
         path: "/my-day/mytasks",
         label: "Delegated & Recurring",
         icon: ClipboardCheck,
-      },
-      {
+      });
+    }
+
+    if (hasPermission("fms_tasks")) {
+      baseLinks.push({
         path: "/my-day/my-fms-tasks",
         label: "FMS Tasks",
         icon: ClipboardCheck,
-      },
-    ];
+      });
+    }
 
-    if (managerViewLabel && !isSuper) {
+    if (hasPermission("role_view") && managerViewLabel) {
       baseLinks.push({
         path:
           managerViewLabel === "PC View" ? "/my-day/pc-view" : "/my-day/view",
@@ -264,7 +279,139 @@ const Sidebar = ({ children }) => {
     }
 
     return baseLinks;
-  }, [managerViewLabel, isSuper]);
+  }, [managerViewLabel, hasPermission]);
+
+  // FMS Engine Submenu Links
+  const fmsEngineLinks = useMemo(() => {
+    const items = [];
+    if (hasPermission("fms_templates")) {
+      items.push({
+        path: "/fms-engine/templates",
+        label: "FMS Templates",
+        icon: Shield,
+      });
+    }
+    if (hasPermission("launch_fms")) {
+      items.push({
+        path: "/fms-engine/launch",
+        label: "Launch FMS",
+        icon: User,
+      });
+    }
+    if (hasPermission("upcoming_ongoing_fms")) {
+      items.push({
+        path: "/fms-engine/upcoming",
+        label: "Upcoming & Ongoing FMSs",
+        icon: ListRestart,
+      });
+    }
+    if (hasPermission("form_builder")) {
+      items.push({
+        path: "/form-builder",
+        label: "Form Builder",
+        icon: FormatPainterOutlined,
+      });
+    }
+    if (hasPermission("responses")) {
+      items.push({
+        path: "/form-submissions",
+        label: "Responses",
+        icon: ClipboardCheck,
+      });
+    }
+    return items;
+  }, [hasPermission]);
+
+  // Delegation Buckets Submenu Links
+  const delegationBucketLinks = useMemo(() => {
+    const items = [];
+    if (hasPermission("task_buckets")) {
+      items.push({
+        path: "/delegate/task-buckets",
+        label: "Task Buckets",
+        icon: Briefcase,
+      });
+    }
+    if (hasPermission("pending_buckets")) {
+      items.push({
+        path: "/delegate/pending-buckets",
+        label: "Pending Buckets Request",
+        icon: Clock,
+      });
+    }
+    if (hasPermission("bucket_view")) {
+      items.push({
+        path: "/delegate/bucket-view",
+        label: "Buckets",
+        icon: Send,
+      });
+    }
+    if (hasPermission("manage_assignee")) {
+      items.push({
+        path: "/delegate/audience-master",
+        label: "Manage Assignee",
+        icon: Users,
+      });
+    }
+    return items;
+  }, [hasPermission]);
+
+  // Setup Submenu Links
+  const setupLinks = useMemo(() => {
+    const items = [];
+    if (hasPermission("roles_permissions")) {
+      items.push({
+        path: "/setup/roles-permissions",
+        label: "Roles & Permissions",
+        icon: Shield,
+      });
+    }
+    if (hasPermission("departments_calendar")) {
+      items.push({
+        path: "/setup/departments-calendar",
+        label: "Departments & Calendar",
+        icon: CalendarDays,
+      });
+    }
+    if (hasPermission("work_shifts")) {
+      items.push({
+        path: "/setup/work-shifts",
+        label: "Work Shifts",
+        icon: TimerIcon,
+      });
+    }
+    if (hasPermission("users")) {
+      items.push({ path: "/setup/users", label: "Users", icon: Users2 });
+    }
+    if (hasPermission("company_setup") && isModuleEnabled("COMPANY_SETUP")) {
+      items.push({
+        path: "/company-setup",
+        label: "Company Setup",
+        icon: Building2Icon,
+      });
+    }
+    return items;
+  }, [hasPermission, isModuleEnabled]);
+
+  // Reports Submenu Links
+  const reportsLinks = useMemo(() => {
+    const items = [];
+    if (hasPermission("mis_reports") && isModuleEnabled("DO_THIS2")) {
+      items.push({
+        path: "/reports/mis",
+        label: "MIS Reports",
+        icon: NotepadText,
+      });
+    }
+    if (hasPermission("fms_reports") && isModuleEnabled("FMS_ENGINE")) {
+      items.push({
+        path: "/reports/fms",
+        label: "FMS Reports",
+        icon: NotepadText,
+      });
+    }
+    return items;
+  }, [hasPermission, isModuleEnabled]);
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -345,8 +492,8 @@ const Sidebar = ({ children }) => {
 
         {/* Navigation Menu */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {/* Dashboard */}
-          {!isBothDisable && (
+          {/* 1. Dashboard */}
+          {hasPermission("dashboard") && !isBothDisable && (
             <div>
               <div className="relative">
                 <Link
@@ -387,263 +534,238 @@ const Sidebar = ({ children }) => {
             </div>
           )}
 
-          {/* My Day */}
-          <div>
-            <div className="relative">
-              <button
-                onClick={() => toggleDropdown("myDay")}
-                className={`
-                  relative flex items-center w-full ${
-                    isCollapsed ? "justify-center" : ""
-                  } 
-                  rounded-xl px-3 py-2.5 transition-all duration-300 group
-                  backdrop-blur-sm border cursor-pointer
-                  ${
-                    isMyDayDropdownActive
-                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
-                      : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
-                  }
-                `}
-              >
-                <div
-                  className={`relative ${
-                    isMyDayDropdownActive
-                      ? "text-white"
-                      : "text-gray-400 group-hover:text-blue-500"
-                  }`}
+          {/* 2. My Day */}
+          {myDayLinks.length > 0 && (
+            <div>
+              <div className="relative">
+                <button
+                  onClick={() => toggleDropdown("myDay")}
+                  className={`
+                    relative flex items-center w-full ${
+                      isCollapsed ? "justify-center" : ""
+                    } 
+                    rounded-xl px-3 py-2.5 transition-all duration-300 group
+                    backdrop-blur-sm border cursor-pointer
+                    ${
+                      isMyDayDropdownActive
+                        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
+                        : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
+                    }
+                  `}
                 >
-                  <CalendarArrowDown className="w-4 h-4" />
-                </div>
-
-                {!isCollapsed && (
-                  <span className="ml-2 font-medium flex-1 text-left text-sm">
-                    My Day
-                  </span>
-                )}
-
-                {!isCollapsed && (
-                  <ChevronDown
-                    className={`w-3 h-3 transition-transform duration-300 ${
-                      openDropdowns.myDay ? "rotate-180" : ""
-                    } ${
-                      isMyDayDropdownActive ? "text-white/80" : "text-gray-400"
+                  <div
+                    className={`relative ${
+                      isMyDayDropdownActive
+                        ? "text-white"
+                        : "text-gray-400 group-hover:text-blue-500"
                     }`}
-                  />
-                )}
-              </button>
-              {openDropdowns.myDay && !isCollapsed && (
-                <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
-                  {myDayLinks.map((item) => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      className={`
-                        flex items-center rounded-lg px-2 py-2 text-sm transition-all duration-200 group ${
-                          isActiveLink(item.path)
-                            ? "text-blue-600 bg-blue-50/80 border border-blue-200/60"
-                            : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/80"
-                        }
-                      `}
-                    >
-                      <item.icon
-                        className={`w-3 h-3 mr-2 ${
-                          isActiveLink(item.path)
-                            ? "text-blue-500"
-                            : "text-gray-400 group-hover:text-gray-600"
-                        }`}
-                      />
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Delegation Task */}
-          {hasPermission("delegation_task_view") &&
-            isModuleEnabled("DO_THIS2") && (
-              <Link
-                to="/delegation-tasks"
-                className={`
-                  relative flex items-center ${
-                    isCollapsed ? "justify-center" : ""
-                  } 
-                  rounded-xl px-3 py-2.5 transition-all duration-300 group
-                  backdrop-blur-sm border
-                  ${
-                    isActiveLink("/delegation-tasks")
-                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
-                      : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
-                  }
-                `}
-              >
-                <div
-                  className={`relative ${
-                    isActiveLink("/delegation-tasks")
-                      ? "text-white"
-                      : "text-gray-400 group-hover:text-blue-500"
-                  }`}
-                >
-                  <ClipboardList className="w-4 h-4" />
-                  {isActiveLink("/delegation-tasks") && (
-                    <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
-                  )}
-                </div>
-
-                {!isCollapsed && (
-                  <span className="ml-2 font-medium text-sm">
-                    Delegation Task
-                  </span>
-                )}
-              </Link>
-            )}
-
-          {/* Task Reassignment */}
-          {hasPermission("task_reassigning_view") &&
-            isModuleEnabled("DO_THIS2") && (
-              <Link
-                to="/reassign"
-                className={`
-                  relative flex items-center ${
-                    isCollapsed ? "justify-center" : ""
-                  } 
-                  rounded-xl px-3 py-2.5 transition-all duration-300 group
-                  backdrop-blur-sm border
-                  ${
-                    isActiveLink("/reassign")
-                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
-                      : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
-                  }
-                `}
-              >
-                <div
-                  className={`relative ${
-                    isActiveLink("/reassign")
-                      ? "text-white"
-                      : "text-gray-400 group-hover:text-blue-500"
-                  }`}
-                >
-                  <UserSwitchOutlined className="w-4 h-4" />
-                  {isActiveLink("/reassign") && (
-                    <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
-                  )}
-                </div>
-
-                {!isCollapsed && (
-                  <span className="ml-2 font-medium text-sm">
-                    Task Reassignment
-                  </span>
-                )}
-              </Link>
-            )}
-
-          {/* FMS Engine */}
-          {hasPermission("fms_engine_view") &&
-            isModuleEnabled("FMS_ENGINE") && (
-              <div>
-                <div className="relative">
-                  <button
-                    onClick={() => toggleDropdown("fmsEngine")}
-                    className={`
-                      relative flex items-center w-full ${
-                        isCollapsed ? "justify-center" : ""
-                      } 
-                      rounded-xl px-3 py-2.5 transition-all duration-300 group
-                      backdrop-blur-sm border cursor-pointer
-                      ${
-                        isFmsEngineDropdownActive
-                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
-                          : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
-                      }
-                    `}
                   >
-                    <div
-                      className={`relative ${
-                        isFmsEngineDropdownActive
-                          ? "text-white"
-                          : "text-gray-400 group-hover:text-blue-500"
-                      }`}
-                    >
-                      <Settings2Icon className="w-4 h-4" />
-                    </div>
+                    <CalendarArrowDown className="w-4 h-4" />
+                  </div>
 
-                    {!isCollapsed && (
-                      <span className="ml-2 font-medium flex-1 text-left text-sm">
-                        FMS Engine
-                      </span>
-                    )}
-
-                    {!isCollapsed && (
-                      <ChevronDown
-                        className={`w-3 h-3 transition-transform duration-300 ${
-                          openDropdowns.fmsEngine ? "rotate-180" : ""
-                        } ${
-                          isFmsEngineDropdownActive
-                            ? "text-white/80"
-                            : "text-gray-400"
-                        }`}
-                      />
-                    )}
-                  </button>
-                  {openDropdowns.fmsEngine && !isCollapsed && (
-                    <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
-                      {[
-                        {
-                          path: "/fms-engine/templates",
-                          label: "FMS Templates",
-                          icon: Shield,
-                        },
-                        {
-                          path: "/fms-engine/launch",
-                          label: "Launch FMS",
-                          icon: User,
-                        },
-                        {
-                          path: "/fms-engine/upcoming",
-                          label: "Upcoming & Ongoing FMSs",
-                          icon: ListRestart,
-                        },
-                        {
-                          path: "/form-builder",
-                          label: "Form Builder",
-                          icon: FormatPainterOutlined,
-                        },
-                        {
-                          path: "/form-submissions",
-                          label: "Responses",
-                          icon: ClipboardCheck,
-                        },
-                      ].map((item) => (
-                        <Link
-                          key={item.path}
-                          to={item.path}
-                          className={`
-                            flex items-center rounded-lg px-2 py-2 text-sm transition-all duration-200 group ${
-                              isActiveLink(item.path)
-                                ? "text-blue-600 bg-blue-50/80 border border-blue-200/60"
-                                : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/80"
-                            }
-                          `}
-                        >
-                          <item.icon
-                            className={`w-3 h-3 mr-2 ${
-                              isActiveLink(item.path)
-                                ? "text-blue-500"
-                                : "text-gray-400 group-hover:text-gray-600"
-                            }`}
-                          />
-                          {item.label}
-                        </Link>
-                      ))}
-                    </div>
+                  {!isCollapsed && (
+                    <span className="ml-2 font-medium flex-1 text-left text-sm">
+                      My Day
+                    </span>
                   )}
-                </div>
-              </div>
-            )}
 
-          {/* Reports */}
-          {hasPermission("reports_view") && !isBothDisable && (
+                  {!isCollapsed && (
+                    <ChevronDown
+                      className={`w-3 h-3 transition-transform duration-300 ${
+                        openDropdowns.myDay ? "rotate-180" : ""
+                      } ${
+                        isMyDayDropdownActive
+                          ? "text-white/80"
+                          : "text-gray-400"
+                      }`}
+                    />
+                  )}
+                </button>
+                {openDropdowns.myDay && !isCollapsed && (
+                  <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
+                    {myDayLinks.map((item) => (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`
+                          flex items-center rounded-lg px-2 py-2 text-sm transition-all duration-200 group ${
+                            isActiveLink(item.path)
+                              ? "text-blue-600 bg-blue-50/80 border border-blue-200/60"
+                              : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/80"
+                          }
+                        `}
+                      >
+                        <item.icon
+                          className={`w-3 h-3 mr-2 ${
+                            isActiveLink(item.path)
+                              ? "text-blue-500"
+                              : "text-gray-400 group-hover:text-gray-600"
+                          }`}
+                        />
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 3. Delegation Task */}
+          {hasPermission("delegation_task") && isModuleEnabled("DO_THIS2") && (
+            <Link
+              to="/delegation-tasks"
+              className={`
+                  relative flex items-center ${
+                    isCollapsed ? "justify-center" : ""
+                  } 
+                  rounded-xl px-3 py-2.5 transition-all duration-300 group
+                  backdrop-blur-sm border
+                  ${
+                    isActiveLink("/delegation-tasks")
+                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
+                      : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
+                  }
+                `}
+            >
+              <div
+                className={`relative ${
+                  isActiveLink("/delegation-tasks")
+                    ? "text-white"
+                    : "text-gray-400 group-hover:text-blue-500"
+                }`}
+              >
+                <ClipboardList className="w-4 h-4" />
+                {isActiveLink("/delegation-tasks") && (
+                  <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
+                )}
+              </div>
+
+              {!isCollapsed && (
+                <span className="ml-2 font-medium text-sm">
+                  Delegation Task
+                </span>
+              )}
+            </Link>
+          )}
+
+          {/* 4. Task Reassignment */}
+          {hasPermission("task_reassigning") && isModuleEnabled("DO_THIS2") && (
+            <Link
+              to="/reassign"
+              className={`
+                  relative flex items-center ${
+                    isCollapsed ? "justify-center" : ""
+                  } 
+                  rounded-xl px-3 py-2.5 transition-all duration-300 group
+                  backdrop-blur-sm border
+                  ${
+                    isActiveLink("/reassign")
+                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
+                      : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
+                  }
+                `}
+            >
+              <div
+                className={`relative ${
+                  isActiveLink("/reassign")
+                    ? "text-white"
+                    : "text-gray-400 group-hover:text-blue-500"
+                }`}
+              >
+                <UserSwitchOutlined className="w-4 h-4" />
+                {isActiveLink("/reassign") && (
+                  <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
+                )}
+              </div>
+
+              {!isCollapsed && (
+                <span className="ml-2 font-medium text-sm">
+                  Task Reassignment
+                </span>
+              )}
+            </Link>
+          )}
+
+          {/* 5. FMS Engine */}
+          {fmsEngineLinks.length > 0 && isModuleEnabled("FMS_ENGINE") && (
+            <div>
+              <div className="relative">
+                <button
+                  onClick={() => toggleDropdown("fmsEngine")}
+                  className={`
+                    relative flex items-center w-full ${
+                      isCollapsed ? "justify-center" : ""
+                    } 
+                    rounded-xl px-3 py-2.5 transition-all duration-300 group
+                    backdrop-blur-sm border cursor-pointer
+                    ${
+                      isFmsEngineDropdownActive
+                        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400"
+                        : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
+                    }
+                  `}
+                >
+                  <div
+                    className={`relative ${
+                      isFmsEngineDropdownActive
+                        ? "text-white"
+                        : "text-gray-400 group-hover:text-blue-500"
+                    }`}
+                  >
+                    <Settings2Icon className="w-4 h-4" />
+                  </div>
+
+                  {!isCollapsed && (
+                    <span className="ml-2 font-medium flex-1 text-left text-sm">
+                      FMS Engine
+                    </span>
+                  )}
+
+                  {!isCollapsed && (
+                    <ChevronDown
+                      className={`w-3 h-3 transition-transform duration-300 ${
+                        openDropdowns.fmsEngine ? "rotate-180" : ""
+                      } ${
+                        isFmsEngineDropdownActive
+                          ? "text-white/80"
+                          : "text-gray-400"
+                      }`}
+                    />
+                  )}
+                </button>
+                {openDropdowns.fmsEngine && !isCollapsed && (
+                  <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
+                    {fmsEngineLinks.map((item) => (
+                      <Link
+                        key={item.path}
+                        to={item.path}
+                        className={`
+                          flex items-center rounded-lg px-2 py-2 text-sm transition-all duration-200 group ${
+                            isActiveLink(item.path)
+                              ? "text-blue-600 bg-blue-50/80 border border-blue-200/60"
+                              : "text-gray-500 hover:text-gray-900 hover:bg-gray-50/80"
+                          }
+                        `}
+                      >
+                        <item.icon
+                          className={`w-3 h-3 mr-2 ${
+                            isActiveLink(item.path)
+                              ? "text-blue-500"
+                              : "text-gray-400 group-hover:text-gray-600"
+                          }`}
+                        />
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 6. Reports */}
+          {reportsLinks.length > 0 && !isBothDisable && (
             <div>
               <div className="relative">
                 <button
@@ -691,27 +813,7 @@ const Sidebar = ({ children }) => {
                 </button>
                 {openDropdowns.reports && !isCollapsed && (
                   <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
-                    {[
-                      ...(isModuleEnabled("DO_THIS2")
-                        ? [
-                            {
-                              path: "/reports/mis",
-                              label: "MIS Reports",
-                              icon: NotepadText,
-                            },
-                          ]
-                        : []),
-                      ...(isModuleEnabled("FMS_ENGINE") &&
-                      hasPermission("fms_engine_view")
-                        ? [
-                            {
-                              path: "/reports/fms",
-                              label: "FMS Reports",
-                              icon: NotepadText,
-                            },
-                          ]
-                        : []),
-                    ].map((item) => (
+                    {reportsLinks.map((item) => (
                       <Link
                         key={item.path}
                         to={item.path}
@@ -739,8 +841,8 @@ const Sidebar = ({ children }) => {
             </div>
           )}
 
-          {/* My Bucket */}
-          {hasPermission("my_bucket_view") && isModuleEnabled("DO_THIS2") && (
+          {/* 7. My Bucket */}
+          {hasPermission("my_bucket") && isModuleEnabled("DO_THIS2") && (
             <div>
               <div className="relative">
                 <Link
@@ -781,8 +883,8 @@ const Sidebar = ({ children }) => {
             </div>
           )}
 
-          {/* Delegation Buckets */}
-          {hasPermission("bucket_view") && isModuleEnabled("DO_THIS2") && (
+          {/* 8. Delegation Buckets */}
+          {delegationBucketLinks.length > 0 && isModuleEnabled("DO_THIS2") && (
             <div>
               <div className="relative">
                 <button
@@ -831,28 +933,7 @@ const Sidebar = ({ children }) => {
 
                 {openDropdowns.delegate && !isCollapsed && (
                   <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
-                    {[
-                      {
-                        path: "/delegate/task-buckets",
-                        label: "Task Buckets",
-                        icon: Briefcase,
-                      },
-                      {
-                        path: "/delegate/pending-buckets",
-                        label: "Pending Buckets Request",
-                        icon: Clock,
-                      },
-                      {
-                        path: "/delegate/bucket-view",
-                        label: "Buckets",
-                        icon: Send,
-                      },
-                      {
-                        path: "/delegate/audience-master",
-                        label: "Manage Assignee",
-                        icon: Users,
-                      },
-                    ].map((item) => (
+                    {delegationBucketLinks.map((item) => (
                       <Link
                         key={item.path}
                         to={item.path}
@@ -881,8 +962,8 @@ const Sidebar = ({ children }) => {
             </div>
           )}
 
-          {/* Setup Section */}
-          {hasPermission("setup_view") && !isBothDisable && (
+          {/* 9. Setup Section */}
+          {setupLinks.length > 0 && !isBothDisable && (
             <div>
               <div className="relative">
                 <button
@@ -931,34 +1012,7 @@ const Sidebar = ({ children }) => {
 
                 {openDropdowns.setup && !isCollapsed && (
                   <div className="ml-3 mt-1.5 space-y-1 pl-4 border-l-2 border-gray-200/40">
-                    {[
-                      {
-                        path: "/setup/roles-permissions",
-                        label: "Roles & Permissions",
-                        icon: Shield,
-                      },
-                      {
-                        path: "/setup/departments-calendar",
-                        label: "Departments & Calendar",
-                        icon: CalendarDays,
-                      },
-                      {
-                        path: "/setup/work-shifts",
-                        label: "Work Shifts",
-                        icon: TimerIcon,
-                      },
-                      { path: "/setup/users", label: "Users", icon: Users2 },
-                      ...(isModuleEnabled("COMPANY_SETUP") &&
-                      hasPermission("company_setup_view")
-                        ? [
-                            {
-                              path: "/company-setup",
-                              label: "Company Setup",
-                              icon: Building2Icon,
-                            },
-                          ]
-                        : []),
-                    ].map((item) => (
+                    {setupLinks.map((item) => (
                       <Link
                         key={item.path}
                         to={item.path}
@@ -987,8 +1041,8 @@ const Sidebar = ({ children }) => {
             </div>
           )}
 
-          {/* Super Admin Module Setting */}
-          {isSuper && (
+          {/* 10. Module Setting */}
+          {hasPermission("module_setting") && (
             <Link
               to="/super/modules"
               className={`

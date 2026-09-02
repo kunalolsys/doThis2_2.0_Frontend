@@ -4,35 +4,43 @@ import { getAccessToken } from "./lib/tokenManager";
 
 const PermissionRoute = ({ children, requiredPermission }) => {
   const token = getAccessToken();
+
   // 🔴 AUTH CHECK
   if (!token) {
     return <Navigate to="/" replace />;
   }
 
-  // 🟡 PERMISSION CHECK
-  const permissionsCookie = Cookies.get("permissions");
-
-  if (!permissionsCookie) {
-    return <Navigate to="/page-restrict-found" replace />;
-  }
-
-  let permissions = {};
-
-  try {
-    permissions = JSON.parse(permissionsCookie);
-  } catch (e) {
-    console.error("Invalid permissions cookie");
-    return <Navigate to="/" replace />;
-  }
-
-  // 🟢 ADMIN BYPASS
-  const role = Cookies.get("role");
-  if (role === "Admin") {
+  // 🟢 ADMIN / SYSTEM ROLE BYPASS
+  const role = (Cookies.get("role") || "").toLowerCase();
+  if (
+    role.includes("admin") ||
+    role.includes("owner") ||
+    role.includes("super")
+  ) {
     return children;
   }
 
-  // 🔴 PERMISSION DENIED
-  if (!permissions[requiredPermission]) {
+  // 🟡 READ PERMISSIONS (Cookie or LocalStorage Fallback)
+  let permissions = {};
+  try {
+    const permCookie = Cookies.get("permissions");
+    const rawData = permCookie
+      ? decodeURIComponent(permCookie)
+      : localStorage.getItem("permissions");
+    if (rawData) {
+      permissions = JSON.parse(rawData);
+    }
+  } catch (e) {
+    console.error("Invalid permissions format", e);
+  }
+
+  // 🔴 PERMISSION DENIED CHECK
+  const hasAccess =
+    permissions[requiredPermission] ||
+    permissions[`${requiredPermission}_view`] ||
+    permissions[`${requiredPermission}_read`];
+
+  if (!hasAccess) {
     return <Navigate to="/page-restrict-found" replace />;
   }
 

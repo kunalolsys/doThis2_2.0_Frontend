@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Mail, Lock, LogIn, Sparkles, Zap, Key } from "lucide-react";
+import { Mail, Lock, LogIn, Zap, Key } from "lucide-react";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
 import { useNavigate, Link } from "react-router-dom";
@@ -32,67 +32,88 @@ const Login = () => {
     try {
       const res = await loginUser(formData);
       setIsLoading(false);
-      if (res.data.success) {
+      if (res?.data?.success) {
         toast.success(res.data.message || "Login successful");
 
         // Dispatch action to set current user in Redux store
         dispatch(setCurrentUser(res.data.user));
 
-        // Store user data in cookies
-        Cookies.set("isLoggedIn", "true");
-        Cookies.set("name", res.data.user.name);
-        Cookies.set("email", res.data.user.email);
-        Cookies.set("empCode", res.data.user.employeeCode);
-        Cookies.set("role", res.data.role || "Employee");
-        Cookies.set("token", res.data.accessToken);
+        // Store user data in cookies with explicit root path
+        Cookies.set("isLoggedIn", "true", { path: "/" });
+        Cookies.set("name", res.data.user?.name || "", { path: "/" });
+        Cookies.set("email", res.data.user?.email || "", { path: "/" });
+        Cookies.set("empCode", res.data.user?.employeeCode || "", {
+          path: "/",
+        });
 
-        const userId = res.data.user._id;
-        Cookies.set("userId", userId);
-        // Cookies.set('isActive', res.data.user.isActive ? 'true' : 'false');
+        const userRole =
+          typeof res.data.role === "string"
+            ? res.data.role
+            : res.data.user?.role?.displayName ||
+              res.data.user?.role?.name ||
+              "Employee";
+
+        Cookies.set("role", userRole, { path: "/" });
+        Cookies.set("token", res.data.accessToken || "", { path: "/" });
+
+        const userId = res.data.user?._id || "";
+        Cookies.set("userId", userId, { path: "/" });
+
         Cookies.set(
           "departmentName",
-          JSON.stringify(res.data.user.department || []),
+          JSON.stringify(res.data.user?.department || []),
+          { path: "/" },
         );
-        Cookies.set("permissions", JSON.stringify(res.data.permissions), {
-          expires: 1,
+
+        // --- ENCODED PERMISSIONS FIX ---
+        const permissionsData = res.data?.permissions || {};
+        const jsonPermString = JSON.stringify(permissionsData);
+
+        // 1. URI Encoded Cookie prevents browser rejection
+        Cookies.set("permissions", encodeURIComponent(jsonPermString), {
+          expires: 7,
+          path: "/",
         });
+
+        // 2. Backup LocalStorage Sync
+        localStorage.setItem("permissions", jsonPermString);
+
         if (redirectPath) {
           navigate(redirectPath);
           localStorage.removeItem("redirectAfterLogin");
         } else {
           navigate("/dashboard");
         }
-        // navigate("/dashboard");
       }
     } catch (err) {
       setIsLoading(false);
-      if (err.response) {
+      if (err?.response) {
         if (err.response.status === 403) {
           toast.error(
-            err.response.data.message ||
+            err.response.data?.message ||
               "Your account is inactive. Please contact administrator.",
           );
         } else if (err.response.status === 401) {
           toast.error("Incorrect email/mobile or password");
         } else if (err.response.status === 400) {
           toast.error(
-            err.response.data.message ||
+            err.response.data?.message ||
               "Please provide valid email/mobile and password",
           );
         } else {
-          toast.error(err.response.data.message || "Something went wrong");
+          toast.error(err.response.data?.message || "Something went wrong");
         }
       } else {
         toast.error("Network error. Please try again.");
       }
     }
   };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-2 font-sans">
       <div className="w-full max-w-[480px] bg-white border border-gray-200 shadow-2xl rounded-2xl p-6 transition-all duration-500 hover:shadow-indigo-500/60 hover:ring-4 hover:ring-indigo-100">
         {/* Header Section */}
         <div className="text-center mb-3">
-          {/* Enhanced icon size and color */}
           <div className="flex items-center justify-center">
             <div className="relative">
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/25">
@@ -104,9 +125,6 @@ const Login = () => {
               Dothis2_2.0
             </h1>
           </div>
-          {/* <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
-                        Login
-                    </h1> */}
           <p className="text-sm text-gray-500 mt-2">
             Securely access your account.
           </p>
@@ -156,7 +174,7 @@ const Login = () => {
               {/* Input */}
               <input
                 id="password"
-                type={showPassword ? "text" : "password"} // 🔥 toggle here
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
@@ -179,7 +197,7 @@ const Login = () => {
             </div>
           </div>
 
-          {/* Submission Button - Now with a vibrant gradient and shadow */}
+          {/* Submission Button */}
           <button
             type="submit"
             disabled={isLoading}

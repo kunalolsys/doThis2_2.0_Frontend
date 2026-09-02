@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Plus,
   Trash2,
-  Shield,
+  Search,
+  Check,
+  Save,
   ShieldCheck,
-  UserCog,
-  Users,
-  LayoutGrid,
-  FileText,
-  Lock,
+  Layers,
+  AlertCircle,
+  Sparkles,
+  SlidersHorizontal,
+  FolderTree,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import Cookies from "js-cookie";
@@ -20,169 +22,304 @@ import {
 } from "../../redux/slices/role/roleSlice";
 
 // shadcn/ui components
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "../../components/ui/card";
+import { Card } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../../components/ui/table";
-import { Switch } from "../../components/ui/switch";
 import { Badge } from "../../components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogTrigger,
-} from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Checkbox } from "../../components/ui/checkbox";
 import { toast } from "sonner";
-import useModuleAccess from "../../hooks/useModuleAccess";
 import { Modal } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 
-const permissionMap = {
-  setup: "Setup",
-  fmsEngine: "FmsEngine",
-  reports: "Reports",
-  delegationTask: "Delegation Task",
-  taskReassigning: "Task Reassigning",
-  bucket: "Bucket",
-  myBucket: "My Bucket",
-};
+const ACTIONS = [
+  { key: "create", label: "Create", color: "text-emerald-700" },
+  { key: "read", label: "View", color: "text-blue-700" },
+  { key: "update", label: "Edit", color: "text-amber-700" },
+  { key: "delete", label: "Delete", color: "text-rose-700" },
+];
 
-const transformRoles = (roles) => {
-  const nonDeletableRoles = ["Owner", "Sr. Manager", "Member"];
-  return roles.map((role) => ({
-    ...role,
-    setup: role.permissions.includes(permissionMap.setup),
-    fmsEngine: role.permissions.includes(permissionMap.fmsEngine),
-    reports: role.permissions.includes(permissionMap.reports),
-    delegationTask: role.permissions.includes(permissionMap.delegationTask),
-    taskReassigning: role.permissions.includes(permissionMap.taskReassigning),
-    bucket: role.permissions.includes(permissionMap.bucket),
-    myBucket: role.permissions.includes(permissionMap.myBucket),
-    isSystem: nonDeletableRoles.includes(role.name) || !role.canDelete,
-  }));
-};
-
-// --- Helper for Role Icons ---
-const RoleIcon = ({ name }) => {
-  if (name === "Owner")
-    return <ShieldCheck className="w-4 h-4 text-purple-600" />;
-  if (name === "Admin") return <Lock className="w-4 h-4 text-slate-600" />;
-  if (name.includes("Manager"))
-    return <UserCog className="w-4 h-4 text-blue-600" />;
-  return <Users className="w-4 h-4 text-slate-500" />;
-};
-
-// --- Main Component ---
 const RolesPermissions = () => {
   const dispatch = useDispatch();
-  const {
-    roles: rawRoles,
-    status,
-    error,
-  } = useSelector((state) => state.roles);
-  const {
-    isDoThisEnabled,
-    isFmsEnabled,
-    isCompanySetupEnabled,
-    isBothDisable,
-    isModuleEnabled,
-  } = useModuleAccess();
-  const roles = useMemo(() => {
-    const transformed = transformRoles(rawRoles);
-    const desiredOrder = ["Admin", "Owner", "Sr. Manager", "Manager", "Member"];
+  const { roles: rawRoles = [], status } = useSelector(
+    (state) => state.roles || {},
+  );
 
-    return transformed.sort((a, b) => {
-      const indexA = desiredOrder.indexOf(a.name);
-      const indexB = desiredOrder.indexOf(b.name);
+  // Component State
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedRole, setSelectedRole] = useState(null);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [roleName, setRoleName] = useState("");
+  const [permissionMatrix, setPermissionMatrix] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-      if (indexA !== -1 && indexB !== -1) {
-        return indexA - indexB; // Both are in the desired order list
-      }
-      if (indexA !== -1) return -1; // a is in the list, b is not
-      if (indexB !== -1) return 1; // b is in the list, a is not
-      return a.name.localeCompare(b.name); // Neither are in the list, sort alphabetically
-    });
-  }, [rawRoles]);
-  // Get user data from cookies
-  const user = {
-    name: Cookies.get("name") || "",
-    role: { name: Cookies.get("role") || "" },
-    email: Cookies.get("email") || "",
-  };
-  const permissions = JSON.parse(Cookies.get("permissions") || "{}");
+  // Auth User check
+  const userRole = useMemo(() => {
+    return (Cookies.get("role") || "").toLowerCase();
+  }, []);
 
-  const hasPermission = (permission) => {
-    if (!user) {
-      return false;
+  const permissions = useMemo(() => {
+    try {
+      const permCookie = Cookies.get("permissions");
+      const raw = permCookie
+        ? decodeURIComponent(permCookie)
+        : localStorage.getItem("permissions");
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
     }
-    if (user.role.name === "Admin") {
-      return true;
-    }
-    return !!permissions[permission];
-  };
+  }, []);
 
-  const canViewPage = hasPermission("setup_view");
+  const canViewPage =
+    userRole.includes("admin") ||
+    userRole.includes("owner") ||
+    userRole.includes("super") ||
+    Boolean(
+      permissions["roles_permissions_view"] ||
+      permissions["roles_permissions_read"] ||
+      permissions["roles_permissions"],
+    );
 
+  // Fetch Roles on Load
   useEffect(() => {
-    if (canViewPage) dispatch(fetchRoles());
+    if (canViewPage) {
+      dispatch(fetchRoles());
+    }
   }, [canViewPage, dispatch]);
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newRoleName, setNewRoleName] = useState("");
-  const [newRolePermissions, setNewRolePermissions] = useState({
-    setup: false,
-    fmsEngine: false,
-    reports: false,
-    delegationTask: false,
-    taskReassigning: false,
-  });
+  // 1. Dynamic Modules Tree Extraction from Real API Roles Data Response
+  const systemModulesTree = useMemo(() => {
+    const parentMap = new Map();
 
-  // We moved this to the useEffect above to only fetch if user has permission
-  // useEffect(() => {
-  //   if (status === 'idle') {
-  //     dispatch(fetchRoles());
-  //   }
-  // }, [status, dispatch]);
+    // Iterate through API Roles payload data to collect all unique parent and submodules
+    (rawRoles || []).forEach((r) => {
+      const perms = Array.isArray(r.permissions) ? r.permissions : [];
+      perms.forEach((p) => {
+        if (p?.parentModuleKey && p?.submoduleKey) {
+          if (!parentMap.has(p.parentModuleKey)) {
+            parentMap.set(p.parentModuleKey, {
+              key: p.parentModuleKey,
+              label: p.parentModuleKey.replace(/_/g, " ").toUpperCase(),
+              submodules: new Map(),
+            });
+          }
 
-  // Handle toggling a permission
-  const handlePermissionChange = (roleId, permissionKey, value) => {
-    const roleToUpdate = roles.find((r) => r._id === roleId);
-    if (!roleToUpdate) return;
+          const parent = parentMap.get(p.parentModuleKey);
+          if (!parent.submodules.has(p.submoduleKey)) {
+            parent.submodules.set(p.submoduleKey, {
+              key: p.submoduleKey,
+              label: p.submoduleKey.replace(/_/g, " "),
+            });
+          }
+        }
+      });
+    });
 
-    const updatedRole = { ...roleToUpdate, [permissionKey]: value };
+    return Array.from(parentMap.values()).map((parent) => ({
+      ...parent,
+      submodules: Array.from(parent.submodules.values()),
+    }));
+  }, [rawRoles]);
 
-    const backendPermissions = Object.keys(permissionMap)
-      .filter((key) => updatedRole[key])
-      .map((key) => permissionMap[key]);
+  // 2. Permission Matrix Helper
+  const initMatrix = useCallback(
+    (existingPermissions = []) => {
+      const initial = {};
 
-    dispatch(updateRole({ id: roleId, permissions: backendPermissions }));
+      systemModulesTree.forEach((parent) => {
+        parent.submodules.forEach((sub) => {
+          const match = Array.isArray(existingPermissions)
+            ? existingPermissions.find((p) => p.submoduleKey === sub.key)
+            : null;
+
+          if (match && match.actions) {
+            initial[sub.key] = {
+              parentModuleKey: parent.key,
+              create: Boolean(match.actions.create),
+              read: Boolean(match.actions.read),
+              update: Boolean(match.actions.update),
+              delete: Boolean(match.actions.delete),
+            };
+          } else {
+            initial[sub.key] = {
+              parentModuleKey: parent.key,
+              create: false,
+              read: false,
+              update: false,
+              delete: false,
+            };
+          }
+        });
+      });
+
+      return initial;
+    },
+    [systemModulesTree],
+  );
+
+  // Set Default Selected Role
+  useEffect(() => {
+    if (rawRoles.length > 0 && !selectedRole && !isCreatingNew) {
+      const defaultRole =
+        rawRoles.find((r) => r.name?.toLowerCase() !== "owner") || rawRoles[0];
+      selectRoleToEdit(defaultRole);
+    }
+  }, [rawRoles, systemModulesTree]);
+
+  const selectRoleToEdit = (role) => {
+    setIsCreatingNew(false);
+    setSelectedRole(role);
+    setRoleName(role.displayName || role.name || "");
+    setPermissionMatrix(initMatrix(role.permissions || []));
   };
 
-  // Handle deleting a role
-  const handleDeleteRole = async (roleId) => {
-    const roleToDelete = roles.find((r) => r._id === roleId);
+  const startCreateRole = () => {
+    setIsCreatingNew(true);
+    setSelectedRole(null);
+    setRoleName("");
+    setPermissionMatrix(initMatrix([]));
+  };
 
-    if (roleToDelete?.isSystem) {
+  // Action Checkbox Handler
+  const handleCheckboxChange = (submoduleKey, actionKey, checked) => {
+    setPermissionMatrix((prev) => ({
+      ...prev,
+      [submoduleKey]: {
+        ...prev[submoduleKey],
+        [actionKey]: checked,
+      },
+    }));
+  };
+
+  // Toggle Submodule Actions
+  const toggleAllForSubmodule = (submoduleKey, checked) => {
+    setPermissionMatrix((prev) => ({
+      ...prev,
+      [submoduleKey]: {
+        ...prev[submoduleKey],
+        create: checked,
+        read: checked,
+        update: checked,
+        delete: checked,
+      },
+    }));
+  };
+
+  // Toggle Parent Module Actions
+  const toggleAllForParentModule = (parentModule, checked) => {
+    const updated = { ...permissionMatrix };
+    parentModule.submodules.forEach((sub) => {
+      updated[sub.key] = {
+        ...updated[sub.key],
+        parentModuleKey: parentModule.key,
+        create: checked,
+        read: checked,
+        update: checked,
+        delete: checked,
+      };
+    });
+    setPermissionMatrix(updated);
+  };
+
+  const applyPreset = (type) => {
+    const updated = {};
+    systemModulesTree.forEach((parent) => {
+      parent.submodules.forEach((sub) => {
+        updated[sub.key] = {
+          parentModuleKey: parent.key,
+          create: type === "ALL",
+          read: type === "ALL" || type === "READ",
+          update: type === "ALL",
+          delete: type === "ALL",
+        };
+      });
+    });
+    setPermissionMatrix(updated);
+  };
+
+  // Active Rights Calculator
+  const totalActiveRights = useMemo(() => {
+    let count = 0;
+    Object.values(permissionMatrix).forEach((item) => {
+      if (item) {
+        if (item.create) count++;
+        if (item.read) count++;
+        if (item.update) count++;
+        if (item.delete) count++;
+      }
+    });
+    return count;
+  }, [permissionMatrix]);
+
+  // Build Payload Array for API Update
+  // RolesPermissions.jsx me buildPayload function
+  const buildPayload = () => {
+    const permissionsPayload = [];
+
+    systemModulesTree.forEach((parent) => {
+      parent.submodules.forEach((sub) => {
+        const data = permissionMatrix[sub.key] || {};
+
+        // Har submodule push hoga, chahe create/read/update/delete sab false hon
+        permissionsPayload.push({
+          parentModuleKey: parent.key,
+          submoduleKey: sub.key,
+          actions: {
+            create: Boolean(data.create),
+            read: Boolean(data.read),
+            update: Boolean(data.update),
+            delete: Boolean(data.delete),
+          },
+        });
+      });
+    });
+
+    return permissionsPayload;
+  };
+
+  // Save Role Handler
+  const handleSave = async () => {
+    const trimmedName = roleName.trim();
+    if (!trimmedName) {
+      toast.error("Please enter a role display name");
+      return;
+    }
+
+    const payload = {
+      name: trimmedName,
+      displayName: trimmedName,
+      permissions: buildPayload(),
+    };
+
+    setIsSubmitting(true);
+    try {
+      if (isCreatingNew) {
+        const result = await dispatch(createRole(payload)).unwrap();
+        toast.success("New role created successfully!");
+        setIsCreatingNew(false);
+        if (result?.data || result) {
+          selectRoleToEdit(result.data || result);
+        }
+      } else if (selectedRole) {
+        await dispatch(
+          updateRole({ id: selectedRole._id || selectedRole.id, ...payload }),
+        ).unwrap();
+        toast.success("Role permissions updated successfully!");
+        dispatch(fetchRoles());
+      }
+    } catch (err) {
+      toast.error(err?.message || err || "Failed to save role");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Delete Role Handler
+  const handleDelete = (role) => {
+    if (role.isSystemRole || role.canDelete === false) {
       Modal.warning({
-        title: "Cannot Delete Role",
-        content: "System roles cannot be deleted.",
+        title: "System Protected Role",
+        content: "Default system roles cannot be deleted.",
       });
       return;
     }
@@ -190,360 +327,370 @@ const RolesPermissions = () => {
     Modal.confirm({
       title: "Delete Role",
       icon: <ExclamationCircleOutlined />,
-      content: `Are you sure you want to delete "${roleToDelete?.name}" role?`,
+      content: `Are you sure you want to delete "${role.displayName || role.name}"?`,
       okText: "Delete",
       okType: "danger",
       cancelText: "Cancel",
-
       onOk: async () => {
         try {
-          await dispatch(deleteRole(roleId)).unwrap();
+          await dispatch(deleteRole(role._id || role.id)).unwrap();
           toast.success("Role deleted successfully");
-        } catch (error) {
-          toast.error(error || "Failed to delete.");
+          setSelectedRole(null);
+          setIsCreatingNew(false);
+          dispatch(fetchRoles());
+        } catch (err) {
+          toast.error(err?.message || err || "Delete operation failed");
         }
       },
     });
   };
 
-  const handleCreateRole = () => {
-    if (!newRoleName.trim()) {
-      toast.error("Role name is required.");
-      return;
-    }
+  // Roles Search Filter
+  const filteredRoles = useMemo(() => {
+    return (rawRoles || [])
+      .filter((r) => r.name?.toLowerCase() !== "owner")
+      .filter((r) =>
+        (r.displayName || r.name || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()),
+      );
+  }, [rawRoles, searchTerm]);
 
-    const permissions = Object.keys(newRolePermissions)
-      .filter((key) => newRolePermissions[key])
-      .map((key) => permissionMap[key]);
-
-    dispatch(createRole({ name: newRoleName, permissions }));
-    setNewRoleName("");
-    setNewRolePermissions({
-      setup: false,
-      fmsEngine: false,
-      reports: false,
-      delegationTask: false,
-      taskReassigning: false,
-    });
-    setIsDialogOpen(false);
-  };
-
-  // if (!canViewPage) {
-  //   return (
-  //     <div className="flex justify-center items-center h-full p-8">
-  //       <Card className="w-full max-w-md text-center p-8">
-  //         <CardTitle className="text-2xl font-bold text-red-600">Access Denied</CardTitle>
-  //         <CardDescription className="mt-2">You do not have permission to view this page.</CardDescription>
-  //       </Card>
-  //     </div>
-  //   );
-  // }
-
-  if (status === "loading") {
-    return <div>Loading...</div>;
+  if (!canViewPage) {
+    return (
+      <div className="flex justify-center items-center h-screen w-full p-8 bg-slate-50">
+        <Card className="w-full max-w-md text-center p-6 border-rose-200 bg-white shadow-md">
+          <AlertCircle className="w-10 h-10 text-rose-500 mx-auto mb-2" />
+          <h2 className="text-lg font-bold text-slate-800">Access Denied</h2>
+          <p className="text-xs text-slate-500 mt-1">
+            You do not have permission to view or manage role configurations.
+          </p>
+        </Card>
+      </div>
+    );
   }
 
-  if (status === "failed") {
-    return <div>Error: {error}</div>;
+  if (status === "loading" && rawRoles.length === 0) {
+    return (
+      <div className="p-8 text-center text-indigo-600 font-medium">
+        Loading Roles Engine...
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-8 flex justify-center items-start">
-      <Card className="w-full shadow-xl border-slate-200 bg-white">
-        {/* --- Header --- */}
-        <CardHeader className="border-b border-slate-100 pb-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <CardTitle className="text-xl font-bold text-slate-900">
-                Roles & Permissions
-              </CardTitle>
-              <CardDescription className="mt-1 text-sm text-slate-500">
-                Manage access levels and control what users can do within the
-                application.
-              </CardDescription>
-            </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/20 transition-all">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add New Role
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Role</DialogTitle>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="role-name" className="text-right">
-                      Name
-                    </Label>
-                    <Input
-                      id="role-name"
-                      value={newRoleName}
-                      onChange={(e) => setNewRoleName(e.target.value)}
-                      className="col-span-3"
-                      placeholder="e.g., 'Auditor'"
-                    />
-                  </div>
-                  <div className="grid grid-cols-4 items-start gap-4">
-                    <Label className="text-right pt-2">Permissions</Label>
-                    <div className="col-span-3 grid grid-cols-2 gap-4">
-                      {Object.keys(permissionMap).map((key) => (
-                        <div key={key} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`perm-${key}`}
-                            checked={newRolePermissions[key]}
-                            onCheckedChange={(checked) =>
-                              setNewRolePermissions((prev) => ({
-                                ...prev,
-                                [key]: checked,
-                              }))
-                            }
-                          />
-                          <label
-                            htmlFor={`perm-${key}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                          >
-                            {permissionMap[key]}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateRole}>Create Role</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+    <div className="w-full min-h-screen bg-slate-100/60 text-slate-800 flex flex-col font-sans">
+      {/* HEADER BAR */}
+      <header className="w-full bg-white border-b border-slate-200/80 px-8 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0 shadow-2xs">
+        <div className="flex items-center gap-3.5">
+          <div className="p-2.5 bg-indigo-600 text-white rounded-2xl shadow-md shadow-indigo-600/20">
+            <ShieldCheck className="w-6 h-6" />
           </div>
-        </CardHeader>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Roles & Permissions Studio
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Manage module and submodule level CRUD permissions
+            </p>
+          </div>
+        </div>
 
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-slate-50/80">
-                <TableRow className="hover:bg-transparent border-slate-100">
-                  <TableHead className="w-[300px] py-4 pl-6 font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                    Role Details
-                  </TableHead>
-                  <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                    <div className="flex items-center justify-center gap-2">
-                      <Users className="w-4 h-4" />
-                      Setup
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={startCreateRole}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold h-10 px-5 rounded-xl shadow-xs transition-all"
+          >
+            <Plus className="mr-1.5 h-4 w-4" /> Add Custom Role
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={isSubmitting}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold h-10 px-6 rounded-xl shadow-xs transition-all"
+          >
+            <Save className="mr-1.5 h-4 w-4" />
+            {isSubmitting ? "Saving..." : "Save Privileges"}
+          </Button>
+        </div>
+      </header>
+
+      {/* PANELS */}
+      <div className="w-full flex-1 flex flex-col md:flex-row overflow-hidden">
+        {/* LEFT PANEL: ROLES LIST */}
+        <div className="w-full md:w-80 border-r border-slate-200/80 bg-white flex flex-col shrink-0">
+          <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Search roles..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 h-9 text-xs border-slate-200 bg-white text-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3 space-y-1.5 max-h-[calc(100vh-140px)]">
+            {filteredRoles.length > 0 ? (
+              filteredRoles.map((role) => {
+                const isSelected =
+                  selectedRole?._id === role._id && !isCreatingNew;
+                const isSystem = role.isSystemRole || role.canDelete === false;
+
+                return (
+                  <div
+                    key={role._id || role.id}
+                    onClick={() => selectRoleToEdit(role)}
+                    className={`group flex items-center justify-between p-3.5 rounded-xl cursor-pointer transition-all ${
+                      isSelected
+                        ? "bg-indigo-50/90 border border-indigo-200 text-indigo-900 font-semibold shadow-2xs"
+                        : "hover:bg-slate-100/70 border border-transparent text-slate-700"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xs font-medium">
+                        {role.displayName || role.name}
+                      </span>
+                      {isSystem && (
+                        <Badge
+                          variant="secondary"
+                          className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200 font-normal"
+                        >
+                          System
+                        </Badge>
+                      )}
                     </div>
-                  </TableHead>
-                  {isFmsEnabled && (
-                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                      <div className="flex items-center justify-center gap-2">
-                        <LayoutGrid className="w-4 h-4" /> FMS Engine
+                    {isSelected && (
+                      <Check className="w-4 h-4 text-indigo-600" />
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-6 text-center text-xs text-slate-400">
+                No matching roles found.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT PANEL: MATRIX GRID */}
+        <div className="flex-1 flex flex-col bg-slate-50/60 overflow-y-auto p-6 max-h-[calc(100vh-140px)] space-y-4">
+          {/* Header Controls */}
+          <div className="p-6 border border-slate-200/80 bg-white rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-2xs">
+            <div className="flex-1 max-w-md">
+              <Label className="text-xs text-slate-600 font-semibold mb-1.5 block">
+                Role Display Title
+              </Label>
+              <Input
+                value={roleName}
+                disabled={selectedRole?.isSystemRole && !isCreatingNew}
+                onChange={(e) => setRoleName(e.target.value)}
+                placeholder="e.g. Operations Manager"
+                className="h-10 text-xs border-slate-200 bg-white text-slate-800 rounded-xl focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="bg-indigo-50/80 px-3.5 py-2 rounded-xl border border-indigo-100 flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-indigo-600" />
+                <span className="text-xs text-indigo-950 font-medium">
+                  Active Rights:{" "}
+                  <strong className="text-indigo-600 font-bold text-sm">
+                    {totalActiveRights}
+                  </strong>
+                </span>
+              </div>
+
+              {/* Presets Toolbar */}
+              <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => applyPreset("ALL")}
+                  className="text-xs h-7 text-emerald-700 hover:bg-emerald-50 rounded-lg font-medium"
+                >
+                  <Sparkles className="w-3.5 h-3.5 mr-1" /> Allow All
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => applyPreset("READ")}
+                  className="text-xs h-7 text-blue-700 hover:bg-blue-50 rounded-lg font-medium"
+                >
+                  Read Only
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => applyPreset("NONE")}
+                  className="text-xs h-7 text-slate-600 hover:bg-slate-200/60 rounded-lg font-medium"
+                >
+                  Clear All
+                </Button>
+              </div>
+
+              {!isCreatingNew &&
+                selectedRole &&
+                !selectedRole?.isSystemRole &&
+                selectedRole?.canDelete !== false && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(selectedRole)}
+                    className="text-xs h-9 text-rose-600 hover:bg-rose-50 rounded-xl"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" /> Delete Role
+                  </Button>
+                )}
+            </div>
+          </div>
+
+          {/* Module Section Accordion Grid */}
+          <div className="space-y-4">
+            {systemModulesTree.map((parent) => {
+              const isParentFullySelected = parent.submodules.every((sub) =>
+                ACTIONS.every((act) => permissionMatrix[sub.key]?.[act.key]),
+              );
+
+              return (
+                <div
+                  key={parent.key}
+                  className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs"
+                >
+                  {/* Parent Module Header */}
+                  <div className="px-6 py-3 bg-slate-50/90 border-b border-slate-200/80 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <FolderTree className="w-4 h-4 text-indigo-600" />
+                      <span className="font-bold text-xs text-slate-800 uppercase tracking-wider">
+                        {parent.label}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-6 sm:gap-10 pr-2">
+                      {ACTIONS.map((act) => (
+                        <span
+                          key={act.key}
+                          className={`w-12 text-center text-[11px] font-bold uppercase ${act.color}`}
+                        >
+                          {act.label}
+                        </span>
+                      ))}
+
+                      {/* Parent Toggle All Checkbox */}
+                      <div className="w-24 text-center border-l border-slate-200 pl-3">
+                        <label
+                          htmlFor={`cb-parent-${parent.key}`}
+                          className="text-[11px] font-bold text-indigo-700 cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Checkbox
+                            id={`cb-parent-${parent.key}`}
+                            checked={isParentFullySelected}
+                            onCheckedChange={(checked) =>
+                              toggleAllForParentModule(parent, Boolean(checked))
+                            }
+                            className="h-4 w-4 rounded-md border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                          />
+                          Module All
+                        </label>
                       </div>
-                    </TableHead>
-                  )}
-                  {!isBothDisable && (
-                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                      <div className="flex items-center justify-center gap-2">
-                        <FileText className="w-4 h-4" /> Reports
-                      </div>
-                    </TableHead>
-                  )}
-                  {isDoThisEnabled && (
-                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                      <div className="flex items-center justify-center gap-2">
-                        <FileText className="w-4 h-4" /> Delegation Task
-                      </div>
-                    </TableHead>
-                  )}{" "}
-                  {isDoThisEnabled && (
-                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                      <div className="flex items-center justify-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        Bucket
-                      </div>
-                    </TableHead>
-                  )}{" "}
-                  {isDoThisEnabled && (
-                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                      <div className="flex items-center justify-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        My Bucket
-                      </div>
-                    </TableHead>
-                  )}{" "}
-                  {isDoThisEnabled && (
-                    <TableHead className="text-center font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                      <div className="flex items-center justify-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        Task Reassigning
-                      </div>
-                    </TableHead>
-                  )}
-                  <TableHead className="text-right pr-6 font-semibold text-slate-600 text-xs uppercase tracking-wider">
-                    Action
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {roles
-                  .filter((item) => item.name != "Owner")
-                  .map((role) => (
-                    <TableRow
-                      key={role._id}
-                      className="hover:bg-slate-50/50 transition-colors border-slate-100"
-                    >
-                      {/* Role Name & Description */}
-                      <TableCell className="pl-6 py-4">
-                        <div className="flex items-start gap-3">
-                          <div className="mt-1 p-2 bg-slate-100 rounded-lg">
-                            <RoleIcon name={role.name} />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-slate-800 text-base">
-                                {role.name}
+                    </div>
+                  </div>
+
+                  {/* Submodule Rows */}
+                  <div className="divide-y divide-slate-100">
+                    {parent.submodules.map((sub) => {
+                      const currentActions = permissionMatrix[sub.key] || {};
+                      const isSubmoduleFullySelected = ACTIONS.every(
+                        (a) => currentActions[a.key],
+                      );
+
+                      return (
+                        <div
+                          key={sub.key}
+                          className="px-6 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-1.5 bg-slate-100 rounded-lg text-slate-600">
+                              <Layers className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                              <span className="font-semibold text-xs text-slate-800 block capitalize">
+                                {sub.label}
                               </span>
-                              {role.isSystem && (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-xs px-1.5 h-5 bg-slate-100 text-slate-500 border-slate-200"
+                              <span className="text-[10px] text-slate-400">
+                                Key: {sub.key}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Action Checkboxes */}
+                          <div className="flex items-center gap-6 sm:gap-10 pr-2">
+                            {ACTIONS.map((act) => {
+                              const isChecked = Boolean(
+                                currentActions[act.key],
+                              );
+                              const checkboxId = `cb-${sub.key}-${act.key}`;
+
+                              return (
+                                <div
+                                  key={act.key}
+                                  className="w-12 flex items-center justify-center"
                                 >
-                                  System
-                                </Badge>
-                              )}
+                                  <label
+                                    htmlFor={checkboxId}
+                                    className="p-1.5 rounded-lg cursor-pointer hover:bg-slate-100/80 transition-colors flex items-center justify-center"
+                                  >
+                                    <Checkbox
+                                      id={checkboxId}
+                                      checked={isChecked}
+                                      onCheckedChange={(checked) =>
+                                        handleCheckboxChange(
+                                          sub.key,
+                                          act.key,
+                                          Boolean(checked),
+                                        )
+                                      }
+                                      className="h-4.5 w-4.5 rounded-md border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                                    />
+                                  </label>
+                                </div>
+                              );
+                            })}
+
+                            {/* Row Select All */}
+                            <div className="w-24 flex items-center justify-center border-l border-slate-100 pl-3">
+                              <label
+                                htmlFor={`cb-${sub.key}-all`}
+                                className="p-1.5 rounded-lg cursor-pointer hover:bg-slate-100/80 transition-colors flex items-center justify-center"
+                              >
+                                <Checkbox
+                                  id={`cb-${sub.key}-all`}
+                                  checked={isSubmoduleFullySelected}
+                                  onCheckedChange={(checked) =>
+                                    toggleAllForSubmodule(
+                                      sub.key,
+                                      Boolean(checked),
+                                    )
+                                  }
+                                  className="h-4.5 w-4.5 rounded-md border-slate-300 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                                />
+                              </label>
                             </div>
                           </div>
                         </div>
-                      </TableCell>
-                      {/* Manage Users Switch */}
-                      <TableCell className="text-center">
-                        <Switch
-                          checked={role.setup}
-                          onCheckedChange={(value) =>
-                            handlePermissionChange(role._id, "setup", value)
-                          }
-                          className="data-[state=checked]:bg-blue-600"
-                        />
-                      </TableCell>
-                      {/* FMS Design Switch */}
-                      {isFmsEnabled && (
-                        <TableCell className="text-center">
-                          <Switch
-                            checked={role.fmsEngine}
-                            onCheckedChange={(value) =>
-                              handlePermissionChange(
-                                role._id,
-                                "fmsEngine",
-                                value,
-                              )
-                            }
-                            className="data-[state=checked]:bg-blue-600"
-                          />
-                        </TableCell>
-                      )}
-                      {/* Reporting Switch */}
-                      {!isBothDisable && (
-                        <TableCell className="text-center">
-                          <Switch
-                            checked={role.reports}
-                            onCheckedChange={(value) =>
-                              handlePermissionChange(role._id, "reports", value)
-                            }
-                            className="data-[state=checked]:bg-blue-600"
-                          />
-                        </TableCell>
-                      )}
-                      {/* Delegation Task Switch */}
-                      {isDoThisEnabled && (
-                        <TableCell className="text-center">
-                          <Switch
-                            checked={role.delegationTask}
-                            onCheckedChange={(value) =>
-                              handlePermissionChange(
-                                role._id,
-                                "delegationTask",
-                                value,
-                              )
-                            }
-                            className="data-[state=checked]:bg-blue-600"
-                          />
-                        </TableCell>
-                      )}{" "}
-                      {isDoThisEnabled && (
-                        <TableCell className="text-center">
-                          <Switch
-                            checked={role.bucket}
-                            onCheckedChange={(value) =>
-                              handlePermissionChange(role._id, "bucket", value)
-                            }
-                            className="data-[state=checked]:bg-blue-600"
-                          />
-                        </TableCell>
-                      )}{" "}
-                      {isDoThisEnabled && (
-                        <TableCell className="text-center">
-                          <Switch
-                            checked={role.myBucket}
-                            onCheckedChange={(value) =>
-                              handlePermissionChange(
-                                role._id,
-                                "myBucket",
-                                value,
-                              )
-                            }
-                            className="data-[state=checked]:bg-blue-600"
-                          />
-                        </TableCell>
-                      )}{" "}
-                      {isDoThisEnabled && (
-                        <TableCell className="text-center">
-                          <Switch
-                            checked={role.taskReassigning}
-                            onCheckedChange={(value) =>
-                              handlePermissionChange(
-                                role._id,
-                                "taskReassigning",
-                                value,
-                              )
-                            }
-                            className="data-[state=checked]:bg-blue-600"
-                          />
-                        </TableCell>
-                      )}
-                      {/* Actions */}
-                      <TableCell className="text-right pr-6">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={role.isSystem}
-                          onClick={() => handleDeleteRole(role._id)}
-                          className={`h-9 w-9 transition-colors ${
-                            role.isSystem
-                              ? "text-slate-300 cursor-not-allowed"
-                              : "text-slate-400 hover:text-red-600 hover:bg-red-50"
-                          }`}
-                          title={
-                            role.isSystem
-                              ? "System roles cannot be deleted"
-                              : "Delete Role"
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
