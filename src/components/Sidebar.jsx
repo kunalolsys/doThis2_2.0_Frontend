@@ -50,6 +50,11 @@ const Sidebar = ({ children }) => {
 
   // User Cookie State Hydration
   const role = useMemo(() => Cookies.get("role") || "", []);
+  const normalizedRole = useMemo(() => role.trim().toLowerCase(), [role]);
+  const isSuper = useMemo(
+    () => normalizedRole.includes("super"),
+    [normalizedRole],
+  );
 
   const user = useMemo(
     () => ({
@@ -57,10 +62,10 @@ const Sidebar = ({ children }) => {
       role: { name: role },
       email: Cookies.get("email") || "",
     }),
-    [role]
+    [role],
   );
 
-  // Read Flat Map Object from LocalStorage or Cookie
+  // Read Permissions Object / Array from LocalStorage or Cookie
   const permissions = useMemo(() => {
     try {
       const rawCookie = Cookies.get("permissions");
@@ -77,22 +82,48 @@ const Sidebar = ({ children }) => {
   }, []);
 
   // ----------------------------------------------------
-  // 🔥 NO ROLE BYPASS: STRICT PERMISSION MATRIX CHECK
+  // STRICT PERMISSION MATRIX & SUPER USER GATING CHECK
   // ----------------------------------------------------
   const hasPermission = useCallback(
     (submoduleKey) => {
-      if (!user.name || !permissions || typeof permissions !== "object") {
-        return false;
+      if (!user.name) return false;
+
+      // Administrative modules strictly restricted to Super User
+      if (
+        // submoduleKey === "roles_permissions" ||
+        submoduleKey === "module_setting"
+      ) {
+        return isSuper;
       }
 
-      // Check strictly if view/read or key is true in permissions
-      const isViewTrue = permissions[`${submoduleKey}_view`] === true;
-      const isReadTrue = permissions[`${submoduleKey}_read`] === true;
-      const isDirectTrue = permissions[submoduleKey] === true;
+      // Super User bypasses granular checks for remaining application modules
+      if (isSuper) return true;
 
-      return isViewTrue || isReadTrue || isDirectTrue;
+      if (!permissions) return false;
+
+      // Handle Array Structure: [{ submoduleKey: "...", actions: { read: true } }]
+      if (Array.isArray(permissions)) {
+        const item = permissions.find((p) => p.submoduleKey === submoduleKey);
+        if (!item || !item.actions) return false;
+        return Boolean(
+          item.actions.read ||
+          item.actions.create ||
+          item.actions.update ||
+          item.actions.delete,
+        );
+      }
+
+      // Handle Flat Object Structure: { "submodule_view": true, ... }
+      if (typeof permissions === "object") {
+        const isViewTrue = permissions[`${submoduleKey}_view`] === true;
+        const isReadTrue = permissions[`${submoduleKey}_read`] === true;
+        const isDirectTrue = permissions[submoduleKey] === true;
+        return isViewTrue || isReadTrue || isDirectTrue;
+      }
+
+      return false;
     },
-    [user.name, permissions]
+    [user.name, isSuper, permissions],
   );
 
   // Initial Dispatch Calls
@@ -106,7 +137,7 @@ const Sidebar = ({ children }) => {
           email: Cookies.get("email") || "",
           role: { name: Cookies.get("role") || "" },
           department: Cookies.get("departmentName"),
-        })
+        }),
       );
     }
     dispatch(fetchCompany());
@@ -120,7 +151,7 @@ const Sidebar = ({ children }) => {
         const res = await api.get("/setup/modules/list");
         const data = res.data?.data ?? res.data;
         if (isMounted) {
-          setModules(Array.isArray(data) ? data : data?.modules ?? []);
+          setModules(Array.isArray(data) ? data : (data?.modules ?? []));
         }
       } catch (e) {
         console.error("Failed to load modules list:", e);
@@ -149,14 +180,15 @@ const Sidebar = ({ children }) => {
   // Module Enabler Check
   const isModuleEnabled = useCallback(
     (moduleKey) => {
+      if (isSuper) return true;
       return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
     },
-    [modules]
+    [isSuper, modules],
   );
 
   const isBothDisable = useMemo(
     () => !isModuleEnabled("DO_THIS2") && !isModuleEnabled("FMS_ENGINE"),
-    [isModuleEnabled]
+    [isModuleEnabled],
   );
 
   // Dropdown Toggle
@@ -184,7 +216,7 @@ const Sidebar = ({ children }) => {
         [menu]: !prev[menu],
       }));
     },
-    [isCollapsed]
+    [isCollapsed],
   );
 
   // Logout Handler
@@ -201,36 +233,36 @@ const Sidebar = ({ children }) => {
   // Active Link Helpers
   const isActiveLink = useCallback(
     (path) => location.pathname === path,
-    [location.pathname]
+    [location.pathname],
   );
 
   const isDashboardDropdownActive = useMemo(
     () => location.pathname === "/dashboard",
-    [location.pathname]
+    [location.pathname],
   );
   const isMyBucketActive = useMemo(
     () => location.pathname === "/bucket/my-bucket",
-    [location.pathname]
+    [location.pathname],
   );
   const isMyDayDropdownActive = useMemo(
     () => location.pathname.startsWith("/my-day"),
-    [location.pathname]
+    [location.pathname],
   );
   const isFmsEngineDropdownActive = useMemo(
     () => location.pathname.startsWith("/fms-engine"),
-    [location.pathname]
+    [location.pathname],
   );
   const isReportsDropdownActive = useMemo(
     () => location.pathname.startsWith("/reports"),
-    [location.pathname]
+    [location.pathname],
   );
   const isDelegationDropdownActive = useMemo(
     () => location.pathname.startsWith("/delegate"),
-    [location.pathname]
+    [location.pathname],
   );
   const isSetupDropdownActive = useMemo(
     () => location.pathname.startsWith("/setup"),
-    [location.pathname]
+    [location.pathname],
   );
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
@@ -356,7 +388,7 @@ const Sidebar = ({ children }) => {
     return items;
   }, [hasPermission]);
 
-  // Setup Submenu Links
+  // Setup Submenu Links (Roles & Permissions is strictly Super User restricted)
   const setupLinks = useMemo(() => {
     const items = [];
     if (hasPermission("roles_permissions")) {
@@ -391,7 +423,7 @@ const Sidebar = ({ children }) => {
       });
     }
     return items;
-  }, [hasPermission, isModuleEnabled]);
+  }, [hasPermission, isModuleEnabled, isSuper]);
 
   // Reports Submenu Links
   const reportsLinks = useMemo(() => {
@@ -1041,8 +1073,8 @@ const Sidebar = ({ children }) => {
             </div>
           )}
 
-          {/* 10. Module Setting */}
-          {hasPermission("module_setting") && (
+          {/* 10. Module Setting (Strictly Super User Only) */}
+          {isSuper && hasPermission("module_setting") && (
             <Link
               to="/super/modules"
               className={`

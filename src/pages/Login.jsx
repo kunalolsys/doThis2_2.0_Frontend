@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setCurrentUser } from "../redux/slices/user/userSlice";
+import { setPermissions } from "../redux/slices/permission/permissionSlice"; // 🔥 Redux Permission Action
 import { loginUser } from "../lib/authAPI";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -65,17 +66,20 @@ const Login = () => {
           { path: "/" },
         );
 
-        // --- ENCODED PERMISSIONS FIX ---
+        // --- ENCODED PERMISSIONS & REDUX STORE SYNC ---
         const permissionsData = res.data?.permissions || {};
         const jsonPermString = JSON.stringify(permissionsData);
 
-        // 1. URI Encoded Cookie prevents browser rejection
+        // 1. Dispatch permissions directly to Redux Store
+        dispatch(setPermissions(permissionsData)); // 🔥 Saved to Redux
+
+        // 2. URI Encoded Cookie prevents browser rejection
         Cookies.set("permissions", encodeURIComponent(jsonPermString), {
           expires: 7,
           path: "/",
         });
 
-        // 2. Backup LocalStorage Sync
+        // 3. Backup LocalStorage Sync
         localStorage.setItem("permissions", jsonPermString);
 
         if (redirectPath) {
@@ -166,12 +170,10 @@ const Login = () => {
             </label>
 
             <div className="relative">
-              {/* Left icon */}
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                 <Lock className="w-5 h-5 text-indigo-400" />
               </div>
 
-              {/* Input */}
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -183,7 +185,6 @@ const Login = () => {
                 className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-indigo-300/50 focus:border-indigo-500 transition duration-200 ease-in-out shadow-inner"
               />
 
-              {/* Right eye icon */}
               <div
                 className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer"
                 onClick={() => setShowPassword(!showPassword)}

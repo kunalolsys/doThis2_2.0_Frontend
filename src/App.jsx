@@ -4,36 +4,56 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import TaskPage from "./pages/TaskPage";
 import ProtectedLayout from "./ProtectedLayout";
 import Login from "./pages/Login";
-import Cookies from "js-cookie";
 
-// dashboard imports
+// Dashboard imports
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 
-// setup imports
+// Setup imports
 import RolesPermissions from "./pages/setup/RolesPermissions";
 import Users from "./pages/setup/Users";
 import WorkShifts from "./pages/setup/WorkShifts";
 import DepartmentCalender from "./pages/setup/DepartmentCalender";
 import DataMaster from "./pages/setup/DataMaster";
+import AddUser from "./pages/setup/AddUser";
+import EditUser from "./pages/setup/EditUser";
 
-// my-day imports
-import Launchpad from "./pages/myDay/Launchpad";
+// My-Day imports
 import ManagerView from "./pages/myDay/ManagerView";
-import SrManagerView from "./pages/myDay/SrManagerView";
-import OwnerView from "./pages/myDay/OwnerView";
 import MyTask from "./pages/myDay/MyTask";
+import FmsTasks from "./pages/myDay/FmsTask";
+import PCView from "./pages/myDay/PcView";
+import TaskReassignmentPage from "./pages/myDay/TaskReassignmentPage";
+import UserTaskHistory from "./pages/myDay/userTaskView";
 
-// reports imports
+// Reports & Audit imports
 import MisReports from "./pages/reports/MisReports";
 import FmsReports from "./pages/reports/FmsReports";
+import FmsTask360AuditPage from "./pages/reports/FmsTask360AuditPage";
+
+// FMS Engine imports
 import UpcomingOngoingFms from "./pages/fmsEngine/UpcomingOngoingFms";
 import FmsTemplates from "./pages/fmsEngine/FmsTemplates";
 import FmsLaunch from "./pages/fmsEngine/FmsLaunch";
 import CreateNewFmsTem from "./pages/fmsEngine/CreateNewFmsTem";
-import AddUser from "./pages/setup/AddUser";
+import ViewFmsTemp from "./pages/fmsEngine/ViewFmsTemp";
+import FmsLaunchedView from "./pages/fmsEngine/fmsInstanceView";
+import OpenFormBuilder from "./pages/fmsEngine/OpenForm";
+import OpenFormResponses from "./pages/fmsEngine/OpenFormResponses";
 
+// Task Delegation & Buckets imports
+import TaskDistributionCenter from "./pages/task-distribution/TaskDistribution";
+import BucketCreation from "./pages/task-distribution/BucketTaskCreation";
+import DistributionBuckets from "./pages/task-distribution/BucketTaskDist";
+import BucketListingPage from "./pages/task-distribution/BucketListingPage";
+import PendingBucketRequest from "./pages/task-distribution/PendingBucketReques";
+import TaskAudienceMaster from "./components/RoleMaster/TargetRoleMaster";
+
+// Public Forms
+import PublicOpenForm from "./pages/public-form/PublicOpenForm";
+import BucketReqOpenForm from "./pages/public-form/BucketReqOpenForm";
+
+// Utility / System Components
 import { Toaster } from "sonner";
-import EditUser from "./pages/setup/EditUser";
 import PageNotFound from "./pages/PageNotFound";
 import ResetPassword from "./pages/ResetPassword";
 import AccessDenied from "./pages/AccessDenied";
@@ -42,29 +62,12 @@ import ImportTask from "./pages/ImportTask";
 import Profile from "./pages/Profile";
 import SessionTimeoutDialog from "./components/SessionTimeoutDialog";
 import LogsDashboard from "./pages/logs";
-import FmsLaunchedView from "./pages/fmsEngine/fmsInstanceView";
 import { SocketProvider } from "./context/SocketContext";
 import { TaskChatProvider } from "./context/TaskChatContext";
 import FloatingManualButton from "./components/FloatingManualButton";
 import SuperModuleSettings from "./pages/SuperModuleSettings";
 import CompanyProfile from "./pages/CompanyProfile";
 import NotificationIntegrations from "./pages/Notificationintegrations";
-import TaskReassignmentPage from "./pages/myDay/TaskReassignmentPage";
-import UserTaskHistory from "./pages/myDay/userTaskView";
-import OpenFormBuilder from "./pages/fmsEngine/OpenForm";
-import TaskDistributionCenter from "./pages/task-distribution/TaskDistribution";
-import PublicOpenForm from "./pages/public-form/PublicOpenForm";
-import OpenFormResponses from "./pages/fmsEngine/OpenFormResponses";
-import TaskAudienceMaster from "./components/RoleMaster/TargetRoleMaster";
-import BucketCreation from "./pages/task-distribution/BucketTaskCreation";
-import DistributionBuckets from "./pages/task-distribution/BucketTaskDist";
-import BucketListingPage from "./pages/task-distribution/BucketListingPage";
-import BucketReqOpenForm from "./pages/public-form/BucketReqOpenForm";
-import PendingBucketRequest from "./pages/task-distribution/PendingBucketReques";
-import FmsTasks from "./pages/myDay/FmsTask";
-import PCView from "./pages/myDay/PcView";
-import ViewFmsTemp from "./pages/fmsEngine/ViewFmsTemp";
-import FmsTask360AuditPage from "./pages/reports/FmsTask360AuditPage";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -101,68 +104,67 @@ function App() {
         <SocketProvider>
           <TaskChatProvider>
             <Routes>
+              {/* Public Unprotected Routes */}
               <Route path="/" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/page-restrict-found" element={<AccessDenied />} />
               <Route path="/open-form/:slug" element={<PublicOpenForm />} />
               <Route path="/open-bucket-form" element={<BucketReqOpenForm />} />
+
+              {/* Protected Workspace Layout */}
               <Route element={<ProtectedLayout />}>
-                {/* dashboard routes - assuming all logged-in users can see this */}
-                <Route path="/dashboard" element={<AdminDashboard />} />
-                <Route path="/logs" element={<LogsDashboard />} />
+                {/* 1. Dashboard & Core Profile */}
+                <Route
+                  path="/dashboard"
+                  element={
+                    <PermissionRoute requiredPermission="dashboard">
+                      <AdminDashboard />
+                    </PermissionRoute>
+                  }
+                />
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/company-setup" element={<CompanyProfile />} />
+                <Route path="/logs" element={<LogsDashboard />} />
+
+                {/* 2. My Day Submodules */}
                 <Route
-                  path="/channel-setup"
-                  element={<NotificationIntegrations />}
+                  path="/my-day/mytasks"
+                  element={
+                    <PermissionRoute requiredPermission="delegated_recurring">
+                      <MyTask />
+                    </PermissionRoute>
+                  }
                 />
-                {/* My Day Routes */}
-                {/* <Route path="/my-day/launchpad" element={<Launchpad />} /> */}
-                <Route path="/my-day/mytasks" element={<MyTask />} />
-                <Route path="/my-day/my-fms-tasks" element={<FmsTasks />} />
-                <Route path="/my-day/view" element={<ManagerView />} />
-                <Route path="/my-day/pc-view" element={<PCView />} />
+                <Route
+                  path="/my-day/my-fms-tasks"
+                  element={
+                    <PermissionRoute requiredPermission="fms_tasks">
+                      <FmsTasks />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/my-day/view"
+                  element={
+                    <PermissionRoute requiredPermission="role_view">
+                      <ManagerView />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/my-day/pc-view"
+                  element={
+                    <PermissionRoute requiredPermission="role_view">
+                      <PCView />
+                    </PermissionRoute>
+                  }
+                />
                 <Route path="/user/:userId" element={<UserTaskHistory />} />
-                <Route path="/form-builder" element={<OpenFormBuilder />} />
-                <Route
-                  path="/form-submissions"
-                  element={<OpenFormResponses />}
-                />
-                <Route
-                  path="/task-distribution"
-                  element={<TaskDistributionCenter />}
-                />{" "}
-                <Route
-                  path="/delegate/task-buckets"
-                  element={<BucketCreation />}
-                />{" "}
-                <Route
-                  path="/delegate/pending-buckets"
-                  element={<PendingBucketRequest />}
-                />
-                <Route
-                  path="/delegate/task-buckets/edit/:bucketId"
-                  element={<BucketCreation />}
-                />{" "}
-                <Route
-                  path="/delegate/audience-master"
-                  element={<TaskAudienceMaster />}
-                />
-                <Route
-                  path="/bucket/my-bucket"
-                  element={<DistributionBuckets />}
-                />{" "}
-                <Route
-                  path="/delegate/bucket-view"
-                  element={<BucketListingPage />}
-                />
-                {/* <Route path="/my-day/sr-manager-view" element={<SrManagerView />} />
-            <Route path="/my-day/owner-view" element={<OwnerView />} /> */}
-                {/* Delegation Task */}
+
+                {/* 3. Delegation Tasks & Reassignment */}
                 <Route
                   path="/delegation-tasks"
                   element={
-                    <PermissionRoute requiredPermission="delegation_task_view">
+                    <PermissionRoute requiredPermission="delegation_task">
                       <TaskPage />
                     </PermissionRoute>
                   }
@@ -170,7 +172,7 @@ function App() {
                 <Route
                   path="/reassign"
                   element={
-                    <PermissionRoute requiredPermission="delegation_task_view">
+                    <PermissionRoute requiredPermission="task_reassigning">
                       <TaskReassignmentPage />
                     </PermissionRoute>
                   }
@@ -178,61 +180,149 @@ function App() {
                 <Route
                   path="/import-tasks"
                   element={
-                    <PermissionRoute requiredPermission="delegation_task_view">
+                    <PermissionRoute requiredPermission="delegation_task">
                       <ImportTask />
                     </PermissionRoute>
                   }
                 />
-                {/* FMS Engine Routes */}
+
+                {/* 4. Delegation Buckets */}
                 <Route
-                  path="/fms-engine/upcoming"
+                  path="/task-distribution"
                   element={
-                    <PermissionRoute requiredPermission="fms_engine_view">
-                      <UpcomingOngoingFms />
+                    <PermissionRoute requiredPermission="bucket_view">
+                      <TaskDistributionCenter />
                     </PermissionRoute>
                   }
                 />
+                <Route
+                  path="/delegate/task-buckets"
+                  element={
+                    <PermissionRoute requiredPermission="task_buckets">
+                      <BucketCreation />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/delegate/task-buckets/edit/:bucketId"
+                  element={
+                    <PermissionRoute requiredPermission="task_buckets">
+                      <BucketCreation />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/delegate/pending-buckets"
+                  element={
+                    <PermissionRoute requiredPermission="pending_buckets">
+                      <PendingBucketRequest />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/delegate/bucket-view"
+                  element={
+                    <PermissionRoute requiredPermission="bucket_view">
+                      <BucketListingPage />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/bucket/my-bucket"
+                  element={
+                    <PermissionRoute requiredPermission="my_bucket">
+                      <DistributionBuckets />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/delegate/audience-master"
+                  element={
+                    <PermissionRoute requiredPermission="manage_assignee">
+                      <TaskAudienceMaster />
+                    </PermissionRoute>
+                  }
+                />
+
+                {/* 5. FMS Engine Submodules */}
                 <Route
                   path="/fms-engine/templates"
                   element={
-                    <PermissionRoute requiredPermission="fms_engine_view">
+                    <PermissionRoute requiredPermission="fms_templates">
                       <FmsTemplates />
-                    </PermissionRoute>
-                  }
-                />
-                <Route
-                  path="/fms-engine/launch"
-                  element={
-                    <PermissionRoute requiredPermission="fms_engine_view">
-                      <FmsLaunch />
                     </PermissionRoute>
                   }
                 />
                 <Route
                   path="/fms-engine/create-template"
                   element={
-                    <PermissionRoute requiredPermission="fms_engine_view">
+                    <PermissionRoute requiredPermission="fms_templates">
                       <CreateNewFmsTem />
                     </PermissionRoute>
                   }
                 />
                 <Route
                   path="/fms-engine/edit-template/:id"
-                  element={<CreateNewFmsTem />}
-                />{" "}
+                  element={
+                    <PermissionRoute requiredPermission="fms_templates">
+                      <CreateNewFmsTem />
+                    </PermissionRoute>
+                  }
+                />
                 <Route
                   path="/fms-engine/view-template/:id"
-                  element={<ViewFmsTemp />}
-                />{" "}
+                  element={
+                    <PermissionRoute requiredPermission="fms_templates">
+                      <ViewFmsTemp />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/fms-engine/launch"
+                  element={
+                    <PermissionRoute requiredPermission="launch_fms">
+                      <FmsLaunch />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/fms-engine/upcoming"
+                  element={
+                    <PermissionRoute requiredPermission="upcoming_ongoing_fms">
+                      <UpcomingOngoingFms />
+                    </PermissionRoute>
+                  }
+                />
                 <Route
                   path="/fms-engine/instance/:id"
-                  element={<FmsLaunchedView />}
+                  element={
+                    <PermissionRoute requiredPermission="upcoming_ongoing_fms">
+                      <FmsLaunchedView />
+                    </PermissionRoute>
+                  }
                 />
-                {/* Reports Routes */}
+                <Route
+                  path="/form-builder"
+                  element={
+                    <PermissionRoute requiredPermission="form_builder">
+                      <OpenFormBuilder />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/form-submissions"
+                  element={
+                    <PermissionRoute requiredPermission="responses">
+                      <OpenFormResponses />
+                    </PermissionRoute>
+                  }
+                />
+
+                {/* 6. Reports Submodules */}
                 <Route
                   path="/reports/mis"
                   element={
-                    <PermissionRoute requiredPermission="reports_view">
+                    <PermissionRoute requiredPermission="mis_reports">
                       <MisReports />
                     </PermissionRoute>
                   }
@@ -240,33 +330,25 @@ function App() {
                 <Route
                   path="/reports/fms"
                   element={
-                    <PermissionRoute requiredPermission="reports_view">
+                    <PermissionRoute requiredPermission="fms_reports">
                       <FmsReports />
                     </PermissionRoute>
                   }
-                />{" "}
+                />
                 <Route
                   path="/reports/360"
                   element={
-                    <PermissionRoute requiredPermission="reports_view">
+                    <PermissionRoute requiredPermission="fms_reports">
                       <FmsTask360AuditPage />
                     </PermissionRoute>
                   }
                 />
-                {/* dashboard routes */}
-                {/* setup routes */}
-                <Route
-                  path="/setup/roles-permissions"
-                  element={
-                    <PermissionRoute requiredPermission="setup_view">
-                      <RolesPermissions />
-                    </PermissionRoute>
-                  }
-                />
+
+                {/* 7. Setup & System Administration */}
                 <Route
                   path="/setup/departments-calendar"
                   element={
-                    <PermissionRoute requiredPermission="setup_view">
+                    <PermissionRoute requiredPermission="departments_calendar">
                       <DepartmentCalender />
                     </PermissionRoute>
                   }
@@ -274,7 +356,7 @@ function App() {
                 <Route
                   path="/setup/work-shifts"
                   element={
-                    <PermissionRoute requiredPermission="setup_view">
+                    <PermissionRoute requiredPermission="work_shifts">
                       <WorkShifts />
                     </PermissionRoute>
                   }
@@ -282,7 +364,7 @@ function App() {
                 <Route
                   path="/setup/data-masters"
                   element={
-                    <PermissionRoute requiredPermission="setup_view">
+                    <PermissionRoute requiredPermission="users">
                       <DataMaster />
                     </PermissionRoute>
                   }
@@ -290,7 +372,7 @@ function App() {
                 <Route
                   path="/setup/users"
                   element={
-                    <PermissionRoute requiredPermission="setup_view">
+                    <PermissionRoute requiredPermission="users">
                       <Users />
                     </PermissionRoute>
                   }
@@ -298,7 +380,7 @@ function App() {
                 <Route
                   path="/setup/add-user"
                   element={
-                    <PermissionRoute requiredPermission="setup_view">
+                    <PermissionRoute requiredPermission="users">
                       <AddUser />
                     </PermissionRoute>
                   }
@@ -306,17 +388,54 @@ function App() {
                 <Route
                   path="/setup/edit-user/:id"
                   element={
-                    <PermissionRoute requiredPermission="setup_view">
+                    <PermissionRoute requiredPermission="users">
                       <EditUser />
                     </PermissionRoute>
                   }
                 />
-                {/* Super-only routes */}
+                <Route
+                  path="/company-setup"
+                  element={
+                    <PermissionRoute requiredPermission="company_setup">
+                      <CompanyProfile />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/channel-setup"
+                  element={
+                    <PermissionRoute requiredPermission="company_setup">
+                      <NotificationIntegrations />
+                    </PermissionRoute>
+                  }
+                />
+
+                {/* 🔒 STRICT SUPER USER EXCLUSIVE ROUTES */}
+                <Route
+                  path="/setup/roles-permissions"
+                  element={
+                    <PermissionRoute
+                      // isSuperOnly={true}
+                      requiredPermission="roles_permissions"
+                    >
+                      <RolesPermissions />
+                    </PermissionRoute>
+                  }
+                />
                 <Route
                   path="/super/modules"
-                  element={<SuperModuleSettings />}
+                  element={
+                    <PermissionRoute
+                      isSuperOnly={true}
+                      requiredPermission="module_setting"
+                    >
+                      <SuperModuleSettings />
+                    </PermissionRoute>
+                  }
                 />
               </Route>
+
+              {/* Fallback 404 Route */}
               <Route path="*" element={<PageNotFound />} />
             </Routes>
           </TaskChatProvider>

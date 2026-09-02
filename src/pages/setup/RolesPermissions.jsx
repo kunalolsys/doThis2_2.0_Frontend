@@ -39,6 +39,32 @@ const ACTIONS = [
   { key: "delete", label: "Delete", color: "text-rose-700" },
 ];
 
+// Helper: Action Disabling Rules for UI Interaction
+const isActionDisabledForSubmodule = (submoduleKey, actionKey) => {
+  if (
+    submoduleKey === "dashboard" ||
+    submoduleKey === "role_view" ||
+    submoduleKey === "upcoming_ongoing_fms" ||
+    submoduleKey === "mis_reports" ||
+    submoduleKey === "fms_reports"
+  ) {
+    return actionKey !== "read";
+  }
+  if (
+    submoduleKey === "task_reassigning" ||
+    submoduleKey === "responses" ||
+    submoduleKey === "my_bucket"  || 
+    submoduleKey === "manage_assignee" 
+  ) {
+    return actionKey !== "read" && actionKey !== "update";
+  }
+  if (submoduleKey === "launch_fms"|| submoduleKey === "task_buckets") {
+    return actionKey !== "read" && actionKey !== "create";
+  }
+
+  return false;
+};
+
 const RolesPermissions = () => {
   const dispatch = useDispatch();
   const { roles: rawRoles = [], status } = useSelector(
@@ -53,7 +79,7 @@ const RolesPermissions = () => {
   const [permissionMatrix, setPermissionMatrix] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Auth User check
+  // Auth User Check
   const userRole = useMemo(() => {
     return (Cookies.get("role") || "").toLowerCase();
   }, []);
@@ -87,11 +113,10 @@ const RolesPermissions = () => {
     }
   }, [canViewPage, dispatch]);
 
-  // 1. Dynamic Modules Tree Extraction from Real API Roles Data Response
+  // 1. Dynamic Modules Tree Extraction Directly from API Response
   const systemModulesTree = useMemo(() => {
     const parentMap = new Map();
 
-    // Iterate through API Roles payload data to collect all unique parent and submodules
     (rawRoles || []).forEach((r) => {
       const perms = Array.isArray(r.permissions) ? r.permissions : [];
       perms.forEach((p) => {
@@ -121,7 +146,7 @@ const RolesPermissions = () => {
     }));
   }, [rawRoles]);
 
-  // 2. Permission Matrix Helper
+  // 2. Permission Matrix Initialization Helper (🔥 FIX: Retains Real DB Values)
   const initMatrix = useCallback(
     (existingPermissions = []) => {
       const initial = {};
@@ -157,9 +182,18 @@ const RolesPermissions = () => {
     [systemModulesTree],
   );
 
-  // Set Default Selected Role
+  // Sync selected role data when rawRoles updates from API
   useEffect(() => {
-    if (rawRoles.length > 0 && !selectedRole && !isCreatingNew) {
+    if (selectedRole && !isCreatingNew) {
+      const updatedRoleObj = rawRoles.find(
+        (r) => (r._id || r.id) === (selectedRole._id || selectedRole.id),
+      );
+      if (updatedRoleObj) {
+        setSelectedRole(updatedRoleObj);
+        setRoleName(updatedRoleObj.displayName || updatedRoleObj.name || "");
+        setPermissionMatrix(initMatrix(updatedRoleObj.permissions || []));
+      }
+    } else if (rawRoles.length > 0 && !selectedRole && !isCreatingNew) {
       const defaultRole =
         rawRoles.find((r) => r.name?.toLowerCase() !== "owner") || rawRoles[0];
       selectRoleToEdit(defaultRole);
@@ -182,6 +216,8 @@ const RolesPermissions = () => {
 
   // Action Checkbox Handler
   const handleCheckboxChange = (submoduleKey, actionKey, checked) => {
+    if (isActionDisabledForSubmodule(submoduleKey, actionKey)) return;
+
     setPermissionMatrix((prev) => ({
       ...prev,
       [submoduleKey]: {
@@ -191,31 +227,51 @@ const RolesPermissions = () => {
     }));
   };
 
-  // Toggle Submodule Actions
+  // Toggle Submodule Actions (Ignores disabled checkboxes)
   const toggleAllForSubmodule = (submoduleKey, checked) => {
-    setPermissionMatrix((prev) => ({
-      ...prev,
-      [submoduleKey]: {
-        ...prev[submoduleKey],
-        create: checked,
-        read: checked,
-        update: checked,
-        delete: checked,
-      },
-    }));
+    setPermissionMatrix((prev) => {
+      const current = prev[submoduleKey] || {};
+      return {
+        ...prev,
+        [submoduleKey]: {
+          ...current,
+          create: isActionDisabledForSubmodule(submoduleKey, "create")
+            ? current.create
+            : checked,
+          read: isActionDisabledForSubmodule(submoduleKey, "read")
+            ? current.read
+            : checked,
+          update: isActionDisabledForSubmodule(submoduleKey, "update")
+            ? current.update
+            : checked,
+          delete: isActionDisabledForSubmodule(submoduleKey, "delete")
+            ? current.delete
+            : checked,
+        },
+      };
+    });
   };
 
-  // Toggle Parent Module Actions
+  // Toggle Parent Module Actions (Ignores disabled checkboxes)
   const toggleAllForParentModule = (parentModule, checked) => {
     const updated = { ...permissionMatrix };
     parentModule.submodules.forEach((sub) => {
+      const current = updated[sub.key] || {};
       updated[sub.key] = {
-        ...updated[sub.key],
+        ...current,
         parentModuleKey: parentModule.key,
-        create: checked,
-        read: checked,
-        update: checked,
-        delete: checked,
+        create: isActionDisabledForSubmodule(sub.key, "create")
+          ? current.create
+          : checked,
+        read: isActionDisabledForSubmodule(sub.key, "read")
+          ? current.read
+          : checked,
+        update: isActionDisabledForSubmodule(sub.key, "update")
+          ? current.update
+          : checked,
+        delete: isActionDisabledForSubmodule(sub.key, "delete")
+          ? current.delete
+          : checked,
       };
     });
     setPermissionMatrix(updated);
@@ -225,12 +281,21 @@ const RolesPermissions = () => {
     const updated = {};
     systemModulesTree.forEach((parent) => {
       parent.submodules.forEach((sub) => {
+        const current = permissionMatrix[sub.key] || {};
         updated[sub.key] = {
           parentModuleKey: parent.key,
-          create: type === "ALL",
-          read: type === "ALL" || type === "READ",
-          update: type === "ALL",
-          delete: type === "ALL",
+          create: isActionDisabledForSubmodule(sub.key, "create")
+            ? current.create
+            : type === "ALL",
+          read: isActionDisabledForSubmodule(sub.key, "read")
+            ? current.read
+            : type === "ALL" || type === "READ",
+          update: isActionDisabledForSubmodule(sub.key, "update")
+            ? current.update
+            : type === "ALL",
+          delete: isActionDisabledForSubmodule(sub.key, "delete")
+            ? current.delete
+            : type === "ALL",
         };
       });
     });
@@ -252,7 +317,6 @@ const RolesPermissions = () => {
   }, [permissionMatrix]);
 
   // Build Payload Array for API Update
-  // RolesPermissions.jsx me buildPayload function
   const buildPayload = () => {
     const permissionsPayload = [];
 
@@ -260,7 +324,6 @@ const RolesPermissions = () => {
       parent.submodules.forEach((sub) => {
         const data = permissionMatrix[sub.key] || {};
 
-        // Har submodule push hoga, chahe create/read/update/delete sab false hon
         permissionsPayload.push({
           parentModuleKey: parent.key,
           submoduleKey: sub.key,
@@ -285,27 +348,38 @@ const RolesPermissions = () => {
       return;
     }
 
-    const payload = {
-      name: trimmedName,
-      displayName: trimmedName,
-      permissions: buildPayload(),
-    };
+    const payloadPermissions = buildPayload();
 
     setIsSubmitting(true);
     try {
       if (isCreatingNew) {
+        const payload = {
+          name: trimmedName,
+          displayName: trimmedName,
+          permissions: payloadPermissions,
+        };
         const result = await dispatch(createRole(payload)).unwrap();
         toast.success("New role created successfully!");
         setIsCreatingNew(false);
+        dispatch(fetchRoles());
         if (result?.data || result) {
           selectRoleToEdit(result.data || result);
         }
       } else if (selectedRole) {
-        await dispatch(
-          updateRole({ id: selectedRole._id || selectedRole.id, ...payload }),
-        ).unwrap();
+        const roleId = selectedRole._id || selectedRole.id;
+        const payload = {
+          id: roleId,
+          name: selectedRole.isSystemRole ? selectedRole.name : trimmedName,
+          displayName: trimmedName,
+          description: selectedRole.description || "",
+          permissions: payloadPermissions,
+        };
+
+        await dispatch(updateRole(payload)).unwrap();
         toast.success("Role permissions updated successfully!");
-        dispatch(fetchRoles());
+
+        // Re-fetch fresh roles from API
+        await dispatch(fetchRoles()).unwrap();
       }
     } catch (err) {
       toast.error(err?.message || err || "Failed to save role");
@@ -633,6 +707,10 @@ const RolesPermissions = () => {
                               const isChecked = Boolean(
                                 currentActions[act.key],
                               );
+                              const isDisabled = isActionDisabledForSubmodule(
+                                sub.key,
+                                act.key,
+                              );
                               const checkboxId = `cb-${sub.key}-${act.key}`;
 
                               return (
@@ -642,11 +720,16 @@ const RolesPermissions = () => {
                                 >
                                   <label
                                     htmlFor={checkboxId}
-                                    className="p-1.5 rounded-lg cursor-pointer hover:bg-slate-100/80 transition-colors flex items-center justify-center"
+                                    className={`p-1.5 rounded-lg flex items-center justify-center transition-colors ${
+                                      isDisabled
+                                        ? "cursor-not-allowed opacity-50"
+                                        : "cursor-pointer hover:bg-slate-100/80"
+                                    }`}
                                   >
                                     <Checkbox
                                       id={checkboxId}
                                       checked={isChecked}
+                                      disabled={isDisabled}
                                       onCheckedChange={(checked) =>
                                         handleCheckboxChange(
                                           sub.key,
@@ -654,7 +737,7 @@ const RolesPermissions = () => {
                                           Boolean(checked),
                                         )
                                       }
-                                      className="h-4.5 w-4.5 rounded-md border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                                      className="h-4.5 w-4.5 rounded-md border-slate-300 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 disabled:data-[state=checked]:bg-slate-400 disabled:data-[state=checked]:border-slate-400"
                                     />
                                   </label>
                                 </div>

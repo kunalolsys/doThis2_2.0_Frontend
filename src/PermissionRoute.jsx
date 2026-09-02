@@ -2,7 +2,11 @@ import { Navigate } from "react-router-dom";
 import Cookies from "js-cookie";
 import { getAccessToken } from "./lib/tokenManager";
 
-const PermissionRoute = ({ children, requiredPermission }) => {
+const PermissionRoute = ({
+  children,
+  requiredPermission,
+  isSuperOnly = false,
+}) => {
   const token = getAccessToken();
 
   // 🔴 AUTH CHECK
@@ -10,13 +14,24 @@ const PermissionRoute = ({ children, requiredPermission }) => {
     return <Navigate to="/" replace />;
   }
 
-  // 🟢 ADMIN / SYSTEM ROLE BYPASS
-  const role = (Cookies.get("role") || "").toLowerCase();
+  const role = (Cookies.get("role") || "").trim().toLowerCase();
+  const isSuper = role.includes("super");
+
+  // 🔒 STRICT SUPER USER ONLY ROUTE CHECK
+  // (roles_permissions & module_setting are strictly for Super User)
   if (
-    role.includes("admin") ||
-    role.includes("owner") ||
-    role.includes("super")
+    isSuperOnly ||
+    // requiredPermission === "roles_permissions" ||
+    requiredPermission === "module_setting"
   ) {
+    if (!isSuper) {
+      return <Navigate to="/page-restrict-found" replace />;
+    }
+    return children;
+  }
+
+  // 🟢 ONLY SUPER USER BYPASSES GRANULAR ROUTE CHECKS
+  if (isSuper) {
     return children;
   }
 
@@ -31,14 +46,14 @@ const PermissionRoute = ({ children, requiredPermission }) => {
       permissions = JSON.parse(rawData);
     }
   } catch (e) {
-    console.error("Invalid permissions format", e);
+    console.error("Invalid permissions format in route check", e);
   }
 
-  // 🔴 PERMISSION DENIED CHECK
+  // 🔴 STRICT BOOLEAN PERMISSION CHECK (No Role Bypasses)
   const hasAccess =
-    permissions[requiredPermission] ||
-    permissions[`${requiredPermission}_view`] ||
-    permissions[`${requiredPermission}_read`];
+    permissions[requiredPermission] === true ||
+    permissions[`${requiredPermission}_view`] === true ||
+    permissions[`${requiredPermission}_read`] === true;
 
   if (!hasAccess) {
     return <Navigate to="/page-restrict-found" replace />;
