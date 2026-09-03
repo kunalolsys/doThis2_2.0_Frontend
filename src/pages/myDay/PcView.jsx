@@ -753,9 +753,9 @@ const PCView = () => {
         const users = response.data?.data || [];
         setAllUsers(users);
 
-        const doers = users.filter((u) => u.role?.name === "Member");
-        const managers = users.filter((u) => u.role?.name === "Manager");
-        const srManagers = users.filter((u) => u.role?.name === "Sr. Manager");
+        const doers = users.filter((u) => u.role?.name === "member");
+        const managers = users.filter((u) => u.role?.name === "manager");
+        const srManagers = users.filter((u) => u.role?.name === "sr._manager");
 
         setDoers(doers);
         setManagers(managers);
@@ -1124,13 +1124,13 @@ const PCView = () => {
             {assignedByUser?.name && (
               <span
                 className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium ${
-                  assignedByUser.role?.name === "Admin"
+                  assignedByUser.role?.name === "admin"
                     ? "bg-red-100 text-red-700"
-                    : assignedByUser.role?.name === "Owner"
+                    : assignedByUser.role?.name === "owner"
                       ? "bg-purple-100 text-purple-700"
-                      : assignedByUser.role?.name === "Sr. Manager"
+                      : assignedByUser.role?.name === "sr._manager"
                         ? "bg-blue-100 text-blue-700"
-                        : assignedByUser.role?.name === "Manager"
+                        : assignedByUser.role?.name === "manager"
                           ? "bg-green-100 text-green-700"
                           : "bg-gray-100 text-gray-700"
                 }`}
@@ -1149,13 +1149,13 @@ const PCView = () => {
             {assignedToUser?.name && (
               <span
                 className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium ${
-                  assignedToUser.role?.name === "Admin"
+                  assignedToUser.role?.name === "admin"
                     ? "bg-red-100 text-red-700"
-                    : assignedToUser.role?.name === "Owner"
+                    : assignedToUser.role?.name === "owner"
                       ? "bg-purple-100 text-purple-700"
-                      : assignedToUser.role?.name === "Sr. Manager"
+                      : assignedToUser.role?.name === "sr._manager"
                         ? "bg-blue-100 text-blue-700"
-                        : assignedToUser.role?.name === "Manager"
+                        : assignedToUser.role?.name === "manager"
                           ? "bg-green-100 text-green-700"
                           : "bg-gray-100 text-gray-700"
                 }`}

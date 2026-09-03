@@ -26,6 +26,8 @@ import dayjs from "dayjs";
 import TaskBucketListCard from "./TaskBucketListCard.jsx";
 import { useDebounce } from "../../lib/debounce.js";
 import { toast } from "sonner";
+import { useSelector } from "react-redux";
+import { getSubmodulePermissions } from "../../utils/permissionUtils.js";
 
 const { Search } = Input;
 
@@ -44,7 +46,14 @@ const TaskDistribution = () => {
   const [filterType, setFilterType] = useState("Pending"); // all | recurring | non-recurring
   const [sortBy, setSortBy] = useState("newest"); // date | title | status
   const debounceSearch = useDebounce(search);
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "my_bucket",
+    isSuper,
+  );
   // =========================================================
   // FETCH BUCKETS
   // =========================================================
@@ -434,17 +443,19 @@ const TaskDistribution = () => {
                     </p>
                   </div>
 
-                  <Button
-                    disabled={
-                      loading ||
-                      !selectedBucket ||
-                      Object.keys(selectedAssignments).length === 0
-                    }
-                    onClick={handleDistribute}
-                    className="rounded-xl"
-                  >
-                    {loading ? "Distributing..." : "Distribute Tasks"}
-                  </Button>
+                  {canUpdate && (
+                    <Button
+                      disabled={
+                        loading ||
+                        !selectedBucket ||
+                        Object.keys(selectedAssignments).length === 0
+                      }
+                      onClick={handleDistribute}
+                      className="rounded-xl"
+                    >
+                      {loading ? "Distributing..." : "Distribute Tasks"}
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
 

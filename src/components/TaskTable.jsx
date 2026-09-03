@@ -230,6 +230,9 @@ const TaskTable = ({
   searchTerm: propSearchTerm,
   setSearchTerm: propSetSearchTerm,
   workingWeeks,
+  canRead,
+  canUpdate,
+  canDelete,
 }) => {
   const dispatch = useDispatch();
 
@@ -1397,7 +1400,23 @@ const TaskTable = ({
 
     return saved ? JSON.parse(saved) : recurringDefaultColumns;
   });
+  const activeColumns = useMemo(() => {
+    return columns.map((col) => {
+      if (col.key === "action") {
+        return { ...col, visible: col.visible && (canUpdate || canDelete) };
+      }
+      return col;
+    });
+  }, [columns, canUpdate, canDelete]);
 
+  const activeRecurringColumns = useMemo(() => {
+    return recurringColumns.map((col) => {
+      if (col.key === "action") {
+        return { ...col, visible: col.visible && (canUpdate || canDelete) };
+      }
+      return col;
+    });
+  }, [recurringColumns, canUpdate, canDelete]);
   /* =========================
    LOCAL STORAGE
 ========================= */
@@ -1919,27 +1938,29 @@ const TaskTable = ({
                 />
               </Dropdown>
             )}
-            <div className="flex items-center justify-between mb-4">
-              {activeTabForExport == "one-time" ? (
-                <Button
-                  variant="destructive"
-                  disabled={selectedOneTimeTaskIds.length === 0}
-                  onClick={handleDeleteMultipleTasks}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Selected
-                </Button>
-              ) : (
-                <Button
-                  variant="destructive"
-                  disabled={selectedRecurringTaskIds.length === 0}
-                  onClick={handleDeleteMultipleRecurringTasks}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Selected
-                </Button>
-              )}
-            </div>
+            {canDelete && (
+              <div className="flex items-center justify-between mb-4">
+                {activeTabForExport == "one-time" ? (
+                  <Button
+                    variant="destructive"
+                    disabled={selectedOneTimeTaskIds.length === 0}
+                    onClick={handleDeleteMultipleTasks}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Selected
+                  </Button>
+                ) : (
+                  <Button
+                    variant="destructive"
+                    disabled={selectedRecurringTaskIds.length === 0}
+                    onClick={handleDeleteMultipleRecurringTasks}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Selected
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* --- ONE TIME TASKS TAB --- */}
@@ -1948,18 +1969,20 @@ const TaskTable = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">
-                      <Checkbox
-                        checked={
-                          currentOneTimeTasks.length > 0 &&
-                          currentOneTimeTasks.every((t) =>
-                            selectedOneTimeTaskIds.includes(t._id),
-                          )
-                        }
-                        onChange={handleSelectAllOneTimeTasks}
-                      />
-                    </TableHead>
-                    {columns
+                    {canDelete && (
+                      <TableHead className="w-[50px]">
+                        <Checkbox
+                          checked={
+                            currentOneTimeTasks.length > 0 &&
+                            currentOneTimeTasks.every((t) =>
+                              selectedOneTimeTaskIds.includes(t._id),
+                            )
+                          }
+                          onChange={handleSelectAllOneTimeTasks}
+                        />
+                      </TableHead>
+                    )}
+                    {activeColumns
                       .filter((col) => col.visible)
                       .map((col) => (
                         <TableHead key={col.key}>{col.label}</TableHead>
@@ -1982,14 +2005,18 @@ const TaskTable = ({
                           key={task._id || i}
                           className="hover:bg-slate-50"
                         >
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedOneTimeTaskIds.includes(
-                                task._id,
-                              )}
-                              onChange={() => toggleOneTaskSelection(task._id)}
-                            />
-                          </TableCell>
+                          {canDelete && (
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedOneTimeTaskIds.includes(
+                                  task._id,
+                                )}
+                                onChange={() =>
+                                  toggleOneTaskSelection(task._id)
+                                }
+                              />
+                            </TableCell>
+                          )}
                           {columns.find((c) => c.key === "sr")?.visible && (
                             <TableCell>
                               {indexOfFirstOneTimeTask + i + 1}
@@ -2033,13 +2060,13 @@ const TaskTable = ({
                                   <span
                                     className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
       ${
-        assignedByUser.role?.name === "Admin"
+        assignedByUser.role?.name === "admin"
           ? "bg-red-100 text-red-700"
-          : assignedByUser.role?.name === "Owner"
+          : assignedByUser.role?.name === "owner"
             ? "bg-purple-100 text-purple-700"
-            : assignedByUser.role?.name === "Sr. Manager"
+            : assignedByUser.role?.name === "sr._manager"
               ? "bg-blue-100 text-blue-700"
-              : assignedByUser.role?.name === "Manager"
+              : assignedByUser.role?.name === "manager"
                 ? "bg-green-100 text-green-700"
                 : "bg-gray-100 text-gray-700"
       }
@@ -2063,13 +2090,13 @@ const TaskTable = ({
                                   <span
                                     className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
       ${
-        assignedToUser.role?.name === "Admin"
+        assignedToUser.role?.name === "admin"
           ? "bg-red-100 text-red-700"
-          : assignedToUser.role?.name === "Owner"
+          : assignedToUser.role?.name === "owner"
             ? "bg-purple-100 text-purple-700"
-            : assignedToUser.role?.name === "Sr. Manager"
+            : assignedToUser.role?.name === "sr._manager"
               ? "bg-blue-100 text-blue-700"
-              : assignedToUser.role?.name === "Manager"
+              : assignedToUser.role?.name === "manager"
                 ? "bg-green-100 text-green-700"
                 : "bg-gray-100 text-gray-700"
       }
@@ -2232,127 +2259,143 @@ const TaskTable = ({
                               {getStatusBadge(task.status)}
                             </TableCell>
                           )}
-                          {columns.find((c) => c.key === "action")?.visible && (
-                            <TableCell className="flex items-center gap-1">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                                      onClick={() => handleEditClick(task)}
-                                      disabled={
-                                        task.status == "Completed" ||
-                                        task?.recurringRefId
-                                      }
-                                    >
-                                      <FilePenLine className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Edit Task</p>
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-gray-600 hover:bg-gray-50"
-                                      onClick={() => handleChecklistClick(task)}
-                                      disabled={
-                                        task.status == "Completed" ||
-                                        !task.checklist ||
-                                        task.checklist.length === 0
-                                      }
-                                    >
-                                      <ClipboardList className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>View Checklist</p>
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-green-600 hover:bg-green-50"
-                                      onClick={() => handleToggleComplete(task)}
-                                      disabled={
-                                        task.status == "Completed" ||
-                                        task.status == "Upcoming" ||
-                                        (task.checklist &&
-                                          task.checklist.length > 0)
-                                      }
-                                    >
-                                      <CheckCircle className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Mark as Complete</p>
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                {currentUser &&
-                                  (currentUser.role?.name === "Admin" ||
-                                    currentUser.role === "Admin" ||
-                                    currentUser._id ===
-                                      (task.createdBy?._id ||
-                                        task.createdBy)) && (
+                          {columns.find((c) => c.key === "action")?.visible &&
+                            (canUpdate || canDelete) && (
+                              <TableCell className="flex items-center gap-1">
+                                <TooltipProvider>
+                                  {canUpdate && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Button
                                           variant="ghost"
                                           size="icon"
+                                          className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                                          onClick={() => handleEditClick(task)}
                                           disabled={
-                                            assignedByUser?._id ===
-                                              assignedToUser?._id ||
-                                            task.status === "Completed"
-                                          }
-                                          className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
-                                          onClick={() =>
-                                            openReassignDialog(task)
+                                            task.status == "Completed" ||
+                                            task?.recurringRefId
                                           }
                                         >
-                                          <Users className="h-4 w-4" />
+                                          <FilePenLine className="h-4 w-4" />
                                         </Button>
                                       </TooltipTrigger>
                                       <TooltipContent>
-                                        <p>Re-assign User</p>
+                                        <p>Edit Task</p>
                                       </TooltipContent>
                                     </Tooltip>
                                   )}
 
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      disabled={
-                                        currentUser &&
-                                        currentUser.role &&
-                                        !["Owner", "Admin"].includes(
-                                          currentUser.role.name,
-                                        )
-                                      }
-                                      size="icon"
-                                      className="h-8 w-8 text-red-600 hover:bg-red-50"
-                                      onClick={() => handleDeleteClick(task)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Delete Task</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </TableCell>
-                          )}
+                                  {canUpdate && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-gray-600 hover:bg-gray-50"
+                                          onClick={() =>
+                                            handleChecklistClick(task)
+                                          }
+                                          disabled={
+                                            task.status == "Completed" ||
+                                            !task.checklist ||
+                                            task.checklist.length === 0
+                                          }
+                                        >
+                                          <ClipboardList className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>View Checklist</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+
+                                  {canUpdate && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-green-600 hover:bg-green-50"
+                                          onClick={() =>
+                                            handleToggleComplete(task)
+                                          }
+                                          disabled={
+                                            task.status == "Completed" ||
+                                            task.status == "Upcoming" ||
+                                            (task.checklist &&
+                                              task.checklist.length > 0)
+                                          }
+                                        >
+                                          <CheckCircle className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Mark as Complete</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+
+                                  {canUpdate &&
+                                    currentUser &&
+                                    (currentUser.role?.name === "Admin" ||
+                                      currentUser.role === "Admin" ||
+                                      currentUser._id ===
+                                        (task.createdBy?._id ||
+                                          task.createdBy)) && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            disabled={
+                                              assignedByUser?._id ===
+                                                assignedToUser?._id ||
+                                              task.status === "Completed"
+                                            }
+                                            className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
+                                            onClick={() =>
+                                              openReassignDialog(task)
+                                            }
+                                          >
+                                            <Users className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Re-assign User</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+
+                                  {canDelete && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          disabled={
+                                            currentUser &&
+                                            currentUser.role &&
+                                            !["Owner", "Admin"].includes(
+                                              currentUser.role.name,
+                                            )
+                                          }
+                                          size="icon"
+                                          className="h-8 w-8 text-red-600 hover:bg-red-50"
+                                          onClick={() =>
+                                            handleDeleteClick(task)
+                                          }
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Delete Task</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </TooltipProvider>
+                              </TableCell>
+                            )}
                         </TableRow>
                       );
                     })}
@@ -2385,18 +2428,20 @@ const TaskTable = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">
-                      <Checkbox
-                        checked={
-                          currentRecurringTasks.length > 0 &&
-                          currentRecurringTasks.every((t) =>
-                            selectedRecurringTaskIds.includes(t._id),
-                          )
-                        }
-                        onChange={handleSelectAllRecurringTasks}
-                      />
-                    </TableHead>
-                    {recurringColumns
+                    {canDelete && (
+                      <TableHead className="w-[50px]">
+                        <Checkbox
+                          checked={
+                            currentRecurringTasks.length > 0 &&
+                            currentRecurringTasks.every((t) =>
+                              selectedRecurringTaskIds.includes(t._id),
+                            )
+                          }
+                          onChange={handleSelectAllRecurringTasks}
+                        />
+                      </TableHead>
+                    )}
+                    {activeRecurringColumns
                       .filter((col) => col.visible)
                       .map((col) => (
                         <TableHead className="w-100" key={col.key}>
@@ -2421,16 +2466,18 @@ const TaskTable = ({
                           key={task._id || i}
                           className="hover:bg-slate-50"
                         >
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedRecurringTaskIds.includes(
-                                task._id,
-                              )}
-                              onChange={() =>
-                                toggleRecurringTaskSelection(task._id)
-                              }
-                            />
-                          </TableCell>
+                          {canDelete && (
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedRecurringTaskIds.includes(
+                                  task._id,
+                                )}
+                                onChange={() =>
+                                  toggleRecurringTaskSelection(task._id)
+                                }
+                              />
+                            </TableCell>
+                          )}
                           {recurringColumns.find((c) => c.key === "sr")
                             ?.visible && (
                             <TableCell>
@@ -2547,13 +2594,13 @@ const TaskTable = ({
                                   <span
                                     className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
       ${
-        assignedByUser.role?.name === "Admin"
+        assignedByUser.role?.name === "admin"
           ? "bg-red-100 text-red-700"
-          : assignedByUser.role?.name === "Owner"
+          : assignedByUser.role?.name === "owner"
             ? "bg-purple-100 text-purple-700"
-            : assignedByUser.role?.name === "Sr. Manager"
+            : assignedByUser.role?.name === "sr._manager"
               ? "bg-blue-100 text-blue-700"
-              : assignedByUser.role?.name === "Manager"
+              : assignedByUser.role?.name === "manager"
                 ? "bg-green-100 text-green-700"
                 : "bg-gray-100 text-gray-700"
       }
@@ -2578,13 +2625,13 @@ const TaskTable = ({
                                   <span
                                     className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
       ${
-        assignedToUser.role?.name === "Admin"
+        assignedToUser.role?.name === "admin"
           ? "bg-red-100 text-red-700"
-          : assignedToUser.role?.name === "Owner"
+          : assignedToUser.role?.name === "owner"
             ? "bg-purple-100 text-purple-700"
-            : assignedToUser.role?.name === "Sr. Manager"
+            : assignedToUser.role?.name === "sr._manager"
               ? "bg-blue-100 text-blue-700"
-              : assignedToUser.role?.name === "Manager"
+              : assignedToUser.role?.name === "manager"
                 ? "bg-green-100 text-green-700"
                 : "bg-gray-100 text-gray-700"
       }
@@ -2627,123 +2674,139 @@ const TaskTable = ({
                             </TableCell>
                           )}
                           {recurringColumns.find((c) => c.key === "action")
-                            ?.visible && (
-                            <TableCell className="flex items-center gap-1">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                                      onClick={() => handleEditClick(task)}
-                                    >
-                                      <FilePenLine className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Edit Task</p>
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-gray-600 hover:bg-gray-50"
-                                      onClick={() => handleChecklistClick(task)}
-                                      disabled={
-                                        task.status == "Completed" ||
-                                        !task.checklist ||
-                                        task.checklist.length === 0
-                                      }
-                                    >
-                                      <ClipboardList className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>View Checklist</p>
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-green-600 hover:bg-green-50"
-                                      onClick={() => handleToggleComplete(task)}
-                                      disabled={
-                                        task.status == "Completed" ||
-                                        task.status == "Upcoming" ||
-                                        (task.checklist &&
-                                          task.checklist.length > 0)
-                                      }
-                                    >
-                                      <CheckCircle className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Mark as Complete</p>
-                                  </TooltipContent>
-                                </Tooltip>
-
-                                {currentUser &&
-                                  (currentUser.role?.name === "Admin" ||
-                                    currentUser.role === "Admin" ||
-                                    currentUser._id ===
-                                      (task.createdBy?._id ||
-                                        task.createdBy)) && (
+                            ?.visible &&
+                            (canUpdate || canDelete) && (
+                              <TableCell className="flex items-center gap-1">
+                                <TooltipProvider>
+                                  {canUpdate && (
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <Button
                                           variant="ghost"
                                           size="icon"
-                                          disabled={
-                                            assignedByUser?._id ===
-                                              assignedToUser?._id ||
-                                            task.status === "Completed"
-                                          }
-                                          className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
-                                          onClick={() =>
-                                            openReassignDialog(task)
-                                          }
+                                          className="h-8 w-8 text-blue-600 hover:bg-blue-50"
+                                          onClick={() => handleEditClick(task)}
                                         >
-                                          <Users className="h-4 w-4" />
+                                          <FilePenLine className="h-4 w-4" />
                                         </Button>
                                       </TooltipTrigger>
                                       <TooltipContent>
-                                        <p>Re-assign User</p>
+                                        <p>Edit Task</p>
                                       </TooltipContent>
                                     </Tooltip>
                                   )}
 
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      disabled={
-                                        currentUser &&
-                                        currentUser.role &&
-                                        !["Owner", "Admin"].includes(
-                                          currentUser.role.name,
-                                        )
-                                      }
-                                      size="icon"
-                                      className="h-8 w-8 text-red-600 hover:bg-red-50"
-                                      onClick={() => handleDeleteClick(task)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Delete Task</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </TableCell>
-                          )}
+                                  {canUpdate && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-gray-600 hover:bg-gray-50"
+                                          onClick={() =>
+                                            handleChecklistClick(task)
+                                          }
+                                          disabled={
+                                            task.status == "Completed" ||
+                                            !task.checklist ||
+                                            task.checklist.length === 0
+                                          }
+                                        >
+                                          <ClipboardList className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>View Checklist</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+
+                                  {canUpdate && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-8 w-8 text-green-600 hover:bg-green-50"
+                                          onClick={() =>
+                                            handleToggleComplete(task)
+                                          }
+                                          disabled={
+                                            task.status == "Completed" ||
+                                            task.status == "Upcoming" ||
+                                            (task.checklist &&
+                                              task.checklist.length > 0)
+                                          }
+                                        >
+                                          <CheckCircle className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Mark as Complete</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+
+                                  {canUpdate &&
+                                    currentUser &&
+                                    (currentUser.role?.name === "Admin" ||
+                                      currentUser.role === "Admin" ||
+                                      currentUser._id ===
+                                        (task.createdBy?._id ||
+                                          task.createdBy)) && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            disabled={
+                                              assignedByUser?._id ===
+                                                assignedToUser?._id ||
+                                              task.status === "Completed"
+                                            }
+                                            className="h-8 w-8 text-indigo-600 hover:bg-indigo-50"
+                                            onClick={() =>
+                                              openReassignDialog(task)
+                                            }
+                                          >
+                                            <Users className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>Re-assign User</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+
+                                  {canDelete && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          disabled={
+                                            currentUser &&
+                                            currentUser.role &&
+                                            !["Owner", "Admin"].includes(
+                                              currentUser.role.name,
+                                            )
+                                          }
+                                          size="icon"
+                                          className="h-8 w-8 text-red-600 hover:bg-red-50"
+                                          onClick={() =>
+                                            handleDeleteClick(task)
+                                          }
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p>Delete Task</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </TooltipProvider>
+                              </TableCell>
+                            )}
                         </TableRow>
                       );
                     })}

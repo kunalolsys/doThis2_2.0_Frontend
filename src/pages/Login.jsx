@@ -1,13 +1,12 @@
 import React, { useState } from "react";
-import { Mail, Lock, LogIn, Zap, Key } from "lucide-react";
+import { Mail, Lock, LogIn, Zap, Key, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import Cookies from "js-cookie";
 import { useNavigate, Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setCurrentUser } from "../redux/slices/user/userSlice";
-import { setPermissions } from "../redux/slices/permission/permissionSlice"; // 🔥 Redux Permission Action
+import { setPermissions } from "../redux/slices/permissions/permissionSlice"; // Redux Permission Action
 import { loginUser } from "../lib/authAPI";
-import { Eye, EyeOff } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -33,13 +32,13 @@ const Login = () => {
     try {
       const res = await loginUser(formData);
       setIsLoading(false);
+      // --- INSIDE Login.jsx handleSubmit ---
       if (res?.data?.success) {
         toast.success(res.data.message || "Login successful");
 
-        // Dispatch action to set current user in Redux store
         dispatch(setCurrentUser(res.data.user));
 
-        // Store user data in cookies with explicit root path
+        // Store session metadata in cookies
         Cookies.set("isLoggedIn", "true", { path: "/" });
         Cookies.set("name", res.data.user?.name || "", { path: "/" });
         Cookies.set("email", res.data.user?.email || "", { path: "/" });
@@ -56,31 +55,20 @@ const Login = () => {
 
         Cookies.set("role", userRole, { path: "/" });
         Cookies.set("token", res.data.accessToken || "", { path: "/" });
-
-        const userId = res.data.user?._id || "";
-        Cookies.set("userId", userId, { path: "/" });
-
+        Cookies.set("userId", res.data.user?._id || "", { path: "/" });
         Cookies.set(
           "departmentName",
           JSON.stringify(res.data.user?.department || []),
           { path: "/" },
         );
 
-        // --- ENCODED PERMISSIONS & REDUX STORE SYNC ---
-        const permissionsData = res.data?.permissions || {};
-        const jsonPermString = JSON.stringify(permissionsData);
-
-        // 1. Dispatch permissions directly to Redux Store
-        dispatch(setPermissions(permissionsData)); // 🔥 Saved to Redux
-
-        // 2. URI Encoded Cookie prevents browser rejection
-        Cookies.set("permissions", encodeURIComponent(jsonPermString), {
-          expires: 7,
-          path: "/",
-        });
-
-        // 3. Backup LocalStorage Sync
-        localStorage.setItem("permissions", jsonPermString);
+        // Dispatches permissions directly to Redux store
+        dispatch(
+          setPermissions({
+            permissions: res.data?.permissions || [],
+            isSuper: userRole.toLowerCase().includes("super"),
+          }),
+        );
 
         if (redirectPath) {
           navigate(redirectPath);

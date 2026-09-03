@@ -35,6 +35,7 @@ const { Option } = Select;
 import { fetchTemplates } from "../../redux/slices/fms/fmsSlice";
 import { useDispatch, useSelector } from "react-redux";
 import api from "../../lib/api";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 /* ─── Design tokens ──────────────────────────────────────────────────────── */
 const T = {
@@ -982,7 +983,14 @@ export default function OpenFormBuilder() {
   const [toast, setToast] = useState(null);
   const [editingFormId, setEditingFormId] = useState(null);
   const currentUser = useSelector((state) => state.users.currentUser);
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "form_builder",
+    isSuper,
+  );
   const [config, setConfig] = useState({
     formName: "",
     description: "",
@@ -1225,19 +1233,31 @@ export default function OpenFormBuilder() {
   );
 
   const TABS = [
-    { id: "builder", label: "Form Builder", icon: Settings2 },
-    { id: "preview", label: "Preview Form", icon: Eye },
+    {
+      id: "builder",
+      label: "Form Builder",
+      icon: Settings2,
+      visible: canCreate || canUpdate, // Hide if cannot create or update
+    },
+    {
+      id: "preview",
+      label: "Preview Form",
+      icon: Eye,
+      visible: canCreate || canUpdate, // Hide if cannot create or update
+    },
     {
       id: "forms",
       label: "Published Forms",
       icon: FileText,
       badge: publishedForms.length,
+      visible: canRead, // Hide if cannot view forms
     },
     {
       id: "drafts",
       label: "Draft Forms",
       icon: FileEdit,
       badge: draftForms.length,
+      visible: canRead || canUpdate, // Hide if cannot view or edit drafts
     },
   ];
 
@@ -1510,13 +1530,15 @@ export default function OpenFormBuilder() {
           )}
 
           <div style={{ display: "flex", gap: 8 }}>
-            <Btn
-              size="sm"
-              style={{ flex: 1, justifyContent: "center" }}
-              onClick={() => handleEditForm(form)}
-            >
-              <Edit size={13} /> Edit
-            </Btn>
+            {(canCreate || canUpdate) && (
+              <Btn
+                size="sm"
+                style={{ flex: 1, justifyContent: "center" }}
+                onClick={() => handleEditForm(form)}
+              >
+                <Edit size={13} /> Edit
+              </Btn>
+            )}
 
             <Btn
               size="sm"
@@ -1544,13 +1566,15 @@ export default function OpenFormBuilder() {
               </Btn>
             )}
 
-            <Btn
-              size="sm"
-              variant="secondary"
-              onClick={() => handleDeleteForm(form._id)}
-            >
-              <Trash2 size={13} />
-            </Btn>
+            {canDelete && (
+              <Btn
+                size="sm"
+                variant="secondary"
+                onClick={() => handleDeleteForm(form._id)}
+              >
+                <Trash2 size={13} />
+              </Btn>
+            )}
           </div>
         </div>
       </div>
@@ -1710,16 +1734,18 @@ export default function OpenFormBuilder() {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               {/* ➕ Create New Form Button */}
-              <Btn
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  resetFormBuilder();
-                  setTab("builder");
-                }}
-              >
-                <Plus size={14} /> Create New Form
-              </Btn>
+              {canCreate && (
+                <Btn
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    resetFormBuilder();
+                    setTab("builder");
+                  }}
+                >
+                  <Plus size={14} /> Create New Form
+                </Btn>
+              )}
 
               <Btn
                 variant="secondary"
@@ -1744,46 +1770,48 @@ export default function OpenFormBuilder() {
               boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
             }}
           >
-            {TABS.map(({ id, label, icon: Icon, badge }) => (
-              <button
-                key={id}
-                onClick={() => setTab(id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 7,
-                  padding: "8px 16px",
-                  borderRadius: 10,
-                  border: "none",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  background: tab === id ? T.accent : "transparent",
-                  color: tab === id ? "#fff" : T.muted,
-                  transition: "all 0.15s",
-                  position: "relative",
-                }}
-              >
-                <Icon size={14} />
-                {label}
-                {badge > 0 && (
-                  <span
-                    style={{
-                      background:
-                        tab === id ? "rgba(255,255,255,0.25)" : T.accentL,
-                      color: tab === id ? "#fff" : T.accent,
-                      fontSize: 10,
-                      fontWeight: 800,
-                      padding: "1px 6px",
-                      borderRadius: 20,
-                    }}
-                  >
-                    {badge}
-                  </span>
-                )}
-              </button>
-            ))}
+            {TABS.filter(({ visible }) => visible).map(
+              ({ id, label, icon: Icon, badge }) => (
+                <button
+                  key={id}
+                  onClick={() => setTab(id)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 7,
+                    padding: "8px 16px",
+                    borderRadius: 10,
+                    border: "none",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    background: tab === id ? T.accent : "transparent",
+                    color: tab === id ? "#fff" : T.muted,
+                    transition: "all 0.15s",
+                    position: "relative",
+                  }}
+                >
+                  <Icon size={14} />
+                  {label}
+                  {badge > 0 && (
+                    <span
+                      style={{
+                        background:
+                          tab === id ? "rgba(255,255,255,0.25)" : T.accentL,
+                        color: tab === id ? "#fff" : T.accent,
+                        fontSize: 10,
+                        fontWeight: 800,
+                        padding: "1px 6px",
+                        borderRadius: 20,
+                      }}
+                    >
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              ),
+            )}
           </div>
         </div>
 
@@ -2222,12 +2250,14 @@ export default function OpenFormBuilder() {
                 <h3 style={{ fontSize: 16, color: T.muted }}>
                   No published forms yet
                 </h3>
-                <Btn
-                  onClick={() => setTab("builder")}
-                  style={{ marginTop: 14 }}
-                >
-                  <Plus size={14} /> Create Form
-                </Btn>
+                {canCreate && (
+                  <Btn
+                    onClick={() => setTab("builder")}
+                    style={{ marginTop: 14 }}
+                  >
+                    <Plus size={14} /> Create Form
+                  </Btn>
+                )}
               </div>
             ) : (
               <div
@@ -2264,12 +2294,14 @@ export default function OpenFormBuilder() {
                 <h3 style={{ fontSize: 16, color: T.muted }}>
                   No draft forms saved
                 </h3>
-                <Btn
-                  onClick={() => setTab("builder")}
-                  style={{ marginTop: 14 }}
-                >
-                  <Plus size={14} /> Create Draft
-                </Btn>
+                {canCreate && (
+                  <Btn
+                    onClick={() => setTab("builder")}
+                    style={{ marginTop: 14 }}
+                  >
+                    <Plus size={14} /> Create Draft
+                  </Btn>
+                )}
               </div>
             ) : (
               <div

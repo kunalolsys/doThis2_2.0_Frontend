@@ -37,6 +37,8 @@ import {
 } from "@ant-design/icons";
 import api from "../../lib/api";
 import { formatLabel } from "../../lib/utilFunctions";
+import { useSelector } from "react-redux";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -54,7 +56,14 @@ export default function TaskReassignmentPage() {
   const [selectedRowData, setSelectedRowData] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [taskFrequency, setTaskFrequency] = useState("one-time");
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "task_reassigning",
+    isSuper,
+  );
   // 1. Fetch Departments
   const fetchDepartments = async () => {
     try {
@@ -714,7 +723,7 @@ export default function TaskReassignmentPage() {
       </Card>
 
       {/* 3. CONTEXTUAL ACTION NOTIFICATION STRIP */}
-      {selectedRowKeys.length > 0 && (
+      {canUpdate && selectedRowKeys.length > 0 && (
         <div
           style={{
             display: "flex",

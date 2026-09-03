@@ -63,6 +63,7 @@ import { getUserForDrop } from "../../redux/slices/user/userSlice.js";
 import { fetchRoles } from "../../redux/slices/role/roleSlice.js";
 import { toast } from "sonner";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
+import { getSubmodulePermissions } from "../../utils/permissionUtils.js";
 
 const BucketCreation = () => {
   const { bucketId } = useParams();
@@ -77,7 +78,14 @@ const BucketCreation = () => {
     dispatch(getUserForDrop());
     fetchMaster();
   }, [dispatch]);
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "task_buckets",
+    isSuper,
+  );
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
@@ -1033,21 +1041,23 @@ const BucketCreation = () => {
                   {/* BUTTON */}
                   {/* ============================================== */}
 
-                  <Button
-                    onClick={handleCreateTask}
-                    disabled={loading}
-                    className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-base shadow-lg"
-                  >
-                    <Send className="w-5 h-5 mr-2" />
+                  {canCreate && (
+                    <Button
+                      onClick={handleCreateTask}
+                      disabled={loading}
+                      className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-base shadow-lg"
+                    >
+                      <Send className="w-5 h-5 mr-2" />
 
-                    {loading
-                      ? isEditMode
-                        ? "Updating Bucket..."
-                        : "Creating Bucket..."
-                      : isEditMode
-                        ? "Update Task Bucket"
-                        : "Create Task Bucket"}
-                  </Button>
+                      {loading
+                        ? isEditMode
+                          ? "Updating Bucket..."
+                          : "Creating Bucket..."
+                        : isEditMode
+                          ? "Update Task Bucket"
+                          : "Create Task Bucket"}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

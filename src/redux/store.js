@@ -1,3 +1,4 @@
+// src/redux/store.js
 import { configureStore } from "@reduxjs/toolkit";
 import userReducer from "./slices/user/userSlice";
 import departmentReducer from "./slices/department/departmentSlice";
@@ -13,6 +14,7 @@ import notificationReducer from "./slices/notification/notificationSlice";
 import companyReducer from "./slices/company/companySlice";
 import profileReducer from "./slices/profile/profileSlice";
 import moduleReducer from "./slices/moduleSetting/moduleSlice";
+import permissionReducer from "./slices/permissions/permissionSlice"; // 🔥 Added
 
 const store = configureStore({
   reducer: {
@@ -30,6 +32,7 @@ const store = configureStore({
     company: companyReducer,
     profile: profileReducer,
     modules: moduleReducer,
+    permissions: permissionReducer, // 🔥 Added
   },
 });
 

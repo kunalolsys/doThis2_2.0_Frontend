@@ -146,11 +146,11 @@ const CreateNewFmsTem = () => {
         const response = await api.get("/setup/users/allUsers");
         const users = response.data?.data || [];
         setAllUsers(users);
-        const doers = users.filter((u) => u.role?.name === "Member");
-        const managers = users.filter((u) => u.role?.name === "Manager");
-        const srManagers = users.filter((u) => u.role?.name === "Sr. Manager");
+        const doers = users.filter((u) => u.role?.name === "member");
+        const managers = users.filter((u) => u.role?.name === "manager");
+        const srManagers = users.filter((u) => u.role?.name === "sr._manager");
         const filteredUsers = users.filter((u) =>
-          ["Member", "Manager", "Sr. Manager"].includes(u.role?.name),
+          ["Member", "Manager", "Sr. Manager"].includes(u.role?.displayName || u.role?.name),
         );
 
         setFilteredUser(filteredUsers);
@@ -718,7 +718,7 @@ const CreateNewFmsTem = () => {
                   <SelectContent>
                     {managers.map((u) => (
                       <SelectItem key={u._id} value={u._id}>
-                        {u.name}
+                        {u.displayName || u.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -738,7 +738,7 @@ const CreateNewFmsTem = () => {
                   <SelectContent>
                     {srManagers.map((u) => (
                       <SelectItem key={u._id} value={u._id}>
-                        {u.name}
+                        {u.displayName || u.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

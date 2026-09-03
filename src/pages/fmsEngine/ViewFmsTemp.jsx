@@ -145,11 +145,11 @@ const ViewFmsTemp = () => {
         const response = await api.get("/setup/users/allUsers");
         const users = response.data?.data || [];
         setAllUsers(users);
-        const doers = users.filter((u) => u.role?.name === "Member");
-        const managers = users.filter((u) => u.role?.name === "Manager");
-        const srManagers = users.filter((u) => u.role?.name === "Sr. Manager");
+        const doers = users.filter((u) => u.role?.name === "member");
+        const managers = users.filter((u) => u.role?.name === "manager");
+        const srManagers = users.filter((u) => u.role?.name === "sr._manager");
         const filteredUsers = users.filter((u) =>
-          ["Member", "Manager", "Sr. Manager"].includes(u.role?.name),
+          ["member", "manager", "sr._manager"].includes(u.role?.name),
         );
 
         setFilteredUser(filteredUsers);

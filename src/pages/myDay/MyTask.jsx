@@ -99,6 +99,7 @@ import QueryDrawer from "../../components/QueryDrawer";
 import TaskChat from "../../components/TaskChat";
 import { useLocation, useParams, useSearchParams } from "react-router-dom";
 import { FileTextOutlined } from "@ant-design/icons";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 // --- Helper: Status Badge ---
 const getStatusBadge = (status) => {
@@ -829,6 +830,7 @@ const TodayTasksTable = ({
   setUnreadMap,
   setSubmissionModalOpen,
   setSelectedSubmissionTask,
+  canUpdate,
 }) => {
   const combinedTasks = [...(tasks || []), ...(upcomingRecurringTasks || [])];
   return (
@@ -849,7 +851,7 @@ const TodayTasksTable = ({
             <TableHead>Frequency</TableHead>
             <TableHead>Time Left</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
+            {canUpdate && <TableHead>Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -989,13 +991,13 @@ const TodayTasksTable = ({
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
       ${
-        assignedByUser.role?.name === "Admin"
+        assignedByUser.role?.name === "admin"
           ? "bg-red-100 text-red-700"
-          : assignedByUser.role?.name === "Owner"
+          : assignedByUser.role?.name === "owner"
             ? "bg-purple-100 text-purple-700"
-            : assignedByUser.role?.name === "Sr. Manager"
+            : assignedByUser.role?.name === "sr._manager"
               ? "bg-blue-100 text-blue-700"
-              : assignedByUser.role?.name === "Manager"
+              : assignedByUser.role?.name === "manager"
                 ? "bg-green-100 text-green-700"
                 : "bg-gray-100 text-gray-700"
       }
@@ -1016,13 +1018,13 @@ const TodayTasksTable = ({
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full w-fit font-medium
       ${
-        assignedToUser.role?.name === "Admin"
+        assignedToUser.role?.name === "admin"
           ? "bg-red-100 text-red-700"
-          : assignedToUser.role?.name === "Owner"
+          : assignedToUser.role?.name === "owner"
             ? "bg-purple-100 text-purple-700"
-            : assignedToUser.role?.name === "Sr. Manager"
+            : assignedToUser.role?.name === "sr._manager"
               ? "bg-blue-100 text-blue-700"
-              : assignedToUser.role?.name === "Manager"
+              : assignedToUser.role?.name === "manager"
                 ? "bg-green-100 text-green-700"
                 : "bg-gray-100 text-gray-700"
       }
@@ -1172,25 +1174,29 @@ const TodayTasksTable = ({
                       })()}
                     </TableCell>
                     <TableCell>{getStatusBadge(task.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center">
-                        <TaskActions
-                          task={task}
-                          onChecklist={onChecklist}
-                          onToggleComplete={onToggleComplete}
-                          handleCompleteClick={handleCompleteClick}
-                          setSelectedQueryTask={setSelectedQueryTask}
-                          setQueryDrawerOpen={setQueryDrawerOpen}
-                          setRaiseQueryModalOpen={setRaiseQueryModalOpen}
-                          unreadCount={unreadMap[task.conversationId] || 0}
-                          setUnreadMap={setUnreadMap}
-                          assignedByUser={assignedByUser}
-                          assignedToUser={assignedToUser}
-                          setSubmissionModalOpen={setSubmissionModalOpen}
-                          setSelectedSubmissionTask={setSelectedSubmissionTask}
-                        />
-                      </div>
-                    </TableCell>
+                    {canUpdate && (
+                      <TableCell>
+                        <div className="flex items-center">
+                          <TaskActions
+                            task={task}
+                            onChecklist={onChecklist}
+                            onToggleComplete={onToggleComplete}
+                            handleCompleteClick={handleCompleteClick}
+                            setSelectedQueryTask={setSelectedQueryTask}
+                            setQueryDrawerOpen={setQueryDrawerOpen}
+                            setRaiseQueryModalOpen={setRaiseQueryModalOpen}
+                            unreadCount={unreadMap[task.conversationId] || 0}
+                            setUnreadMap={setUnreadMap}
+                            assignedByUser={assignedByUser}
+                            assignedToUser={assignedToUser}
+                            setSubmissionModalOpen={setSubmissionModalOpen}
+                            setSelectedSubmissionTask={
+                              setSelectedSubmissionTask
+                            }
+                          />
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 </React.Fragment>
               );
@@ -1218,6 +1224,14 @@ const MyTask = () => {
   const location = useLocation();
   const currentUser = useSelector((state) => state.users.currentUser);
   const source = location.state?.source;
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
+
+  // Destructure clean capability flags
+  const { canRead, canUpdate } = getSubmodulePermissions(
+    permissions,
+    "delegated_recurring",
+    isSuper,
+  );
 
   if (location.pathname !== "/") {
     const redirectPath = location.pathname + location.search + location.hash;
@@ -1766,9 +1780,9 @@ const MyTask = () => {
   }, []);
 
   const role = Cookies.get("role") || "";
-  const isSuper = role === "Super";
+  const isSuperUser = role === "Super";
   const isModuleEnabled = (moduleKey) => {
-    if (isSuper) return true;
+    if (isSuperUser) return true;
     return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
   };
 
@@ -1929,6 +1943,7 @@ const MyTask = () => {
                         setUnreadMap={setUnreadMap}
                         setSubmissionModalOpen={setSubmissionModalOpen}
                         setSelectedSubmissionTask={setSelectedSubmissionTask}
+                        canUpdate={canUpdate}
                       />
                     </TooltipProvider>
 

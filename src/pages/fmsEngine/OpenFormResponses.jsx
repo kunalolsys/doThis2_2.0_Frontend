@@ -29,6 +29,7 @@ import {
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
 import { motion, AnimatePresence } from "framer-motion";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 // --- Animation Variants ---
 const fadeUpVariants = {
@@ -228,7 +229,14 @@ export default function OpenFormResponses() {
 
   const [page, setPage] = useState(1);
   const limit = 10;
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "responses",
+    isSuper,
+  );
   const currentUser = useSelector((state) => state.users?.currentUser);
 
   const isAdmin = useMemo(() => {
@@ -574,7 +582,7 @@ export default function OpenFormResponses() {
               <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
                 <UserCheck size={14} className="text-indigo-600" /> Response Inspector
               </h3>
-              {isAdmin && selectedSubmission && (
+              {canUpdate&& isAdmin && selectedSubmission && (
                 <button
                   onClick={() => setEditModalOpen(true)}
                   className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-[11px] rounded-lg cursor-pointer transition-all flex items-center gap-1 shadow-xs"

@@ -73,11 +73,11 @@ const MisReports = () => {
 
         const users = response.data?.data || [];
 
-        const doers = users.filter((u) => u.role?.name === "Member");
+        const doers = users.filter((u) => u.role?.name === "member");
 
-        const managers = users.filter((u) => u.role?.name === "Manager");
+        const managers = users.filter((u) => u.role?.name === "manager");
 
-        const srManagers = users.filter((u) => u.role?.name === "Sr. Manager");
+        const srManagers = users.filter((u) => u.role?.name === "sr._manager");
 
         setDoers(doers);
         setManagers(managers);

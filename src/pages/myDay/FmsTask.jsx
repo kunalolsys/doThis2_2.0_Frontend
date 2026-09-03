@@ -106,6 +106,7 @@ import { FileTextOutlined } from "@ant-design/icons";
 import { Textarea } from "../../components/ui";
 import PublicOpenForm from "../public-form/PublicOpenForm";
 import dayjs from "dayjs";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 // --- Helper: Status Badge ---
 const getStatusBadge = (status) => {
@@ -855,6 +856,7 @@ const TodayTasksTable = ({
   setUnreadMap,
   setSubmissionModalOpen,
   setSelectedSubmissionTask,
+  canUpdate,
 }) => {
   const combinedTasks = useMemo(
     () => [...(tasks || []), ...(upcomingRecurringTasks || [])],
@@ -925,7 +927,6 @@ const TodayTasksTable = ({
           <TableRow>
             <TableHead>Sr. No.</TableHead>
             <TableHead>Task Title</TableHead>
-
             {tableColumns.map(([key, colMeta]) => (
               <TableHead
                 key={key}
@@ -934,13 +935,12 @@ const TodayTasksTable = ({
                 {colMeta.label}
               </TableHead>
             ))}
-
             <TableHead>Description</TableHead>
             <TableHead>Due Date & Time</TableHead>
             <TableHead>Frequency</TableHead>
             <TableHead>Time Left</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
+            {canUpdate && <TableHead>Actions</TableHead>}{" "}
           </TableRow>
         </TableHeader>
 
@@ -1221,26 +1221,30 @@ const TodayTasksTable = ({
                       </div>
                     </TableCell>
 
-                    <TableCell>
-                      <div className="flex items-center">
-                        <TaskActions
-                          task={task}
-                          onChecklist={onChecklist}
-                          onToggleComplete={onToggleComplete}
-                          handleNotDoneClick={handleNotDoneClick}
-                          handleCompleteClick={handleCompleteClick}
-                          setSelectedQueryTask={setSelectedQueryTask}
-                          setQueryDrawerOpen={setQueryDrawerOpen}
-                          setRaiseQueryModalOpen={setRaiseQueryModalOpen}
-                          unreadCount={unreadMap[task?.conversationId] || 0}
-                          setUnreadMap={setUnreadMap}
-                          assignedByUser={assignedByUser}
-                          assignedToUser={assignedToUser}
-                          setSubmissionModalOpen={setSubmissionModalOpen}
-                          setSelectedSubmissionTask={setSelectedSubmissionTask}
-                        />
-                      </div>
-                    </TableCell>
+                    {canUpdate && (
+                      <TableCell>
+                        <div className="flex items-center">
+                          <TaskActions
+                            task={task}
+                            onChecklist={onChecklist}
+                            onToggleComplete={onToggleComplete}
+                            handleNotDoneClick={handleNotDoneClick}
+                            handleCompleteClick={handleCompleteClick}
+                            setSelectedQueryTask={setSelectedQueryTask}
+                            setQueryDrawerOpen={setQueryDrawerOpen}
+                            setRaiseQueryModalOpen={setRaiseQueryModalOpen}
+                            unreadCount={unreadMap[task?.conversationId] || 0}
+                            setUnreadMap={setUnreadMap}
+                            assignedByUser={assignedByUser}
+                            assignedToUser={assignedToUser}
+                            setSubmissionModalOpen={setSubmissionModalOpen}
+                            setSelectedSubmissionTask={
+                              setSelectedSubmissionTask
+                            }
+                          />
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 </React.Fragment>
               );
@@ -1268,7 +1272,14 @@ const FmsTasks = () => {
   const location = useLocation();
   const currentUser = useSelector((state) => state.users.currentUser);
   const source = location.state?.source;
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canRead, canUpdate } = getSubmodulePermissions(
+    permissions,
+    "fms_tasks",
+    isSuper,
+  );
   if (location.pathname !== "/") {
     const redirectPath = location.pathname + location.search + location.hash;
     localStorage.setItem("redirectAfterLogin", redirectPath);
@@ -1952,9 +1963,9 @@ const FmsTasks = () => {
   }, []);
 
   const role = Cookies.get("role") || "";
-  const isSuper = role === "Super";
+  const isSuperUser = role === "Super";
   const isModuleEnabled = (moduleKey) => {
-    if (isSuper) return true;
+    if (isSuperUser) return true;
     return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
   };
   const isDoThisEnable = isModuleEnabled("DO_THIS2");
@@ -2139,6 +2150,7 @@ const FmsTasks = () => {
                         setUnreadMap={setUnreadMap}
                         setSubmissionModalOpen={setSubmissionModalOpen}
                         setSelectedSubmissionTask={setSelectedSubmissionTask}
+                        canUpdate={canUpdate}
                       />
                     </TooltipProvider>
 

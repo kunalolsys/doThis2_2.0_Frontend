@@ -37,6 +37,8 @@ const { Option } = Select;
 import { Button } from "../../components/ui/button";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 /* ───────────────────────────────────────────── */
 
@@ -200,7 +202,14 @@ export default function BucketListingPage() {
   // =====================================================
   // OPEN DELETE MODAL
   // =====================================================
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "bucket_view",
+    isSuper,
+  );
   const openDeleteModal = (bucket) => {
     setDeleteModal({
       open: true,
@@ -484,9 +493,11 @@ export default function BucketListingPage() {
               <TableHead className="text-xs font-medium text-slate-500 uppercase tracking-wide">
                 Status
               </TableHead>{" "}
-              <TableHead className="text-xs font-medium text-slate-500 uppercase tracking-wide">
-                Action
-              </TableHead>
+              {(canUpdate || canDelete) && (
+                <TableHead className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  Action
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
 
@@ -697,31 +708,37 @@ export default function BucketListingPage() {
                         {bucket.status}
                       </div>
                     </TableCell>
-                    <TableCell className="">
-                      <div className="flex items-center gap-2">
-                        {/* EDIT */}
+                    {(canUpdate || canDelete) && (
+                      <TableCell className="">
+                        <div className="flex items-center gap-2">
+                          {/* EDIT */}
 
-                        <button
-                          onClick={() =>
-                            navigate(
-                              `/delegate/task-buckets/edit/${bucket._id}`,
-                            )
-                          }
-                          className="h-9 w-9 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-200 flex items-center justify-center transition-all"
-                        >
-                          <Edit size={16} className="text-blue-600" />
-                        </button>
+                          {canUpdate && (
+                            <button
+                              onClick={() =>
+                                navigate(
+                                  `/delegate/task-buckets/edit/${bucket._id}`,
+                                )
+                              }
+                              className="h-9 w-9 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:border-blue-200 flex items-center justify-center transition-all"
+                            >
+                              <Edit size={16} className="text-blue-600" />
+                            </button>
+                          )}
 
-                        {/* DELETE */}
+                          {/* DELETE */}
 
-                        <button
-                          onClick={() => openDeleteModal(bucket)}
-                          className="h-9 w-9 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 flex items-center justify-center transition-all"
-                        >
-                          <Trash2 size={16} className="text-red-600" />
-                        </button>
-                      </div>
-                    </TableCell>
+                          {canDelete && (
+                            <button
+                              onClick={() => openDeleteModal(bucket)}
+                              className="h-9 w-9 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:border-red-200 flex items-center justify-center transition-all"
+                            >
+                              <Trash2 size={16} className="text-red-600" />
+                            </button>
+                          )}
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 );
               })

@@ -54,8 +54,17 @@ import {
 import CreateTaskForm from "../components/CreateTaskForm";
 import TaskTable from "../components/TaskTable";
 import { fetchUsers } from "../redux/slices/user/userSlice.js";
+import { getSubmodulePermissions } from "../utils/permissionUtils.js";
 
 const TaskPage = () => {
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
+
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "delegation_task",
+    isSuper,
+  );
   // Global States (shared or needed by wrapper)
   const [isDescriptionDialogOpen, setIsDescriptionDialogOpen] = useState(false);
   const [fullDescription, setFullDescription] = useState("");
@@ -179,14 +188,16 @@ const TaskPage = () => {
       <div className="fixed top-0 left-0 w-72 h-72 bg-blue-200/10 rounded-full blur-3xl animate-pulse -z-10"></div>
 
       {/* Create Task Form */}
-      <CreateTaskForm
-        users={users}
-        departments={departments}
-        holidays={holidays}
-        onTaskCreated={onTaskCreated}
-        allTasks={allTasks} // For parent task selection
-        workingWeeks={workingWeeks}
-      />
+      {canCreate && (
+        <CreateTaskForm
+          users={users}
+          departments={departments}
+          holidays={holidays}
+          onTaskCreated={onTaskCreated}
+          allTasks={allTasks} // For parent task selection
+          workingWeeks={workingWeeks}
+        />
+      )}
 
       {/* Task List and Actions */}
       <TaskTable
@@ -201,6 +212,9 @@ const TaskPage = () => {
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         workingWeeks={workingWeeks}
+        canRead={canRead}
+        canUpdate={canUpdate}
+        canDelete={canDelete}
       />
 
       {/* --- DESCRIPTION VIEW DIALOG (kept here as it's a generic view for TaskTable) --- */}

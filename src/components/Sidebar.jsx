@@ -35,6 +35,7 @@ import { setCurrentUser } from "../redux/slices/user/userSlice";
 import { logoutUser } from "../lib/authAPI";
 import api from "../lib/api";
 import { fetchCompany } from "../redux/slices/company/companySlice";
+import { fetchMyPermissions } from "../redux/slices/permissions/permissionSlice";
 import { FormatPainterOutlined, UserSwitchOutlined } from "@ant-design/icons";
 
 const Sidebar = ({ children }) => {
@@ -48,85 +49,68 @@ const Sidebar = ({ children }) => {
 
   const { company } = useSelector((state) => state.company);
 
-  // User Cookie State Hydration
-  const role = useMemo(() => Cookies.get("role") || "", []);
-  const normalizedRole = useMemo(() => role.trim().toLowerCase(), [role]);
+  // 1. 🔥 REDUX STORE PERMISSIONS ARRAY
+  const {
+    permissions = [],
+    isSuper: isSuperFromStore = false,
+    status: permStatus = "idle",
+  } = useSelector((state) => state.permissions || {});
+
+  // Auth User Cookies (Session Info Only)
+  const roleCookie = useMemo(() => Cookies.get("role") || "", []);
+  const normalizedRole = useMemo(() => roleCookie.trim().toLowerCase(), [roleCookie]);
   const isSuper = useMemo(
-    () => normalizedRole.includes("super"),
-    [normalizedRole],
+    () => isSuperFromStore || normalizedRole.includes("super"),
+    [isSuperFromStore, normalizedRole]
   );
 
   const user = useMemo(
     () => ({
       name: Cookies.get("name") || "",
-      role: { name: role },
+      role: { name: roleCookie },
       email: Cookies.get("email") || "",
     }),
-    [role],
+    [roleCookie]
   );
 
-  // Read Permissions Object / Array from LocalStorage or Cookie
-  const permissions = useMemo(() => {
-    try {
-      const rawCookie = Cookies.get("permissions");
-      const rawData = rawCookie
-        ? decodeURIComponent(rawCookie)
-        : localStorage.getItem("permissions");
-      if (rawData) {
-        return JSON.parse(rawData);
-      }
-    } catch (e) {
-      console.error("Failed to parse permissions in Sidebar:", e);
+  // 2. RE-HYDRATION ON REFRESH
+  useEffect(() => {
+    if (permStatus === "idle") {
+      dispatch(fetchMyPermissions());
     }
-    return {};
-  }, []);
+  }, [permStatus, dispatch]);
 
   // ----------------------------------------------------
-  // STRICT PERMISSION MATRIX & SUPER USER GATING CHECK
+  // 🔥 STRICT ARRAY PERMISSION CHECKER FUNCTION
   // ----------------------------------------------------
   const hasPermission = useCallback(
-    (submoduleKey) => {
-      if (!user.name) return false;
+    (submoduleKey, action = "read") => {
+      // Super User bypasses granular checks
+      if (isSuper) return true;
 
-      // Administrative modules strictly restricted to Super User
-      if (
-        // submoduleKey === "roles_permissions" ||
-        submoduleKey === "module_setting"
-      ) {
+      // Module setting is strictly for Super User
+      if (submoduleKey === "module_setting") {
         return isSuper;
       }
 
-      // Super User bypasses granular checks for remaining application modules
-      if (isSuper) return true;
-
-      if (!permissions) return false;
-
-      // Handle Array Structure: [{ submoduleKey: "...", actions: { read: true } }]
-      if (Array.isArray(permissions)) {
-        const item = permissions.find((p) => p.submoduleKey === submoduleKey);
-        if (!item || !item.actions) return false;
-        return Boolean(
-          item.actions.read ||
-          item.actions.create ||
-          item.actions.update ||
-          item.actions.delete,
-        );
+      if (!Array.isArray(permissions) || permissions.length === 0) {
+        return false;
       }
 
-      // Handle Flat Object Structure: { "submodule_view": true, ... }
-      if (typeof permissions === "object") {
-        const isViewTrue = permissions[`${submoduleKey}_view`] === true;
-        const isReadTrue = permissions[`${submoduleKey}_read`] === true;
-        const isDirectTrue = permissions[submoduleKey] === true;
-        return isViewTrue || isReadTrue || isDirectTrue;
-      }
+      // Match item from Redux Array Payload
+      const item = permissions.find((p) => p.submoduleKey === submoduleKey);
+      if (!item || !item.actions) return false;
 
-      return false;
+      // Return requested action or fallback to read / view
+      if (action === "read" || action === "view") {
+        return Boolean(item.actions.read);
+      }
+      return Boolean(item.actions[action]);
     },
-    [user.name, isSuper, permissions],
+    [isSuper, permissions]
   );
 
-  // Initial Dispatch Calls
+  // Sync Current User & Company Data
   useEffect(() => {
     const userId = Cookies.get("userId");
     if (userId) {
@@ -137,13 +121,13 @@ const Sidebar = ({ children }) => {
           email: Cookies.get("email") || "",
           role: { name: Cookies.get("role") || "" },
           department: Cookies.get("departmentName"),
-        }),
+        })
       );
     }
     dispatch(fetchCompany());
   }, [dispatch]);
 
-  // Load Setup Modules
+  // Fetch Enabled System Modules List
   useEffect(() => {
     let isMounted = true;
     const fetchModules = async () => {
@@ -151,7 +135,7 @@ const Sidebar = ({ children }) => {
         const res = await api.get("/setup/modules/list");
         const data = res.data?.data ?? res.data;
         if (isMounted) {
-          setModules(Array.isArray(data) ? data : (data?.modules ?? []));
+          setModules(Array.isArray(data) ? data : data?.modules ?? []);
         }
       } catch (e) {
         console.error("Failed to load modules list:", e);
@@ -183,12 +167,12 @@ const Sidebar = ({ children }) => {
       if (isSuper) return true;
       return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
     },
-    [isSuper, modules],
+    [isSuper, modules]
   );
 
   const isBothDisable = useMemo(
     () => !isModuleEnabled("DO_THIS2") && !isModuleEnabled("FMS_ENGINE"),
-    [isModuleEnabled],
+    [isModuleEnabled]
   );
 
   // Dropdown Toggle
@@ -216,7 +200,7 @@ const Sidebar = ({ children }) => {
         [menu]: !prev[menu],
       }));
     },
-    [isCollapsed],
+    [isCollapsed]
   );
 
   // Logout Handler
@@ -225,7 +209,6 @@ const Sidebar = ({ children }) => {
     Object.keys(Cookies.get()).forEach((cookieName) => {
       Cookies.remove(cookieName);
     });
-    localStorage.removeItem("permissions");
     toast.success("Logged out successfully!");
     navigate("/");
   };
@@ -233,36 +216,36 @@ const Sidebar = ({ children }) => {
   // Active Link Helpers
   const isActiveLink = useCallback(
     (path) => location.pathname === path,
-    [location.pathname],
+    [location.pathname]
   );
 
   const isDashboardDropdownActive = useMemo(
     () => location.pathname === "/dashboard",
-    [location.pathname],
+    [location.pathname]
   );
   const isMyBucketActive = useMemo(
     () => location.pathname === "/bucket/my-bucket",
-    [location.pathname],
+    [location.pathname]
   );
   const isMyDayDropdownActive = useMemo(
     () => location.pathname.startsWith("/my-day"),
-    [location.pathname],
+    [location.pathname]
   );
   const isFmsEngineDropdownActive = useMemo(
     () => location.pathname.startsWith("/fms-engine"),
-    [location.pathname],
+    [location.pathname]
   );
   const isReportsDropdownActive = useMemo(
     () => location.pathname.startsWith("/reports"),
-    [location.pathname],
+    [location.pathname]
   );
   const isDelegationDropdownActive = useMemo(
     () => location.pathname.startsWith("/delegate"),
-    [location.pathname],
+    [location.pathname]
   );
   const isSetupDropdownActive = useMemo(
     () => location.pathname.startsWith("/setup"),
-    [location.pathname],
+    [location.pathname]
   );
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
@@ -272,12 +255,12 @@ const Sidebar = ({ children }) => {
     if (!user?.role?.name) return "";
     const name = user.role.name;
 
-    if (name.includes("Super")) return "Super Admin";
-    if (name.includes("Sr. Manager")) return "Sr. Manager View";
-    if (name.includes("Manager")) return "Manager View";
-    if (name.includes("Owner")) return "Owner View";
-    if (name.includes("Admin")) return "Admin View";
-    if (name.includes("PC")) return "PC View";
+    if (name.includes("super")) return "Super Admin";
+    if (name.includes("sr._manager")) return "Sr. Manager View";
+    if (name.includes("manager")) return "Manager View";
+    if (name.includes("owner")) return "Owner View";
+    if (name.includes("admin")) return "Admin View";
+    if (name.includes("pc")) return "PC View";
     return "";
   }, [user]);
 
@@ -285,7 +268,7 @@ const Sidebar = ({ children }) => {
   const myDayLinks = useMemo(() => {
     const baseLinks = [];
 
-    if (hasPermission("delegated_recurring")) {
+    if (hasPermission("delegated_recurring", "read")) {
       baseLinks.push({
         path: "/my-day/mytasks",
         label: "Delegated & Recurring",
@@ -293,7 +276,7 @@ const Sidebar = ({ children }) => {
       });
     }
 
-    if (hasPermission("fms_tasks")) {
+    if (hasPermission("fms_tasks", "read")) {
       baseLinks.push({
         path: "/my-day/my-fms-tasks",
         label: "FMS Tasks",
@@ -301,7 +284,7 @@ const Sidebar = ({ children }) => {
       });
     }
 
-    if (hasPermission("role_view") && managerViewLabel) {
+    if (hasPermission("role_view", "read") && managerViewLabel) {
       baseLinks.push({
         path:
           managerViewLabel === "PC View" ? "/my-day/pc-view" : "/my-day/view",
@@ -316,35 +299,35 @@ const Sidebar = ({ children }) => {
   // FMS Engine Submenu Links
   const fmsEngineLinks = useMemo(() => {
     const items = [];
-    if (hasPermission("fms_templates")) {
+    if (hasPermission("fms_templates", "read")) {
       items.push({
         path: "/fms-engine/templates",
         label: "FMS Templates",
         icon: Shield,
       });
     }
-    if (hasPermission("launch_fms")) {
+    if (hasPermission("launch_fms", "read")) {
       items.push({
         path: "/fms-engine/launch",
         label: "Launch FMS",
         icon: User,
       });
     }
-    if (hasPermission("upcoming_ongoing_fms")) {
+    if (hasPermission("upcoming_ongoing_fms", "read")) {
       items.push({
         path: "/fms-engine/upcoming",
         label: "Upcoming & Ongoing FMSs",
         icon: ListRestart,
       });
     }
-    if (hasPermission("form_builder")) {
+    if (hasPermission("form_builder", "read")) {
       items.push({
         path: "/form-builder",
         label: "Form Builder",
         icon: FormatPainterOutlined,
       });
     }
-    if (hasPermission("responses")) {
+    if (hasPermission("responses", "read")) {
       items.push({
         path: "/form-submissions",
         label: "Responses",
@@ -357,28 +340,28 @@ const Sidebar = ({ children }) => {
   // Delegation Buckets Submenu Links
   const delegationBucketLinks = useMemo(() => {
     const items = [];
-    if (hasPermission("task_buckets")) {
+    if (hasPermission("task_buckets", "read")) {
       items.push({
         path: "/delegate/task-buckets",
         label: "Task Buckets",
         icon: Briefcase,
       });
     }
-    if (hasPermission("pending_buckets")) {
+    if (hasPermission("pending_buckets", "read")) {
       items.push({
         path: "/delegate/pending-buckets",
         label: "Pending Buckets Request",
         icon: Clock,
       });
     }
-    if (hasPermission("bucket_view")) {
+    if (hasPermission("bucket_view", "read")) {
       items.push({
         path: "/delegate/bucket-view",
         label: "Buckets",
         icon: Send,
       });
     }
-    if (hasPermission("manage_assignee")) {
+    if (hasPermission("manage_assignee", "read")) {
       items.push({
         path: "/delegate/audience-master",
         label: "Manage Assignee",
@@ -388,34 +371,34 @@ const Sidebar = ({ children }) => {
     return items;
   }, [hasPermission]);
 
-  // Setup Submenu Links (Roles & Permissions is strictly Super User restricted)
+  // Setup Submenu Links
   const setupLinks = useMemo(() => {
     const items = [];
-    if (hasPermission("roles_permissions")) {
+    if (hasPermission("roles_permissions", "read")) {
       items.push({
         path: "/setup/roles-permissions",
         label: "Roles & Permissions",
         icon: Shield,
       });
     }
-    if (hasPermission("departments_calendar")) {
+    if (hasPermission("departments_calendar", "read")) {
       items.push({
         path: "/setup/departments-calendar",
         label: "Departments & Calendar",
         icon: CalendarDays,
       });
     }
-    if (hasPermission("work_shifts")) {
+    if (hasPermission("work_shifts", "read")) {
       items.push({
         path: "/setup/work-shifts",
         label: "Work Shifts",
         icon: TimerIcon,
       });
     }
-    if (hasPermission("users")) {
+    if (hasPermission("users", "read")) {
       items.push({ path: "/setup/users", label: "Users", icon: Users2 });
     }
-    if (hasPermission("company_setup") && isModuleEnabled("COMPANY_SETUP")) {
+    if (hasPermission("company_setup", "read") && isModuleEnabled("COMPANY_SETUP")) {
       items.push({
         path: "/company-setup",
         label: "Company Setup",
@@ -423,19 +406,19 @@ const Sidebar = ({ children }) => {
       });
     }
     return items;
-  }, [hasPermission, isModuleEnabled, isSuper]);
+  }, [hasPermission, isModuleEnabled]);
 
   // Reports Submenu Links
   const reportsLinks = useMemo(() => {
     const items = [];
-    if (hasPermission("mis_reports") && isModuleEnabled("DO_THIS2")) {
+    if (hasPermission("mis_reports", "read") && isModuleEnabled("DO_THIS2")) {
       items.push({
         path: "/reports/mis",
         label: "MIS Reports",
         icon: NotepadText,
       });
     }
-    if (hasPermission("fms_reports") && isModuleEnabled("FMS_ENGINE")) {
+    if (hasPermission("fms_reports", "read") && isModuleEnabled("FMS_ENGINE")) {
       items.push({
         path: "/reports/fms",
         label: "FMS Reports",
@@ -446,7 +429,7 @@ const Sidebar = ({ children }) => {
   }, [hasPermission, isModuleEnabled]);
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 font-sans">
       {/* Sidebar Container */}
       <div
         className={`
@@ -525,7 +508,7 @@ const Sidebar = ({ children }) => {
         {/* Navigation Menu */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {/* 1. Dashboard */}
-          {hasPermission("dashboard") && !isBothDisable && (
+          {hasPermission("dashboard", "read") && !isBothDisable && (
             <div>
               <div className="relative">
                 <Link
@@ -644,7 +627,7 @@ const Sidebar = ({ children }) => {
           )}
 
           {/* 3. Delegation Task */}
-          {hasPermission("delegation_task") && isModuleEnabled("DO_THIS2") && (
+          {hasPermission("delegation_task", "read") && isModuleEnabled("DO_THIS2") && (
             <Link
               to="/delegation-tasks"
               className={`
@@ -682,7 +665,7 @@ const Sidebar = ({ children }) => {
           )}
 
           {/* 4. Task Reassignment */}
-          {hasPermission("task_reassigning") && isModuleEnabled("DO_THIS2") && (
+          {hasPermission("task_reassigning", "read") && isModuleEnabled("DO_THIS2") && (
             <Link
               to="/reassign"
               className={`
@@ -874,7 +857,7 @@ const Sidebar = ({ children }) => {
           )}
 
           {/* 7. My Bucket */}
-          {hasPermission("my_bucket") && isModuleEnabled("DO_THIS2") && (
+          {hasPermission("my_bucket", "read") && isModuleEnabled("DO_THIS2") && (
             <div>
               <div className="relative">
                 <Link
@@ -1074,7 +1057,7 @@ const Sidebar = ({ children }) => {
           )}
 
           {/* 10. Module Setting (Strictly Super User Only) */}
-          {isSuper && hasPermission("module_setting") && (
+          {isSuper && hasPermission("module_setting", "read") && (
             <Link
               to="/super/modules"
               className={`

@@ -502,7 +502,7 @@ const EditUser = () => {
                     )}
                     {roles.map((role) => (
                       <SelectItem key={role._id} value={role._id}>
-                        {role.name}
+                        {role.displayName || role.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

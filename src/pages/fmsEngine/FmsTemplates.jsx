@@ -42,6 +42,7 @@ const { TextArea } = Input;
 import api from "../../lib/api";
 import { cn } from "../../lib/utils";
 import { ExportOutlined } from "@ant-design/icons";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 // --- Helper for Badges ---
 const getDurationBadge = (duration) => {
@@ -77,6 +78,14 @@ const FmsTemplates = () => {
   const [limit, setLimit] = useState(10);
   const currentUser = useSelector((state) => state.users.currentUser);
   const role = currentUser?.role?.name;
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
+
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "fms_templates",
+    isSuper,
+  );
   // Import states
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState(null);
@@ -484,13 +493,15 @@ const FmsTemplates = () => {
                 <Upload className="h-4 w-4" />
                 Import Templates
               </Button>
-              <Link
-                to="/fms-engine/create-template"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center text-sm font-semibold"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Create New
-              </Link>
+              {canCreate && (
+                <Link
+                  to="/fms-engine/create-template"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center text-sm font-semibold"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create New
+                </Link>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -525,9 +536,11 @@ const FmsTemplates = () => {
                     <TableHead className="font-semibold text-sm p-3">
                       LAUNCHED
                     </TableHead>
-                    <TableHead className="font-semibold text-sm p-3">
-                      ACTIONS
-                    </TableHead>
+                    {(canUpdate || canDelete) && (
+                      <TableHead className="font-semibold text-sm p-3">
+                        ACTIONS
+                      </TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -600,52 +613,56 @@ const FmsTemplates = () => {
                           </div>
                         </TableCell>
 
-                        <TableCell className="p-3">
-                          <div className="flex gap-2">
-                            <div className="flex items-center gap-2">
-                              {/* Eye (View) Icon — Always Visible */}
-                              <Link
-                                to={`/fms-engine/view-template/${template._id}`}
-                                className="h-8 w-8 bg-green-100 text-green-600 rounded-md flex items-center justify-center hover:bg-green-200 transition-colors duration-200"
-                                title="View Template"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Link>
-
-                              {/* Edit Icon — Visible to Admin */}
-                              {role === "Admin" && (
+                        {(canUpdate || canDelete) && (
+                          <TableCell className="p-3">
+                            <div className="flex gap-2">
+                              <div className="flex items-center gap-2">
+                                {/* Eye (View) Icon — Always Visible */}
                                 <Link
-                                  to={`/fms-engine/edit-template/${template._id}`}
-                                  className="h-8 w-8 bg-blue-100 text-blue-600 rounded-md flex items-center justify-center hover:bg-blue-200 transition-colors duration-200"
-                                  title="Edit Template"
+                                  to={`/fms-engine/view-template/${template._id}`}
+                                  className="h-8 w-8 bg-green-100 text-green-600 rounded-md flex items-center justify-center hover:bg-green-200 transition-colors duration-200"
+                                  title="View Template"
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Eye className="h-4 w-4" />
                                 </Link>
-                              )}
-                            </div>
 
-                            {(role === "Sr. Manager" || role === "Admin") && (
-                              <Popconfirm
-                                title="Delete Template"
-                                description="Are you sure you want to delete this template?"
-                                onConfirm={() =>
-                                  handleDeleteTemplate(template._id)
-                                }
-                                okText="Yes"
-                                cancelText="No"
-                                okButtonProps={{ danger: true }}
-                              >
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors duration-200"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </Popconfirm>
-                            )}
-                          </div>
-                        </TableCell>
+                                {/* Edit Icon — Visible to Admin */}
+                                {canUpdate && role === "Admin" && (
+                                  <Link
+                                    to={`/fms-engine/edit-template/${template._id}`}
+                                    className="h-8 w-8 bg-blue-100 text-blue-600 rounded-md flex items-center justify-center hover:bg-blue-200 transition-colors duration-200"
+                                    title="Edit Template"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Link>
+                                )}
+                              </div>
+
+                              {canDelete &&
+                                (role === "Sr. Manager" ||
+                                  role === "Admin") && (
+                                  <Popconfirm
+                                    title="Delete Template"
+                                    description="Are you sure you want to delete this template?"
+                                    onConfirm={() =>
+                                      handleDeleteTemplate(template._id)
+                                    }
+                                    okText="Yes"
+                                    cancelText="No"
+                                    okButtonProps={{ danger: true }}
+                                  >
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors duration-200"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </Popconfirm>
+                                )}
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))
                   ) : (

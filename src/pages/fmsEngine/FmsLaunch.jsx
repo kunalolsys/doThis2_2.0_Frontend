@@ -40,6 +40,7 @@ import dayjs from "dayjs";
 import { DatePicker, Modal, Typography } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 const { Text } = Typography;
 const FmsLaunch = () => {
   const navigate = useNavigate();
@@ -54,7 +55,14 @@ const FmsLaunch = () => {
   const [selectedManager, setSelectedManager] = useState(null);
   const [selectedSrManager, setSelectedSrManager] = useState(null);
   const currentUser = useSelector((state) => state.users.currentUser);
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "launch_fms",
+    isSuper,
+  );
   const fetchTemplates = async () => {
     try {
       const res = await api.post(`/fms/templates-list-drop/`, {
@@ -65,7 +73,7 @@ const FmsLaunch = () => {
       console.error(err);
       toast.error("Failed to fetch tasks");
     } finally {
-      console.log("object")
+      console.log("object");
     }
   };
   const fetchTasks = async (templateID) => {
@@ -92,8 +100,8 @@ const FmsLaunch = () => {
       try {
         const response = await api.get("/setup/users/allUsers");
         const users = response.data?.data || [];
-        const managers = users.filter((u) => u.role?.name === "Manager");
-        const srManagers = users.filter((u) => u.role?.name === "Sr. Manager");
+        const managers = users.filter((u) => u.role?.name === "manager");
+        const srManagers = users.filter((u) => u.role?.name === "sr._manager");
 
         // ✅ SET STATE
         setManagers(managers);
@@ -468,16 +476,18 @@ const FmsLaunch = () => {
                 </div>
 
                 {/* --- Submit Button --- */}
-                <div className="sticky bottom-0 bg-white pt-4 pb-4 border-t z-10">
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    size="lg"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-lg h-12 shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.01]"
-                  >
-                    Launch FMS Workflow
-                  </Button>
-                </div>
+                {canCreate && (
+                  <div className="sticky bottom-0 bg-white pt-4 pb-4 border-t z-10">
+                    <Button
+                      type="submit"
+                      disabled={loading}
+                      size="lg"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-lg h-12 shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.01]"
+                    >
+                      Launch FMS Workflow
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
