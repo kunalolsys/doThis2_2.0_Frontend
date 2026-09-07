@@ -253,7 +253,7 @@ const Sidebar = ({ children }) => {
   // Role View Label Resolution
   const managerViewLabel = useMemo(() => {
     if (!user?.role?.name) return "";
-    const name = user.role.name;
+    const name = user.role.name.trim().toLowerCase();
 
     if (name.includes("super")) return "Super Admin";
     if (name.includes("sr._manager")) return "Sr. Manager View";

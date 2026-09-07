@@ -150,7 +150,7 @@ const CreateNewFmsTem = () => {
         const managers = users.filter((u) => u.role?.name === "manager");
         const srManagers = users.filter((u) => u.role?.name === "sr._manager");
         const filteredUsers = users.filter((u) =>
-          ["Member", "Manager", "Sr. Manager"].includes(u.role?.displayName || u.role?.name),
+          ["member", "manager", "sr._manager"].includes( u.role?.name),
         );
 
         setFilteredUser(filteredUsers);

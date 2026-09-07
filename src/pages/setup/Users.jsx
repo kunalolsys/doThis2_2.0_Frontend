@@ -614,7 +614,7 @@ const Users = () => {
                       {user.department?.map((d) => d.name).join(", ")}
                     </TableCell>
                     <TableCell>{user.reportingManager?.name || ""}</TableCell>
-                    <TableCell>{user.role?.name}</TableCell>
+                    <TableCell>{user.role?.displayName||""}</TableCell>
                     <TableCell>{user.assignShift?.name}</TableCell>
                     <TableCell>
                       <span

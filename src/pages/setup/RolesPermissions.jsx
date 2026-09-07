@@ -31,6 +31,7 @@ import { Checkbox } from "../../components/ui/checkbox";
 import { toast } from "sonner";
 import { Modal } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 const ACTIONS = [
   { key: "create", label: "Create", color: "text-emerald-700" },
@@ -53,12 +54,12 @@ const isActionDisabledForSubmodule = (submoduleKey, actionKey) => {
   if (
     submoduleKey === "task_reassigning" ||
     submoduleKey === "responses" ||
-    submoduleKey === "my_bucket"  || 
-    submoduleKey === "manage_assignee" 
+    submoduleKey === "my_bucket" ||
+    submoduleKey === "manage_assignee"
   ) {
     return actionKey !== "read" && actionKey !== "update";
   }
-  if (submoduleKey === "launch_fms"|| submoduleKey === "task_buckets") {
+  if (submoduleKey === "launch_fms" || submoduleKey === "task_buckets") {
     return actionKey !== "read" && actionKey !== "create";
   }
 
@@ -67,10 +68,24 @@ const isActionDisabledForSubmodule = (submoduleKey, actionKey) => {
 
 const RolesPermissions = () => {
   const dispatch = useDispatch();
+
+  // 1. Roles State from Redux Store
   const { roles: rawRoles = [], status } = useSelector(
     (state) => state.roles || {},
   );
 
+  // 2. 🔥 PERMISSIONS STATE DIRECTLY FROM REDUX STORE
+  const reduxPermissions = useSelector(
+    (state) => state.permissions?.permissions || {},
+  );
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
+
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "roles_permissions",
+    isSuper,
+  );
   // Component State
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState(null);
@@ -79,32 +94,38 @@ const RolesPermissions = () => {
   const [permissionMatrix, setPermissionMatrix] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Auth User Check
+  // Auth User Role Check
   const userRole = useMemo(() => {
     return (Cookies.get("role") || "").toLowerCase();
   }, []);
 
-  const permissions = useMemo(() => {
-    try {
-      const permCookie = Cookies.get("permissions");
-      const raw = permCookie
-        ? decodeURIComponent(permCookie)
-        : localStorage.getItem("permissions");
-      return raw ? JSON.parse(raw) : {};
-    } catch {
-      return {};
+  // Check Page Access using Redux Permissions State
+  const canViewPage = useMemo(() => {
+    if (
+      userRole.includes("admin") ||
+      userRole.includes("owner") ||
+      userRole.includes("super")
+    ) {
+      return true;
     }
-  }, []);
 
-  const canViewPage =
-    userRole.includes("admin") ||
-    userRole.includes("owner") ||
-    userRole.includes("super") ||
-    Boolean(
-      permissions["roles_permissions_view"] ||
-      permissions["roles_permissions_read"] ||
-      permissions["roles_permissions"],
-    );
+    if (Array.isArray(reduxPermissions)) {
+      const match = reduxPermissions.find(
+        (p) => p.submoduleKey === "roles_permissions",
+      );
+      return Boolean(match?.actions?.read || match?.actions?.create);
+    }
+
+    if (typeof reduxPermissions === "object" && reduxPermissions !== null) {
+      return Boolean(
+        reduxPermissions["roles_permissions_view"] ||
+        reduxPermissions["roles_permissions_read"] ||
+        reduxPermissions["roles_permissions"],
+      );
+    }
+
+    return false;
+  }, [userRole, reduxPermissions]);
 
   // Fetch Roles on Load
   useEffect(() => {
@@ -113,7 +134,7 @@ const RolesPermissions = () => {
     }
   }, [canViewPage, dispatch]);
 
-  // 1. Dynamic Modules Tree Extraction Directly from API Response
+  // Dynamic Modules Tree Extraction Directly from API Response
   const systemModulesTree = useMemo(() => {
     const parentMap = new Map();
 
@@ -146,7 +167,7 @@ const RolesPermissions = () => {
     }));
   }, [rawRoles]);
 
-  // 2. Permission Matrix Initialization Helper (🔥 FIX: Retains Real DB Values)
+  // Permission Matrix Initialization Helper (Retains DB Values)
   const initMatrix = useCallback(
     (existingPermissions = []) => {
       const initial = {};
@@ -471,20 +492,24 @@ const RolesPermissions = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button
-            onClick={startCreateRole}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold h-10 px-5 rounded-xl shadow-xs transition-all"
-          >
-            <Plus className="mr-1.5 h-4 w-4" /> Add Custom Role
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={isSubmitting}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold h-10 px-6 rounded-xl shadow-xs transition-all"
-          >
-            <Save className="mr-1.5 h-4 w-4" />
-            {isSubmitting ? "Saving..." : "Save Privileges"}
-          </Button>
+          {canCreate && (
+            <Button
+              onClick={startCreateRole}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold h-10 px-5 rounded-xl shadow-xs transition-all"
+            >
+              <Plus className="mr-1.5 h-4 w-4" /> Add Custom Role
+            </Button>
+          )}
+          {(canUpdate || canCreate) && (
+            <Button
+              onClick={handleSave}
+              disabled={isSubmitting}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold h-10 px-6 rounded-xl shadow-xs transition-all"
+            >
+              <Save className="mr-1.5 h-4 w-4" />
+              {isSubmitting ? "Saving..." : "Save Privileges"}
+            </Button>
+          )}
         </div>
       </header>
 
@@ -607,7 +632,8 @@ const RolesPermissions = () => {
                 </Button>
               </div>
 
-              {!isCreatingNew &&
+              {canDelete &&
+                !isCreatingNew &&
                 selectedRole &&
                 !selectedRole?.isSystemRole &&
                 selectedRole?.canDelete !== false && (
