@@ -2876,6 +2876,7 @@ const TaskTable = ({
               </div>
             )}
           </DialogHeader>
+
           <AntdTabs activeKey={activeTab} onChange={setActiveTab}>
             <AntdTabs.TabPane tab="Task Info" key="basic">
               <div className="grid gap-4 py-4">
@@ -2907,6 +2908,7 @@ const TaskTable = ({
                     </Select>
                   </div>
                 </div>
+
                 <div className="space-y-2 px-2">
                   <Label htmlFor="edit-desc">Description</Label>
                   <Textarea
@@ -2916,6 +2918,7 @@ const TaskTable = ({
                     rows={3}
                   />
                 </div>
+
                 {editingTask?.taskType === "RecurringTask" ||
                 editingTask?.recurrenceFrequency ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-2">
@@ -2930,7 +2933,6 @@ const TaskTable = ({
                           const selected = dayjs(date);
                           const selectedDateStr = selected.format("YYYY-MM-DD");
 
-                          // 🟢 1. Check Department Holiday for assigned user
                           const isHolidayHit = isHolidayForDept(
                             selectedDateStr,
                             editAssignedTo,
@@ -2943,7 +2945,6 @@ const TaskTable = ({
                             return;
                           }
 
-                          // 🟢 2. Check Working Day for assigned user's department
                           const dayName = selected.format("dddd").toLowerCase();
                           const activeSchedule =
                             getDeptWorkingSchedule(editAssignedTo);
@@ -2965,6 +2966,7 @@ const TaskTable = ({
                         style={{ width: "100%", height: "40px" }}
                       />
                     </div>
+
                     <div className="space-y-2">
                       <Label>Frequency</Label>
                       <Select
@@ -2991,6 +2993,7 @@ const TaskTable = ({
                         </SelectContent>
                       </Select>
                     </div>
+
                     <div className="space-y-2">
                       <Label>End Date</Label>
                       <DatePicker
@@ -3006,7 +3009,6 @@ const TaskTable = ({
                         }
                         disabledDate={(current) => {
                           if (!current || !editStartDate) return false;
-
                           return current.isBefore(dayjs(editStartDate), "day");
                         }}
                         onChange={(date) =>
@@ -3017,6 +3019,7 @@ const TaskTable = ({
                         style={{ width: "100%", height: "40px" }}
                       />
                     </div>
+
                     {editRecurrenceFrequency === "weekly" && (
                       <div className="md:col-span-3 space-y-2">
                         <Label>Select Days of the Week</Label>
@@ -3071,7 +3074,6 @@ const TaskTable = ({
                           const selected = dayjs(date);
                           const selectedDateStr = selected.format("YYYY-MM-DD");
 
-                          // 🟢 1. Check Department Holiday for assigned user
                           const isHolidayHit = isHolidayForDept(
                             selectedDateStr,
                             editAssignedTo,
@@ -3084,7 +3086,6 @@ const TaskTable = ({
                             return;
                           }
 
-                          // 🟢 2. Check Working Day against Department Custom Schedule
                           const dayName = selected.format("dddd").toLowerCase();
                           const activeSchedule =
                             getDeptWorkingSchedule(editAssignedTo);
@@ -3106,6 +3107,7 @@ const TaskTable = ({
                         style={{ width: "100%", height: "40px" }}
                       />
                     </div>
+
                     {editingTask && editingTask.recurringRefId == null ? (
                       <>
                         <div className="space-y-2">
@@ -3120,22 +3122,25 @@ const TaskTable = ({
                             min="1"
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label>
-                            Task End Time{" "}
-                            {/* {!isRecurrent && <span className="text-red-500">*</span>} */}
-                          </Label>
 
+                        {/* 🟢 TIME PICKER FIX: SIRF TIME STRING (HH:mm) SET HOGA, DATE MOVE NAHI HOGI */}
+                        <div className="space-y-2">
+                          <Label>Task End Time</Label>
                           <TimePicker
                             className="w-full h-10"
                             format="hh:mm A"
                             use12Hours
                             value={
-                              taskEndTime ? dayjs(taskEndTime, "HH:mm") : null
+                              taskEndTime
+                                ? dayjs(taskEndTime, ["HH:mm", "hh:mm A"])
+                                : null
                             }
-                            onChange={(time) =>
-                              setTaskEndTime(time ? time.format("HH:mm") : null)
-                            }
+                            onChange={(time) => {
+                              // Strict HH:mm String formatting to prevent date modification
+                              setTaskEndTime(
+                                time ? time.format("HH:mm") : null,
+                              );
+                            }}
                             placeholder="Select end time"
                           />
                         </div>
@@ -3161,7 +3166,6 @@ const TaskTable = ({
                           }
                           disabledDate={(current) => {
                             if (!current || !editStartDate) return false;
-
                             return current.isBefore(
                               dayjs(editStartDate),
                               "day",
@@ -3171,24 +3175,9 @@ const TaskTable = ({
                         />
                       </div>
                     )}
-                    <div className="space-y-2">
-                      {/* <Label>Attachment</Label>
-                      <Upload
-                        listType="picture"
-                        multiple
-                        fileList={editFileList}
-                        onChange={({ fileList }) => setEditFileList(fileList)}
-                        onPreview={(file) => window.open(file.url)}
-                        onRemove={(file) => handleRemove(file)}
-                        beforeUpload={() => false} // manual upload
-                      >
-                        <AntButton icon={<UploadOutlined />}>
-                          Upload Files
-                        </AntButton>
-                      </Upload> */}
-                    </div>
                   </div>
                 )}
+
                 {/* Edit Checklist */}
                 <div className="border rounded p-3 mx-2 bg-slate-50">
                   <Label className="mb-2 block">Checklist</Label>
