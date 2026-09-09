@@ -52,6 +52,8 @@ import { Modal, TimePicker } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useDebounce } from "../../lib/debounce";
+import { useSelector } from "react-redux";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 const WorkShifts = () => {
   const [shifts, setShifts] = useState([]);
@@ -94,7 +96,14 @@ const WorkShifts = () => {
   useEffect(() => {
     fetchShifts();
   }, [debouncedSearchTerm, page, limit]);
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "work_shifts",
+    isSuper,
+  );
   // Memoized logic for filtering and pagination
   const filteredShifts = useMemo(() => {
     return shifts.filter((shift) =>
@@ -313,12 +322,14 @@ const WorkShifts = () => {
               open={isAddEditDialogOpen}
               onOpenChange={setIsAddEditDialogOpen}
             >
-              <DialogTrigger asChild>
-                <Button onClick={handleAddClick}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add New Shift
-                </Button>
-              </DialogTrigger>
+              {canCreate && (
+                <DialogTrigger asChild>
+                  <Button onClick={handleAddClick}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add New Shift
+                  </Button>
+                </DialogTrigger>
+              )}
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
                   <DialogTitle>
@@ -403,9 +414,14 @@ const WorkShifts = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
-              <UploadCloud className="mr-2 h-4 w-4" /> Bulk Upload
-            </Button>
+            {canCreate && (
+              <Button
+                variant="outline"
+                onClick={() => setIsBulkUploadOpen(true)}
+              >
+                <UploadCloud className="mr-2 h-4 w-4" /> Bulk Upload
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -428,7 +444,9 @@ const WorkShifts = () => {
                   <TableHead className="w-[200px]">SHIFT NAME</TableHead>
                   <TableHead>START TIME</TableHead>
                   <TableHead>END TIME</TableHead>
-                  <TableHead className="text-right">ACTIONS</TableHead>
+                  {(canDelete || canUpdate) && (
+                    <TableHead className="text-right">ACTIONS</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -440,24 +458,30 @@ const WorkShifts = () => {
                       </TableCell>
                       <TableCell>{shift.startTime}</TableCell>
                       <TableCell>{shift.endTime}</TableCell>
-                      <TableCell className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditClick(shift)}
-                          className="h-8 w-8 text-muted-foreground"
-                        >
-                          <FilePenLine className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteShift(shift._id)}
-                          className="h-8 w-8 text-muted-foreground hover:text-red-500"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+                      {(canUpdate || canDelete) && (
+                        <TableCell className="flex justify-end gap-1">
+                          {canUpdate && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditClick(shift)}
+                              className="h-8 w-8 text-muted-foreground"
+                            >
+                              <FilePenLine className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteShift(shift._id)}
+                              className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 ) : (

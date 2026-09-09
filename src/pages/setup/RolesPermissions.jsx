@@ -574,7 +574,7 @@ const RolesPermissions = () => {
         </div>
 
         {/* RIGHT PANEL: MATRIX GRID */}
-        <div className="flex-1 flex flex-col bg-slate-50/60 overflow-y-auto p-6 max-h-[calc(100vh-140px)] space-y-4">
+        <div className="flex-1 flex flex-col bg-slate-50/60 overflow-y-auto p-6 space-y-4">
           {/* Header Controls */}
           <div className="p-6 border border-slate-200/80 bg-white rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-2xs">
             <div className="flex-1 max-w-md">
@@ -655,7 +655,10 @@ const RolesPermissions = () => {
               const isParentFullySelected = parent.submodules.every((sub) =>
                 ACTIONS.every((act) => permissionMatrix[sub.key]?.[act.key]),
               );
-
+              console.log(parent.key)
+              if (parent.key == "module_management") {
+                return null; // Skip rendering the "module_management" parent module
+              }
               return (
                 <div
                   key={parent.key}

@@ -81,6 +81,7 @@ import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
 import { useDebounce } from "../../lib/debounce";
 import { Modal } from "antd";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 const initialWeekConfig = {
   monday: true,
@@ -162,7 +163,14 @@ const DepartmentCalender = () => {
 
   const debouncedDepartmentSearchTerm = useDebounce(departmentSearchTerm, 500);
   const debouncedHolidaySearchTerm = useDebounce(holidaySearchTerm, 500);
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "departments_calendar",
+    isSuper,
+  );
   // Fetch Data
   useEffect(() => {
     dispatch(
@@ -931,12 +939,14 @@ const DepartmentCalender = () => {
                 open={isAddEditDialogOpen}
                 onOpenChange={setIsAddEditDialogOpen}
               >
-                <DialogTrigger asChild>
-                  <Button onClick={handleAddClick}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Department
-                  </Button>
-                </DialogTrigger>
+                {canCreate && (
+                  <DialogTrigger asChild>
+                    <Button onClick={handleAddClick}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Department
+                    </Button>
+                  </DialogTrigger>
+                )}
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle>
@@ -1030,12 +1040,14 @@ const DepartmentCalender = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button
-                variant="outline"
-                onClick={() => setIsDeptBulkUploadOpen(true)}
-              >
-                <UploadCloud className="mr-2 h-4 w-4" /> Bulk Upload
-              </Button>
+              {canCreate && (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDeptBulkUploadOpen(true)}
+                >
+                  <UploadCloud className="mr-2 h-4 w-4" /> Bulk Upload
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -1056,7 +1068,9 @@ const DepartmentCalender = () => {
                 <TableRow>
                   <TableHead>DEPARTMENT</TableHead>
                   <TableHead>SCHEDULE TYPE</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {(canUpdate || canDelete) && (
+                    <TableHead className="text-right">Actions</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1074,22 +1088,28 @@ const DepartmentCalender = () => {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEditClick(dept)}
-                      >
-                        <FilePenLine className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteDepartment(dept._id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    {(canUpdate || canDelete) && (
+                      <TableCell className="text-right">
+                        {canUpdate && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditClick(dept)}
+                          >
+                            <FilePenLine className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteDepartment(dept._id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -1155,12 +1175,14 @@ const DepartmentCalender = () => {
                 open={isHolidayDialogOpen}
                 onOpenChange={setIsHolidayDialogOpen}
               >
-                <DialogTrigger asChild>
-                  <Button onClick={handleAddHolidayClick}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Holiday
-                  </Button>
-                </DialogTrigger>
+                {canCreate && (
+                  <DialogTrigger asChild>
+                    <Button onClick={handleAddHolidayClick}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Holiday
+                    </Button>
+                  </DialogTrigger>
+                )}
                 <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle>
@@ -1287,12 +1309,14 @@ const DepartmentCalender = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button
-                variant="outline"
-                onClick={() => setIsHolidayBulkUploadOpen(true)}
-              >
-                <UploadCloud className="mr-2 h-4 w-4" /> Bulk Upload
-              </Button>
+              {canCreate && (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsHolidayBulkUploadOpen(true)}
+                >
+                  <UploadCloud className="mr-2 h-4 w-4" /> Bulk Upload
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -1316,7 +1340,9 @@ const DepartmentCalender = () => {
                   <TableHead>SCOPE</TableHead>
                   <TableHead>APPLICABLE DEPARTMENTS</TableHead>
                   <TableHead>DESCRIPTION</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  {(canUpdate || canDelete) && (
+                    <TableHead className="text-right">Actions</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1358,22 +1384,28 @@ const DepartmentCalender = () => {
                         )}
                       </TableCell>
                       <TableCell>{holiday.description || "-"}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditHolidayClick(holiday)}
-                        >
-                          <FilePenLine className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteHoliday(holiday._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+                      {(canUpdate || canDelete) && (
+                        <TableCell className="text-right">
+                          {canUpdate && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditHolidayClick(holiday)}
+                            >
+                              <FilePenLine className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteHoliday(holiday._id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))
                 ) : (
@@ -1736,15 +1768,17 @@ const DepartmentCalender = () => {
             </div>
           ))}
         </CardContent>
-        <CardFooter>
-          <Button
-            onClick={handleSubmitWorkingWeek}
-            disabled={workingWeekStatus === "loading"}
-            className="cursor-pointer"
-          >
-            {workingWeekStatus === "loading" ? "Saving..." : "Save"}
-          </Button>
-        </CardFooter>
+        {(canUpdate || canCreate) && (
+          <CardFooter>
+            <Button
+              onClick={handleSubmitWorkingWeek}
+              disabled={workingWeekStatus === "loading"}
+              className="cursor-pointer"
+            >
+              {workingWeekStatus === "loading" ? "Saving..." : "Save"}
+            </Button>
+          </CardFooter>
+        )}
       </Card>
 
       {/* ── CARD 4: SCHEDULE HOLIDAY TASK ─────────────────────────────────── */}
@@ -1770,15 +1804,17 @@ const DepartmentCalender = () => {
             </div>
           </RadioGroup>
         </CardContent>
-        <CardFooter>
-          <Button
-            onClick={handleSaveScheduleHolidayTask}
-            disabled={scheduleHolidayTaskStatus === "loading"}
-            className="cursor-pointer"
-          >
-            {scheduleHolidayTaskStatus === "loading" ? "Saving..." : "Save"}
-          </Button>
-        </CardFooter>
+        {(canUpdate || canCreate) && (
+          <CardFooter>
+            <Button
+              onClick={handleSaveScheduleHolidayTask}
+              disabled={scheduleHolidayTaskStatus === "loading"}
+              className="cursor-pointer"
+            >
+              {scheduleHolidayTaskStatus === "loading" ? "Saving..." : "Save"}
+            </Button>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );

@@ -680,17 +680,17 @@ export default function BucketListingPage() {
                         className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg border text-[11px] font-medium"
                         style={{
                           color:
-                            bucket.status === "Completed"
+                            bucket.distributionStatus === "Distributed"
                               ? "#0D9488"
                               : "#D97706",
 
                           background:
-                            bucket.status === "Completed"
+                            bucket.distributionStatus === "Distributed"
                               ? "#F0FDFA"
                               : "#FFFBEB",
 
                           borderColor:
-                            bucket.status === "Completed"
+                            bucket.distributionStatus === "Distributed"
                               ? "#99F6E4"
                               : "#FDE68A",
                         }}
@@ -699,13 +699,13 @@ export default function BucketListingPage() {
                           className="w-2 h-2 rounded-full"
                           style={{
                             background:
-                              bucket.status === "Completed"
+                              bucket.distributionStatus === "Distributed"
                                 ? "#0D9488"
                                 : "#D97706",
                           }}
                         />
 
-                        {bucket.status}
+                        {bucket.distributionStatus}
                       </div>
                     </TableCell>
                     {(canUpdate || canDelete) && (

@@ -67,6 +67,7 @@ import {
 import { Modal } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
 import { useDebounce } from "../../lib/debounce";
+import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
 // --- Main Component ---
 const Users = () => {
@@ -153,7 +154,14 @@ const Users = () => {
   //     );
   //   });
   // }, [users, searchTerm, selectedDepartment, selectedRole, selectedShift]);
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
 
+  // Destructure clean capability flags
+  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+    permissions,
+    "users",
+    isSuper,
+  );
   const totalPages = pagination ? pagination.totalPages : 1;
 
   const handleDepartmentChange = (value) => {
@@ -461,13 +469,15 @@ const Users = () => {
             )}
           </CardTitle>
           <div className="flex gap-2 ">
-            <Link
-              to="/setup/add-user"
-              className="flex items-center bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400 hover:from-blue-600 hover:to-blue-700 px-4 py-2 rounded-xl font-medium transition duration-200 ease-in-out"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              <span>Add User</span>
-            </Link>
+            {canCreate && (
+              <Link
+                to="/setup/add-user"
+                className="flex items-center bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/25 border-blue-400 hover:from-blue-600 hover:to-blue-700 px-4 py-2 rounded-xl font-medium transition duration-200 ease-in-out"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                <span>Add User</span>
+              </Link>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="ml-auto flex items-center bg-teal-500 rounded-md dark:bg-teal-600 text-sm text-white cursor-pointer px-3 py-1.5 hover:bg-teal-600 transition font-semibold">
@@ -495,10 +505,15 @@ const Users = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
-              <Download className="mr-2 h-4 w-4" />
-              Bulk Upload Users
-            </Button>
+            {canCreate && (
+              <Button
+                variant="outline"
+                onClick={() => setIsBulkUploadOpen(true)}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Bulk Upload Users
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -589,7 +604,9 @@ const Users = () => {
                 <TableHead>Shifts</TableHead>
                 <TableHead>Telegram Notification</TableHead>
                 <TableHead>Telegram Chat ID</TableHead>
-                <TableHead>Actions</TableHead>
+                {(canUpdate || canDelete) && (
+                  <TableHead className="text-right">Actions</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -614,7 +631,7 @@ const Users = () => {
                       {user.department?.map((d) => d.name).join(", ")}
                     </TableCell>
                     <TableCell>{user.reportingManager?.name || ""}</TableCell>
-                    <TableCell>{user.role?.displayName||""}</TableCell>
+                    <TableCell>{user.role?.displayName || ""}</TableCell>
                     <TableCell>{user.assignShift?.name}</TableCell>
                     <TableCell>
                       <span
@@ -630,25 +647,31 @@ const Users = () => {
                       </span>
                     </TableCell>{" "}
                     <TableCell>{user.telegramChatId || "-"}</TableCell>
-                    <TableCell className="flex gap-1">
-                      <Link to={`/setup/edit-user/${user._id}`}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground"
-                        >
-                          <FilePenLine className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-red-500"
-                        onClick={() => handleDelete(user._id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
+                    {(canUpdate || canDelete) && (
+                      <TableCell className="flex gap-1">
+                        {canUpdate && (
+                          <Link to={`/setup/edit-user/${user._id}`}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground"
+                            >
+                              <FilePenLine className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                            onClick={() => handleDelete(user._id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               ) : (
@@ -740,7 +763,9 @@ const Users = () => {
                 </h4>
                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
                   <li>
-                    <code className="bg-gray-200 px-1 rounded">Employee Code</code>{" "}
+                    <code className="bg-gray-200 px-1 rounded">
+                      Employee Code
+                    </code>{" "}
                     (Text or Number)
                   </li>
                   <li>
