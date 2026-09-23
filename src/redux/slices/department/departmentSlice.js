@@ -3,6 +3,7 @@ import api from "../../../lib/api";
 
 const initialState = {
   departments: [],
+  allDepartments: [],
   pagination: {
     total: 0,
     page: 1,
@@ -36,7 +37,17 @@ export const fetchDepartments = createAsyncThunk(
     }
   },
 );
-
+export const fetchAllDepartments = createAsyncThunk(
+  "departments/fetchAllDepartments",
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/setup/departments/allDepartments`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  },
+);
 export const addDepartment = createAsyncThunk(
   "departments/addDepartment",
   async (departmentData, { rejectWithValue }) => {
@@ -115,7 +126,19 @@ const departmentSlice = createSlice({
         state.status = "failed";
         state.error = action.payload;
       })
-
+      // Fetch All Departments
+      .addCase(fetchAllDepartments.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(fetchAllDepartments.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        // API response ke structure ke according fallback handles (data array direct ya nested)
+        state.allDepartments = action.payload.data || action.payload;
+      })
+      .addCase(fetchAllDepartments.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
+      })
       // Add Department
       .addCase(addDepartment.pending, (state) => {
         state.status = "loading";

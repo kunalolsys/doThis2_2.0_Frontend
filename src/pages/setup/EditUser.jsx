@@ -9,7 +9,7 @@ import {
   fetchUsers,
   getUserForDrop,
 } from "../../redux/slices/user/userSlice";
-import { fetchDepartments } from "../../redux/slices/department/departmentSlice";
+import { fetchAllDepartments, fetchDepartments } from "../../redux/slices/department/departmentSlice";
 import { fetchRoles } from "../../redux/slices/role/roleSlice";
 import { fetchWorkShifts } from "../../redux/slices/workShift/workShiftSlice";
 
@@ -54,7 +54,7 @@ const EditUser = () => {
     error: userError,
   } = useSelector((state) => state.users);
   const {
-    departments,
+    allDepartments,
     status: departmentStatus,
     error: departmentError,
   } = useSelector((state) => state.departments);
@@ -179,6 +179,7 @@ const EditUser = () => {
   useEffect(() => {
     dispatch(fetchUserById(id));
     dispatch(fetchDepartments());
+    dispatch(fetchAllDepartments());
     dispatch(fetchUsers()); // Fetch all users for the reporting manager dropdown
     dispatch(getUserForDrop()); // Fetch all users for the reporting manager dropdown
     dispatch(fetchRoles());
@@ -463,7 +464,7 @@ const EditUser = () => {
               <ScrollArea className="h-32 w-full rounded-md border p-4">
                 <div className="space-y-2">
                   {departmentStatus === "loading" && <p>Loading...</p>}
-                  {(departments || []).map((dept) => (
+                  {(allDepartments || []).map((dept) => (
                     <div key={dept._id} className="flex items-center space-x-2">
                       <Checkbox
                         id={dept._id}
