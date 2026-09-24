@@ -9,7 +9,7 @@ import {
   User,
 } from "lucide-react";
 import api from "../../lib/api";
-import { Spin, message } from "antd";
+import { Select as AntdSelect, DatePicker, Spin, message } from "antd";
 import dayjs from "dayjs";
 
 // shadcn/ui components
@@ -31,27 +31,33 @@ import {
 import { Badge } from "../../components/ui/badge";
 import DataPagination from "../../components/ui/commonPagination";
 
+const { RangePicker } = DatePicker;
+
 export default function UserTaskDetails() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Query Params
+  // Query Params & User Info
   const userId = searchParams.get("userId");
   const userName = searchParams.get("userName") || "User Tasks";
-  const period = searchParams.get("period") || "this_month";
-  const startDate = searchParams.get("startDate");
-  const endDate = searchParams.get("endDate");
-  const departmentId = searchParams.get("departmentId");
-  const templateId = searchParams.get("templateId");
-  const taskSource = searchParams.get("taskSource") || "all";
-  const timingLogic = searchParams.get("timingLogic") || "all";
-  const taskStatus = searchParams.get("taskStatus") || "all";
+
+  // Filter States
+  const [period, setPeriod] = useState(searchParams.get("period") || "this_month");
+  const [customDates, setCustomDates] = useState([
+    searchParams.get("startDate") ? dayjs(searchParams.get("startDate")) : null,
+    searchParams.get("endDate") ? dayjs(searchParams.get("endDate")) : null,
+  ]);
+  const [departmentId, setDepartmentId] = useState(searchParams.get("departmentId") || "all");
+  const [templateId, setTemplateId] = useState(searchParams.get("templateId") || "all");
+  const [taskSource, setTaskSource] = useState(searchParams.get("taskSource") || "all");
+  const [timingLogic, setTimingLogic] = useState(searchParams.get("timingLogic") || "all");
+  const [taskStatus, setTaskStatus] = useState(searchParams.get("taskStatus") || "all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Data States
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState([]);
   const [exportTasks, setExportTasks] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -71,6 +77,33 @@ export default function UserTaskDetails() {
     });
   };
 
+  // Helper to calculate delay in days
+  const calculateDelayDays = (task) => {
+    if (task.delayDays !== undefined && task.delayDays !== null) {
+      return task.delayDays;
+    }
+
+    const due = task.dueDate ? new Date(task.dueDate) : null;
+    if (!due) return 0;
+
+    const completed = task.completedAt ? new Date(task.completedAt) : null;
+
+    if (completed) {
+      if (completed > due) {
+        const diffTime = completed.getTime() - due.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+      return 0;
+    } else {
+      const now = new Date();
+      if (now > due && task.status !== "Completed") {
+        const diffTime = now.getTime() - due.getTime();
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+    }
+    return 0;
+  };
+
   // 🚀 Fetch Specific User Tasks
   const fetchUserTasks = useCallback(async () => {
     if (!userId) return;
@@ -80,11 +113,11 @@ export default function UserTaskDetails() {
 
       const payload = {
         period,
-        startDate: startDate || null,
-        endDate: endDate || null,
+        startDate: customDates[0] ? customDates[0].format("YYYY-MM-DD") : null,
+        endDate: customDates[1] ? customDates[1].format("YYYY-MM-DD") : null,
         departmentId: departmentId !== "all" ? departmentId : null,
         templateId: templateId !== "all" ? templateId : null,
-        memberIds: [userId], // Strictly filter for this single user
+        memberIds: [userId],
         taskSource,
         timingLogic,
         taskStatus,
@@ -105,8 +138,7 @@ export default function UserTaskDetails() {
   }, [
     userId,
     period,
-    startDate,
-    endDate,
+    customDates,
     departmentId,
     templateId,
     taskSource,
@@ -133,27 +165,30 @@ export default function UserTaskDetails() {
       "Type",
       "Assignee",
       "Department",
-      "Timing Logic",
-      "Time Status",
+      "Frequency",
+      "Delay Days",
       "Start Date",
       "Due Date",
       "Completed At",
+      "Time Status",
     ];
 
     const csvRows = [headers.join(",")];
 
     exportTasks.forEach((t) => {
+      const delay = calculateDelayDays(t);
       const row = [
         `"${t.taskId || ""}"`,
         `"${t.title || ""}"`,
         `"${t.taskType || ""}"`,
         `"${t.assignedTo?.name || userName}"`,
         `"${t.department || ""}"`,
-        `"${t.startTimeSetting || ""}"`,
-        `"${t.timeStatus || ""}"`,
+        `"${t.frequency || "One-time"}"`,
+        `"${delay}"`,
         `"${t.startDate ? formatDate(t.startDate) : ""}"`,
         `"${t.dueDate ? formatDate(t.dueDate) : ""}"`,
         `"${t.completedAt ? formatDate(t.completedAt) : ""}"`,
+        `"${t.timeStatus || ""}"`,
       ];
       csvRows.push(row.join(","));
     });
@@ -173,13 +208,15 @@ export default function UserTaskDetails() {
     return tasks.filter(
       (t) =>
         t.title?.toLowerCase().includes(q) ||
-        t.taskId?.toLowerCase().includes(q),
+        t.taskId?.toLowerCase().includes(q) ||
+        t.instanceName?.toLowerCase().includes(q)
     );
   }, [tasks, searchQuery]);
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 space-y-4">
       <Card className="border-0 shadow-md bg-white">
+        
         {/* Header Bar */}
         <CardHeader className="border-b border-gray-100 pb-4">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
@@ -198,7 +235,7 @@ export default function UserTaskDetails() {
                   Task Logs: {userName}
                 </CardTitle>
                 <p className="text-xs text-gray-500 font-medium">
-                  Viewing all assigned tasks filtered for the selected user
+                  Viewing detailed task breakdown with delay analysis and completion timestamps
                 </p>
               </div>
             </div>
@@ -226,22 +263,136 @@ export default function UserTaskDetails() {
           </div>
         </CardHeader>
 
-        <CardContent className="pt-4 space-y-4">
-          {/* Search Toolbar */}
-          <div className="flex items-center justify-between gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200/80">
-            <div className="flex items-center gap-2 bg-white border border-gray-300 px-3 h-[34px] rounded-md w-72">
-              <Search size={14} className="text-gray-400 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search user tasks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none outline-none flex-1 text-xs font-medium"
-              />
+        <CardContent className="space-y-4">
+          
+          {/* Top Filter Bar */}
+          <div className="flex flex-wrap items-end justify-between gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200/80">
+            <div className="flex flex-wrap items-end gap-3 flex-1">
+              
+              {/* Period Dropdown */}
+              <div className="w-36">
+                <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                  Time Period
+                </span>
+                <AntdSelect
+                  size="middle"
+                  value={period}
+                  onChange={(v) => {
+                    setPeriod(v);
+                    setPage(1);
+                  }}
+                  className="w-full text-xs"
+                  options={[
+                    { value: "today", label: "Today" },
+                    { value: "this_week", label: "This Week" },
+                    { value: "this_month", label: "This Month" },
+                    { value: "custom", label: "Custom Range" },
+                  ]}
+                />
+              </div>
+
+              {/* Custom Date Range Picker */}
+              {period === "custom" && (
+                <div className="w-60">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                    Custom Date Range
+                  </span>
+                  <RangePicker
+                    size="middle"
+                    value={customDates}
+                    className="w-full text-xs rounded-md"
+                    onChange={(dates) => {
+                      setCustomDates(dates || [null, null]);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Task Source Toggle */}
+              <div className="w-36">
+                <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                  Task Type
+                </span>
+                <AntdSelect
+                  size="middle"
+                  value={taskSource}
+                  onChange={(v) => {
+                    setTaskSource(v);
+                    setPage(1);
+                  }}
+                  className="w-full text-xs"
+                  options={[
+                    { value: "all", label: "All Tasks" },
+                    { value: "fms", label: "FMS Only" },
+                    { value: "regular", label: "Regular Only" },
+                  ]}
+                />
+              </div>
+
+              {/* Timing Logic Filter */}
+              <div className="w-40">
+                <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                  Timing Logic
+                </span>
+                <AntdSelect
+                  size="middle"
+                  value={timingLogic}
+                  onChange={(v) => {
+                    setTimingLogic(v);
+                    setPage(1);
+                  }}
+                  className="w-full text-xs"
+                  options={[
+                    { value: "all", label: "All Logic Types" },
+                    { value: "actual-to-planned", label: "Actual-to-Planned" },
+                    { value: "planned-to-planned", label: "Planned-to-Planned" },
+                  ]}
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div className="w-36">
+                <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                  Task Status
+                </span>
+                <AntdSelect
+                  size="middle"
+                  value={taskStatus}
+                  onChange={(v) => {
+                    setTaskStatus(v);
+                    setPage(1);
+                  }}
+                  className="w-full text-xs"
+                  options={[
+                    { value: "all", label: "All Statuses" },
+                    { value: "completed", label: "Completed" },
+                    { value: "pending", label: "Pending" },
+                    { value: "overdue", label: "Overdue" },
+                  ]}
+                />
+              </div>
+
+              {/* Search Box */}
+              <div className="w-52">
+                <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                  Search
+                </span>
+                <div className="flex items-center gap-2 bg-white border border-gray-300 px-3 h-[32px] rounded-md">
+                  <Search size={14} className="text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search tasks or instance..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-transparent border-none outline-none flex-1 text-xs font-medium"
+                  />
+                </div>
+              </div>
             </div>
 
-            <span className="text-xs font-mono text-gray-500">
-              Total Assigned: <b>{totalCount}</b> tasks
+            <span className="text-xs font-mono text-gray-500 pb-1">
+              Total Tasks: <b>{totalCount}</b>
             </span>
           </div>
 
@@ -254,17 +405,23 @@ export default function UserTaskDetails() {
                   <TableHead className="text-xs font-bold min-w-[90px]">
                     TYPE
                   </TableHead>
-                  <TableHead className="text-xs font-bold min-w-[220px]">
+                  <TableHead className="text-xs font-bold min-w-[200px]">
                     TASK / INSTANCE
                   </TableHead>
-                  <TableHead className="text-xs font-bold min-w-[130px]">
-                    TIMING LOGIC
+                  <TableHead className="text-xs font-bold min-w-[120px]">
+                    FREQUENCY
                   </TableHead>
-                  <TableHead className="text-xs font-bold min-w-[130px]">
+                  <TableHead className="text-xs font-bold min-w-[120px]">
                     START DATE
                   </TableHead>
-                  <TableHead className="text-xs font-bold min-w-[130px]">
+                  <TableHead className="text-xs font-bold min-w-[120px]">
                     DUE DATE
+                  </TableHead>
+                  <TableHead className="text-xs font-bold min-w-[130px]">
+                    COMPLETED AT
+                  </TableHead>
+                  <TableHead className="text-xs font-bold text-center min-w-[100px]">
+                    DELAY DAYS
                   </TableHead>
                   <TableHead className="text-xs font-bold text-center min-w-[110px]">
                     TIME STATUS
@@ -275,78 +432,108 @@ export default function UserTaskDetails() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="p-8 text-center">
+                    <TableCell colSpan={9} className="p-8 text-center">
                       <Spin />
                     </TableCell>
                   </TableRow>
                 ) : filteredTasks.length > 0 ? (
-                  filteredTasks.map((t, idx) => (
-                    <TableRow key={t._id} className="hover:bg-gray-50 text-xs">
-                      <TableCell className="p-3 text-gray-400 font-mono">
-                        {(page - 1) * limit + idx + 1}
-                      </TableCell>
+                  filteredTasks.map((t, idx) => {
+                    const delayDays = calculateDelayDays(t);
 
-                      <TableCell className="p-3">
-                        <Badge
-                          variant="outline"
-                          className={
-                            t.taskType === "FMS"
-                              ? "border-purple-300 bg-purple-50 text-purple-700"
-                              : "border-blue-300 bg-blue-50 text-blue-700"
-                          }
-                        >
-                          {t.taskType}
-                        </Badge>
-                      </TableCell>
+                    return (
+                      <TableRow key={t._id} className="hover:bg-gray-50 text-xs">
+                        <TableCell className="p-3 text-gray-400 font-mono">
+                          {(page - 1) * limit + idx + 1}
+                        </TableCell>
 
-                      <TableCell className="p-3">
-                        <span className="font-bold text-gray-900 block truncate max-w-[220px]">
-                          {t.title}
-                        </span>
-                        {t.instanceName !== "N/A" && (
-                          <span className="text-[10px] text-gray-400 font-mono block">
-                            Instance: {t.instanceName}
+                        {/* Task Type Badge */}
+                        <TableCell className="p-3">
+                          <Badge
+                            variant="outline"
+                            className={
+                              t.taskType === "FMS"
+                                ? "border-purple-300 bg-purple-50 text-purple-700"
+                                : "border-blue-300 bg-blue-50 text-blue-700"
+                            }
+                          >
+                            {t.taskType}
+                          </Badge>
+                        </TableCell>
+
+                        {/* Task Title & Instance */}
+                        <TableCell className="p-3">
+                          <span className="font-bold text-gray-900 block truncate max-w-[200px]">
+                            {t.title}
                           </span>
-                        )}
-                      </TableCell>
+                          {t.instanceName && t.instanceName !== "N/A" && (
+                            <span className="text-[10px] text-gray-400 font-mono block">
+                              Instance: {t.instanceName}
+                            </span>
+                          )}
+                        </TableCell>
 
-                      <TableCell className="p-3 font-mono text-gray-600">
-                        {t.startTimeSetting}
-                      </TableCell>
+                        {/* Frequency Badge */}
+                        <TableCell className="p-3">
+                          <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-700 font-semibold border border-slate-200">
+                            {t.frequency || "One-time"}
+                          </Badge>
+                        </TableCell>
 
-                      <TableCell className="p-3 font-mono text-gray-500">
-                        {formatDate(t.startDate)}
-                      </TableCell>
-                      <TableCell className="p-3 font-mono text-gray-500">
-                        {formatDate(t.dueDate)}
-                      </TableCell>
+                        {/* Dates */}
+                        <TableCell className="p-3 font-mono text-gray-500">
+                          {formatDate(t.startDate)}
+                        </TableCell>
+                        <TableCell className="p-3 font-mono text-gray-500">
+                          {formatDate(t.dueDate)}
+                        </TableCell>
+                        <TableCell className="p-3 font-mono text-gray-700 font-semibold">
+                          {formatDate(t.completedAt)}
+                        </TableCell>
 
-                      <TableCell className="p-3 text-center">
-                        <Badge
-                          variant="default"
-                          className={
-                            t.timeStatus === "On Time"
-                              ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
-                              : t.timeStatus === "Late"
-                                ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
-                                : t.timeStatus === "Overdue"
-                                  ? "bg-red-100 text-red-800 hover:bg-red-100"
-                                  : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                          }
-                        >
-                          {t.timeStatus}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        {/* Delay Days Badge */}
+                        <TableCell className="p-3 text-center">
+                          {delayDays > 0 ? (
+                            <Badge
+                              variant="default"
+                              className="bg-red-100 text-red-800 hover:bg-red-100 font-bold font-mono"
+                            >
+                              +{delayDays} Days
+                            </Badge>
+                          ) : (
+                            <span className="text-emerald-600 font-semibold font-mono text-xs">
+                              0 Days
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Time Status */}
+                        <TableCell className="p-3 text-center">
+                          <Badge
+                            variant="default"
+                            className={
+                              t.timeStatus === "On Time"
+                                ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
+                                : t.timeStatus === "Late"
+                                  ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
+                                  : t.timeStatus === "Overdue"
+                                    ? "bg-red-100 text-red-800 hover:bg-red-100"
+                                    : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                            }
+                          >
+                            {t.timeStatus}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={9}
                       className="p-8 text-center text-gray-500"
                     >
                       <Inbox className="h-8 w-8 text-gray-300 mx-auto mb-2" />
-                      No task records found for this user.
+                      No task records found matching the specified filters.
                     </TableCell>
                   </TableRow>
                 )}
@@ -354,6 +541,7 @@ export default function UserTaskDetails() {
             </Table>
           </div>
 
+          {/* Common Pagination */}
           <DataPagination
             page={page}
             limit={limit}
