@@ -47,7 +47,8 @@ const isActionDisabledForSubmodule = (submoduleKey, actionKey) => {
     submoduleKey === "role_view" ||
     submoduleKey === "upcoming_ongoing_fms" ||
     submoduleKey === "mis_reports" ||
-    submoduleKey === "fms_reports"
+    submoduleKey === "fms_reports"||
+    submoduleKey === "combine_reports"
   ) {
     return actionKey !== "read";
   }

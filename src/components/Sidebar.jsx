@@ -58,10 +58,13 @@ const Sidebar = ({ children }) => {
 
   // Auth User Cookies (Session Info Only)
   const roleCookie = useMemo(() => Cookies.get("role") || "", []);
-  const normalizedRole = useMemo(() => roleCookie.trim().toLowerCase(), [roleCookie]);
+  const normalizedRole = useMemo(
+    () => roleCookie.trim().toLowerCase(),
+    [roleCookie],
+  );
   const isSuper = useMemo(
     () => isSuperFromStore || normalizedRole.includes("super"),
-    [isSuperFromStore, normalizedRole]
+    [isSuperFromStore, normalizedRole],
   );
 
   const user = useMemo(
@@ -70,7 +73,7 @@ const Sidebar = ({ children }) => {
       role: { name: roleCookie },
       email: Cookies.get("email") || "",
     }),
-    [roleCookie]
+    [roleCookie],
   );
 
   // 2. RE-HYDRATION ON REFRESH
@@ -107,7 +110,7 @@ const Sidebar = ({ children }) => {
       }
       return Boolean(item.actions[action]);
     },
-    [isSuper, permissions]
+    [isSuper, permissions],
   );
 
   // Sync Current User & Company Data
@@ -121,7 +124,7 @@ const Sidebar = ({ children }) => {
           email: Cookies.get("email") || "",
           role: { name: Cookies.get("role") || "" },
           department: Cookies.get("departmentName"),
-        })
+        }),
       );
     }
     dispatch(fetchCompany());
@@ -135,7 +138,7 @@ const Sidebar = ({ children }) => {
         const res = await api.get("/setup/modules/list");
         const data = res.data?.data ?? res.data;
         if (isMounted) {
-          setModules(Array.isArray(data) ? data : data?.modules ?? []);
+          setModules(Array.isArray(data) ? data : (data?.modules ?? []));
         }
       } catch (e) {
         console.error("Failed to load modules list:", e);
@@ -167,12 +170,12 @@ const Sidebar = ({ children }) => {
       if (isSuper) return true;
       return modules.some((m) => m.moduleKey === moduleKey && m.isEnabled);
     },
-    [isSuper, modules]
+    [isSuper, modules],
   );
 
   const isBothDisable = useMemo(
     () => !isModuleEnabled("DO_THIS2") && !isModuleEnabled("FMS_ENGINE"),
-    [isModuleEnabled]
+    [isModuleEnabled],
   );
 
   // Dropdown Toggle
@@ -200,7 +203,7 @@ const Sidebar = ({ children }) => {
         [menu]: !prev[menu],
       }));
     },
-    [isCollapsed]
+    [isCollapsed],
   );
 
   // Logout Handler
@@ -216,36 +219,36 @@ const Sidebar = ({ children }) => {
   // Active Link Helpers
   const isActiveLink = useCallback(
     (path) => location.pathname === path,
-    [location.pathname]
+    [location.pathname],
   );
 
   const isDashboardDropdownActive = useMemo(
     () => location.pathname === "/dashboard",
-    [location.pathname]
+    [location.pathname],
   );
   const isMyBucketActive = useMemo(
     () => location.pathname === "/bucket/my-bucket",
-    [location.pathname]
+    [location.pathname],
   );
   const isMyDayDropdownActive = useMemo(
     () => location.pathname.startsWith("/my-day"),
-    [location.pathname]
+    [location.pathname],
   );
   const isFmsEngineDropdownActive = useMemo(
     () => location.pathname.startsWith("/fms-engine"),
-    [location.pathname]
+    [location.pathname],
   );
   const isReportsDropdownActive = useMemo(
     () => location.pathname.startsWith("/reports"),
-    [location.pathname]
+    [location.pathname],
   );
   const isDelegationDropdownActive = useMemo(
     () => location.pathname.startsWith("/delegate"),
-    [location.pathname]
+    [location.pathname],
   );
   const isSetupDropdownActive = useMemo(
     () => location.pathname.startsWith("/setup"),
-    [location.pathname]
+    [location.pathname],
   );
 
   const sidebarWidth = isCollapsed ? "w-20" : "w-64";
@@ -398,7 +401,10 @@ const Sidebar = ({ children }) => {
     if (hasPermission("users", "read")) {
       items.push({ path: "/setup/users", label: "Users", icon: Users2 });
     }
-    if (hasPermission("company_setup", "read") && isModuleEnabled("COMPANY_SETUP")) {
+    if (
+      hasPermission("company_setup", "read") &&
+      isModuleEnabled("COMPANY_SETUP")
+    ) {
       items.push({
         path: "/company-setup",
         label: "Company Setup",
@@ -422,6 +428,13 @@ const Sidebar = ({ children }) => {
       items.push({
         path: "/reports/fms",
         label: "FMS Reports",
+        icon: NotepadText,
+      });
+    }
+    if (hasPermission("combine_reports", "read") && !isBothDisable) {
+      items.push({
+        path: "/reports/combined",
+        label: "Combined Reports",
         icon: NotepadText,
       });
     }
@@ -627,10 +640,11 @@ const Sidebar = ({ children }) => {
           )}
 
           {/* 3. Delegation Task */}
-          {hasPermission("delegation_task", "read") && isModuleEnabled("DO_THIS2") && (
-            <Link
-              to="/delegation-tasks"
-              className={`
+          {hasPermission("delegation_task", "read") &&
+            isModuleEnabled("DO_THIS2") && (
+              <Link
+                to="/delegation-tasks"
+                className={`
                   relative flex items-center ${
                     isCollapsed ? "justify-center" : ""
                   } 
@@ -642,33 +656,34 @@ const Sidebar = ({ children }) => {
                       : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
                   }
                 `}
-            >
-              <div
-                className={`relative ${
-                  isActiveLink("/delegation-tasks")
-                    ? "text-white"
-                    : "text-gray-400 group-hover:text-blue-500"
-                }`}
               >
-                <ClipboardList className="w-4 h-4" />
-                {isActiveLink("/delegation-tasks") && (
-                  <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
-                )}
-              </div>
+                <div
+                  className={`relative ${
+                    isActiveLink("/delegation-tasks")
+                      ? "text-white"
+                      : "text-gray-400 group-hover:text-blue-500"
+                  }`}
+                >
+                  <ClipboardList className="w-4 h-4" />
+                  {isActiveLink("/delegation-tasks") && (
+                    <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
+                  )}
+                </div>
 
-              {!isCollapsed && (
-                <span className="ml-2 font-medium text-sm">
-                  Delegation Task
-                </span>
-              )}
-            </Link>
-          )}
+                {!isCollapsed && (
+                  <span className="ml-2 font-medium text-sm">
+                    Delegation Task
+                  </span>
+                )}
+              </Link>
+            )}
 
           {/* 4. Task Reassignment */}
-          {hasPermission("task_reassigning", "read") && isModuleEnabled("DO_THIS2") && (
-            <Link
-              to="/reassign"
-              className={`
+          {hasPermission("task_reassigning", "read") &&
+            isModuleEnabled("DO_THIS2") && (
+              <Link
+                to="/reassign"
+                className={`
                   relative flex items-center ${
                     isCollapsed ? "justify-center" : ""
                   } 
@@ -680,27 +695,27 @@ const Sidebar = ({ children }) => {
                       : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
                   }
                 `}
-            >
-              <div
-                className={`relative ${
-                  isActiveLink("/reassign")
-                    ? "text-white"
-                    : "text-gray-400 group-hover:text-blue-500"
-                }`}
               >
-                <UserSwitchOutlined className="w-4 h-4" />
-                {isActiveLink("/reassign") && (
-                  <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
-                )}
-              </div>
+                <div
+                  className={`relative ${
+                    isActiveLink("/reassign")
+                      ? "text-white"
+                      : "text-gray-400 group-hover:text-blue-500"
+                  }`}
+                >
+                  <UserSwitchOutlined className="w-4 h-4" />
+                  {isActiveLink("/reassign") && (
+                    <div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-green-400 rounded-full border border-white"></div>
+                  )}
+                </div>
 
-              {!isCollapsed && (
-                <span className="ml-2 font-medium text-sm">
-                  Task Reassignment
-                </span>
-              )}
-            </Link>
-          )}
+                {!isCollapsed && (
+                  <span className="ml-2 font-medium text-sm">
+                    Task Reassignment
+                  </span>
+                )}
+              </Link>
+            )}
 
           {/* 5. FMS Engine */}
           {fmsEngineLinks.length > 0 && isModuleEnabled("FMS_ENGINE") && (
@@ -857,12 +872,13 @@ const Sidebar = ({ children }) => {
           )}
 
           {/* 7. My Bucket */}
-          {hasPermission("my_bucket", "read") && isModuleEnabled("DO_THIS2") && (
-            <div>
-              <div className="relative">
-                <Link
-                  to="/bucket/my-bucket"
-                  className={`
+          {hasPermission("my_bucket", "read") &&
+            isModuleEnabled("DO_THIS2") && (
+              <div>
+                <div className="relative">
+                  <Link
+                    to="/bucket/my-bucket"
+                    className={`
                     relative flex items-center w-full ${
                       isCollapsed ? "justify-center" : ""
                     } 
@@ -874,29 +890,29 @@ const Sidebar = ({ children }) => {
                         : "bg-white/80 text-gray-600 hover:bg-white border-gray-200/60 hover:border-gray-300/80 hover:shadow-lg"
                     }
                   `}
-                >
-                  <div
-                    className={`relative ${
-                      isMyBucketActive
-                        ? "text-white"
-                        : "text-gray-400 group-hover:text-blue-500"
-                    }`}
                   >
-                    <LayoutDashboard className="w-4 h-4" />
-                    {isMyBucketActive && (
-                      <div className="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
-                    )}
-                  </div>
+                    <div
+                      className={`relative ${
+                        isMyBucketActive
+                          ? "text-white"
+                          : "text-gray-400 group-hover:text-blue-500"
+                      }`}
+                    >
+                      <LayoutDashboard className="w-4 h-4" />
+                      {isMyBucketActive && (
+                        <div className="absolute inset-0 bg-white/20 rounded-full animate-ping"></div>
+                      )}
+                    </div>
 
-                  {!isCollapsed && (
-                    <span className="ml-2 font-medium flex-1 text-left text-sm">
-                      My Bucket
-                    </span>
-                  )}
-                </Link>
+                    {!isCollapsed && (
+                      <span className="ml-2 font-medium flex-1 text-left text-sm">
+                        My Bucket
+                      </span>
+                    )}
+                  </Link>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* 8. Delegation Buckets */}
           {delegationBucketLinks.length > 0 && isModuleEnabled("DO_THIS2") && (

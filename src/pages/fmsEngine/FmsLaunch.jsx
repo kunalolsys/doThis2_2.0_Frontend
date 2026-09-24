@@ -67,6 +67,7 @@ const FmsLaunch = () => {
     try {
       const res = await api.post(`/fms/templates-list-drop/`, {
         role: currentUser?.role?.name,
+        includeLinked: false,
       });
       setTemplates(res.data.data || []);
     } catch (err) {

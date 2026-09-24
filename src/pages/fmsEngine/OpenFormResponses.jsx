@@ -1,19 +1,12 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import {
-  FileText,
   Search,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  AlertTriangle,
   Inbox,
   Edit3,
   RefreshCw,
-  ShieldCheck,
-  CheckCircle2,
   XCircle,
-  Hash,
-  UserCheck,
+  Eye,
+  Zap,
 } from "lucide-react";
 import api from "../../lib/api";
 import {
@@ -24,90 +17,112 @@ import {
   InputNumber,
   DatePicker,
   message,
-  Tag,
+  Tooltip,
+  Spin,
 } from "antd";
 import { useSelector } from "react-redux";
 import dayjs from "dayjs";
-import { motion, AnimatePresence } from "framer-motion";
 import { getSubmodulePermissions } from "../../utils/permissionUtils";
 
-// --- Animation Variants ---
-const fadeUpVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.25, ease: "easeOut" } },
-};
+// shadcn/ui components
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
+import { Badge } from "../../components/ui/badge";
+import DataPagination from "../../components/ui/commonPagination";
 
-/* ─── Skeleton Loader for Table ─── */
-const SkeletonRow = () => (
-  <tr className="animate-pulse border-b border-slate-100">
-    <td className="py-3 px-5"><div className="h-3 w-4 bg-slate-200 rounded"></div></td>
-    <td className="py-3 px-5">
-      <div className="flex items-center gap-3">
-        <div className="h-8 w-8 bg-slate-200 rounded-full shrink-0"></div>
-        <div className="space-y-1.5 flex-1">
-          <div className="h-3.5 w-28 bg-slate-200 rounded"></div>
-          <div className="h-2.5 w-16 bg-slate-100 rounded"></div>
-        </div>
+/* ─── Cell Value Smart Formatter matching FmsTemplates Badge Style ─── */
+const SmartTableCell = ({ val }) => {
+  if (val === null || val === undefined || val === "") {
+    return <span className="text-gray-400 font-mono text-sm">—</span>;
+  }
+
+  let actualVal = val;
+  if (typeof val === "object" && val !== null && "value" in val) {
+    actualVal = val.value;
+  }
+
+  if (actualVal === null || actualVal === undefined || actualVal === "") {
+    return <span className="text-gray-400 font-mono text-sm">—</span>;
+  }
+
+  // Boolean Values
+  if (typeof actualVal === "boolean") {
+    return (
+      <Badge
+        variant="default"
+        className={
+          actualVal
+            ? "bg-green-100 text-green-800 hover:bg-green-100 border border-green-200 text-xs px-2 py-0.5"
+            : "bg-red-100 text-red-800 hover:bg-red-100 border border-red-200 text-xs px-2 py-0.5"
+        }
+      >
+        {actualVal ? "Yes" : "No"}
+      </Badge>
+    );
+  }
+
+  // Array / Multi-Select Tags
+  if (Array.isArray(actualVal)) {
+    if (actualVal.length === 0)
+      return <span className="text-gray-400 font-mono text-sm">—</span>;
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {actualVal.slice(0, 2).map((item, i) => (
+          <Badge
+            key={i}
+            variant="default"
+            className="bg-blue-100 text-blue-800 hover:bg-blue-100 border border-blue-200 text-xs px-2 py-0.5 max-w-[120px] truncate"
+          >
+            {String(item)}
+          </Badge>
+        ))}
+        {actualVal.length > 2 && (
+          <Tooltip title={actualVal.join(", ")}>
+            <Badge
+              variant="outline"
+              className="text-xs px-1.5 py-0.5 cursor-pointer"
+            >
+              +{actualVal.length - 2}
+            </Badge>
+          </Tooltip>
+        )}
       </div>
-    </td>
-    <td className="py-3 px-5"><div className="h-3.5 w-28 bg-slate-200 rounded"></div></td>
-    <td className="py-3 px-5"><div className="h-3.5 w-24 bg-slate-200 rounded"></div></td>
-    <td className="py-3 px-5 text-right"><div className="h-5 w-16 bg-slate-200 rounded-md ml-auto"></div></td>
-  </tr>
-);
+    );
+  }
 
-/* ─── Field Response Renderer for Right Inspector ─── */
-const SubmissionFieldCard = ({ fieldKey, field }) => {
-  const labelText = useMemo(() => {
-    if (typeof field === "object" && field !== null && field?.label) {
-      return field.label;
-    }
-    return String(fieldKey || "")
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (str) => str.toUpperCase());
-  }, [field, fieldKey]);
-
-  const renderedValue = useMemo(() => {
-    if (field === null || field === undefined) return "—";
-    let val = field;
-    if (typeof field === "object" && field !== null && !Array.isArray(field)) {
-      if ("value" in field) val = field.value;
-      else return "—";
-    }
-    if (val === null || val === undefined || val === "") return "—";
-    if (typeof val === "boolean") return val ? "Yes" : "No";
-    if (Array.isArray(val)) {
-      return val.length > 0
-        ? val
-            .map((item) =>
-              typeof item === "object" && item !== null
-                ? JSON.stringify(item)
-                : String(item ?? "")
-            )
-            .filter(Boolean)
-            .join(", ")
-        : "—";
-    }
-    if (typeof val === "object") return "—";
-    return String(val);
-  }, [field]);
+  // Long Text preview
+  const strVal = String(actualVal);
+  if (strVal.length > 30) {
+    return (
+      <Tooltip title={strVal} overlayStyle={{ maxWidth: 320 }}>
+        <span className="truncate max-w-[180px] block text-gray-700 font-medium cursor-help text-sm">
+          {strVal}
+        </span>
+      </Tooltip>
+    );
+  }
 
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-slate-50/70 p-3.5 space-y-1 hover:border-indigo-300 transition-colors">
-      <div className="flex items-center gap-1.5">
-        <Hash className="w-3 h-3 text-indigo-500" />
-        <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-          {labelText}
-        </span>
-      </div>
-      <span className="text-xs font-semibold text-slate-800 whitespace-pre-wrap leading-relaxed block pl-4.5">
-        {renderedValue}
-      </span>
-    </div>
+    <span className="text-gray-800 font-medium truncate block text-sm">
+      {strVal}
+    </span>
   );
 };
 
-/* ─── Admin Response Edit Modal ─── */
+/* ─── ORIGINAL ADMIN RESPONSE EDIT MODAL ─── */
 const EditSubmissionModal = ({ open, submission, onClose, onSuccess }) => {
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
@@ -121,7 +136,8 @@ const EditSubmissionModal = ({ open, submission, onClose, onSuccess }) => {
         typeof item === "object" && item !== null && "value" in item
           ? item.value
           : item,
-      fieldType: typeof item === "object" && item?.fieldType ? item.fieldType : "text",
+      fieldType:
+        typeof item === "object" && item?.fieldType ? item.fieldType : "text",
     }));
   }, [submission]);
 
@@ -153,17 +169,17 @@ const EditSubmissionModal = ({ open, submission, onClose, onSuccess }) => {
 
       const res = await api.put(
         `/open-forms/submission/${submission._id}/edit`,
-        { submissionData: payloadData }
+        { submissionData: payloadData },
       );
 
       message.success(
-        res.data?.message || "Response updated and synced to all tasks!"
+        res.data?.message || "Response updated and synced to all tasks!",
       );
       if (onSuccess) await onSuccess(submission._id, payloadData);
       onClose();
     } catch (err) {
       message.error(
-        err.response?.data?.message || "Failed to update response."
+        err.response?.data?.message || "Failed to update response.",
       );
     } finally {
       setSaving(false);
@@ -173,8 +189,8 @@ const EditSubmissionModal = ({ open, submission, onClose, onSuccess }) => {
   return (
     <Modal
       title={
-        <div className="flex items-center gap-2 text-slate-800 font-bold text-sm pb-2 border-b border-slate-100">
-          <Edit3 size={16} className="text-indigo-600" />
+        <div className="flex items-center gap-2 text-gray-900 font-bold text-base pb-2 border-b border-gray-100">
+          <Edit3 size={18} className="text-blue-600" />
           Edit Open Form Response
         </div>
       }
@@ -184,29 +200,48 @@ const EditSubmissionModal = ({ open, submission, onClose, onSuccess }) => {
       confirmLoading={saving}
       okText="Save & Cascade Sync"
       okButtonProps={{
-        className: "bg-indigo-600 hover:bg-indigo-700 font-semibold rounded-lg text-xs",
+        className:
+          "bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg text-sm",
       }}
-      cancelButtonProps={{ className: "rounded-lg text-xs font-medium" }}
+      cancelButtonProps={{ className: "rounded-lg text-sm font-medium" }}
       destroyOnClose
-      width={500}
-      closeIcon={<XCircle size={16} className="text-slate-400 hover:text-slate-600" />}
+      width={540}
+      closeIcon={
+        <XCircle size={18} className="text-gray-400 hover:text-gray-600" />
+      }
     >
-      <Form form={form} layout="vertical" onFinish={handleSave} className="mt-4 space-y-3">
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSave}
+        className="mt-4 space-y-3 max-h-[60vh] overflow-y-auto pr-1"
+      >
         {fields.map((f) => (
           <Form.Item
             key={f.key}
             name={f.key}
-            label={<span className="font-semibold text-xs text-slate-600">{f.label}</span>}
+            label={
+              <span className="font-semibold text-xs text-gray-700">
+                {f.label}
+              </span>
+            }
             className="mb-0"
           >
             {f.fieldType === "number" ? (
-              <InputNumber style={{ width: "100%" }} className="rounded-lg" />
+              <InputNumber
+                style={{ width: "100%" }}
+                className="rounded-md text-sm"
+              />
             ) : f.fieldType === "textarea" ? (
-              <Input.TextArea rows={2} className="rounded-lg text-xs" />
+              <Input.TextArea rows={2} className="rounded-md text-sm" />
             ) : f.fieldType === "date" ? (
-              <DatePicker style={{ width: "100%" }} format="YYYY-MM-DD" className="rounded-lg" />
+              <DatePicker
+                style={{ width: "100%" }}
+                format="YYYY-MM-DD"
+                className="rounded-md text-sm"
+              />
             ) : (
-              <Input className="rounded-lg text-xs" />
+              <Input className="rounded-md text-sm" />
             )}
           </Form.Item>
         ))}
@@ -217,27 +252,33 @@ const EditSubmissionModal = ({ open, submission, onClose, onSuccess }) => {
 
 /* ─── Main Open Form Responses Dashboard ─── */
 export default function OpenFormResponses() {
+  const [templates, setTemplates] = useState([]);
   const [forms, setForms] = useState([]);
-  const [selectedFormId, setSelectedFormId] = useState("all");
+
+  // Active Sequential Filters
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [selectedFormId, setSelectedFormId] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Submissions Data
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-
   const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [inspectorModalOpen, setInspectorModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
+  // Pagination
   const [page, setPage] = useState(1);
-  const limit = 10;
-  const { permissions, isSuper } = useSelector((state) => state.permissions);
+  const [limit, setLimit] = useState(10);
 
-  // Destructure clean capability flags
-  const { canCreate, canRead, canUpdate, canDelete } = getSubmodulePermissions(
+  const { permissions, isSuper } = useSelector((state) => state.permissions);
+  const currentUser = useSelector((state) => state.users?.currentUser);
+
+  const { canUpdate } = getSubmodulePermissions(
     permissions,
     "responses",
     isSuper,
   );
-  const currentUser = useSelector((state) => state.users?.currentUser);
 
   const isAdmin = useMemo(() => {
     const roleName = currentUser?.role?.name || currentUser?.role;
@@ -245,9 +286,9 @@ export default function OpenFormResponses() {
   }, [currentUser]);
 
   const formatDate = (dateString) => {
-    if (!dateString) return "-";
+    if (!dateString) return "—";
     const d = new Date(dateString);
-    if (isNaN(d.getTime())) return "-";
+    if (isNaN(d.getTime())) return "—";
     return d.toLocaleDateString(undefined, {
       month: "short",
       day: "2-digit",
@@ -257,392 +298,479 @@ export default function OpenFormResponses() {
     });
   };
 
-  const fetchInitialData = useCallback(async () => {
+  // 🚀 STEP 1: Fetch FMS Templates & Auto-select First Template
+  const fetchTemplates = useCallback(async () => {
     try {
-      setLoading(true);
-      const formsRes = await api.post(`/open-forms/get-forms`, {
+      const res = await api.post(`/fms/templates-list-drop`, {
         role: currentUser?.role?.name,
+        includeLinked: true,
       });
-      const formsList = formsRes.data?.data || [];
-      setForms(formsList);
+      const list = res.data?.data || res.data || [];
+      setTemplates(list);
 
-      if (formsList.length > 0) {
-        const results = await Promise.allSettled(
-          formsList.map((form) => api.get(`/open-forms/${form._id}/submissions`))
-        );
-
-        const combined = results.flatMap((result, index) => {
-          if (result.status === "fulfilled") {
-            const data = result.value.data?.data || [];
-            return data.map((item) => ({
-              ...item,
-              parentFormName: formsList[index]?.formName || "Unnamed Form",
-              parentFormId: formsList[index]?._id,
-            }));
-          }
-          return [];
-        });
-
-        combined.sort((a, b) => {
-          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return dateB - dateA;
-        });
-
-        setSubmissions(combined);
+      if (list.length > 0) {
+        setSelectedTemplateId(list[0]._id);
+      } else {
+        setSelectedTemplateId("");
       }
     } catch (err) {
-      console.error("Failed to load submission logs:", err);
+      console.error("Failed to load template options:", err);
+    }
+  }, [currentUser?.role?.name]);
+
+  // 🚀 STEP 2: Fetch Forms linked to the selected Template & Auto-select First Form
+  const fetchLinkedForms = useCallback(async () => {
+    if (!selectedTemplateId) {
+      setForms([]);
+      setSelectedFormId("");
+      return;
+    }
+
+    try {
+      const body = {
+        role: currentUser?.role?.name,
+        templateId: selectedTemplateId,
+      };
+      const res = await api.post(`/open-forms/get-forms`, body);
+      const list = res.data?.data || [];
+      setForms(list);
+
+      if (list.length > 0) {
+        setSelectedFormId(list[0]._id);
+      } else {
+        setSelectedFormId("");
+      }
+    } catch (err) {
+      console.error("Failed to load forms linked with template:", err);
+    }
+  }, [selectedTemplateId, currentUser?.role?.name]);
+
+  // 🚀 STEP 3: Fetch Submissions with pure Backend Parameter Delegation
+  const fetchSubmissionsFromBackend = useCallback(async () => {
+    if (!selectedTemplateId || !selectedFormId) {
+      setSubmissions([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const params = {
+        templateId: selectedTemplateId,
+        formId: selectedFormId,
+      };
+
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+
+      const res = await api.get(`/open-forms/submissions`, { params });
+      setSubmissions(res.data?.data || []);
+    } catch (err) {
+      console.error("Failed to fetch backend filtered submissions:", err);
+      message.error("Failed to fetch form responses.");
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [selectedTemplateId, selectedFormId, searchQuery]);
+
+  // Run Flow Execution
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
+    if (selectedTemplateId) {
+      fetchLinkedForms();
+    }
+  }, [selectedTemplateId, fetchLinkedForms]);
 
-  // Filter Pipeline
-  const filteredSubmissions = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    return submissions.filter((item) => {
-      const matchesForm = selectedFormId === "all" || item.parentFormId === selectedFormId;
-      const name = item?.submittedBy?.name?.toLowerCase() || "";
-      const code = item?.submittedBy?.employeeCode?.toLowerCase() || "";
-      const matchesSearch = !query || name.includes(query) || code.includes(query);
-
-      const isTriggered = item.status === "Triggered";
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "success" && isTriggered) ||
-        (statusFilter === "failed" && !isTriggered);
-
-      return matchesForm && matchesSearch && matchesStatus;
-    });
-  }, [submissions, selectedFormId, searchQuery, statusFilter]);
-
-  // FIX: Keep Right-Side Inspector Card Refreshed Live
   useEffect(() => {
-    if (selectedSubmission?._id) {
-      const updatedMatch = submissions.find((s) => s._id === selectedSubmission._id);
-      if (updatedMatch) {
-        setSelectedSubmission(updatedMatch);
-        return;
+    if (selectedTemplateId && selectedFormId) {
+      fetchSubmissionsFromBackend();
+    }
+  }, [selectedTemplateId, selectedFormId, fetchSubmissionsFromBackend]);
+
+  // Dynamic Column Keys Extractor from Field Payloads
+  const dynamicFieldMap = useMemo(() => {
+    const fieldMap = new Map();
+
+    submissions.forEach((sub) => {
+      if (sub.submissionData && typeof sub.submissionData === "object") {
+        Object.entries(sub.submissionData).forEach(([key, val]) => {
+          let label = key;
+          if (typeof val === "object" && val !== null && val.label) {
+            label = val.label;
+          } else {
+            label = String(key)
+              .replace(/([A-Z])/g, " $1")
+              .replace(/^./, (str) => str.toUpperCase());
+          }
+          if (!fieldMap.has(key)) {
+            fieldMap.set(key, label);
+          }
+        });
       }
-    }
-    if (filteredSubmissions.length > 0) {
-      setSelectedSubmission(filteredSubmissions[0]);
-    } else {
-      setSelectedSubmission(null);
-    }
-  }, [submissions, filteredSubmissions]);
+    });
 
-  const stats = useMemo(() => {
-    const total = filteredSubmissions.length;
-    const triggered = filteredSubmissions.filter((s) => s.status === "Triggered").length;
-    const failed = total - triggered;
-    return { total, triggered, failed };
-  }, [filteredSubmissions]);
+    return Array.from(fieldMap.entries());
+  }, [submissions]);
 
   const paginatedSubmissions = useMemo(() => {
     const start = (page - 1) * limit;
-    return filteredSubmissions.slice(start, start + limit);
-  }, [filteredSubmissions, page, limit]);
-
-  const totalPages = Math.ceil(filteredSubmissions.length / limit) || 1;
-
-  const formOptions = useMemo(
-    () => [
-      { value: "all", label: "All Form Registries" },
-      ...forms.map((f) => ({
-        value: f._id,
-        label: f.formName || "Untitled Form",
-      })),
-    ],
-    [forms]
-  );
-
-  const handleEditSuccess = async (subId, updatedData) => {
-    await fetchInitialData();
-  };
+    return submissions.slice(start, start + limit);
+  }, [submissions, page, limit]);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-5 space-y-5 font-sans">
-      
-      {/* ── 1. COMPACT & PROFESSIONAL TOP BAR ── */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-600">
-            <ShieldCheck size={20} />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-900 tracking-tight leading-tight">
-              Open Form Submissions
-            </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Real-time response audit trail & cascade synced tasks
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 p-4">
+      {/* Animated Background Elements matching FmsTemplates */}
+      <div className="fixed top-0 left-0 w-72 h-72 bg-blue-200/10 rounded-full blur-3xl animate-pulse -z-10"></div>
+      <div className="fixed bottom-0 right-0 w-96 h-96 bg-purple-200/10 rounded-full blur-3xl animate-pulse delay-1000 -z-10"></div>
 
-        {/* Compact Quick Stats */}
-        <div className="flex items-center gap-2">
-          <div className="bg-slate-50 border border-slate-200/70 px-3 py-1.5 rounded-xl flex items-center gap-2">
-            <CheckCircle2 size={14} className="text-emerald-500" />
-            <span className="text-xs text-slate-600 font-medium">Triggered: <b className="text-slate-900">{stats.triggered}</b></span>
-          </div>
-          <div className="bg-slate-50 border border-slate-200/70 px-3 py-1.5 rounded-xl flex items-center gap-2">
-            <AlertTriangle size={14} className="text-rose-500" />
-            <span className="text-xs text-slate-600 font-medium">Failed: <b className="text-slate-900">{stats.failed}</b></span>
-          </div>
-        </div>
-      </div>
+      <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-all duration-300">
+        {/* Header Bar */}
+        <CardHeader className="border-b border-gray-200/50">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Zap className="w-5 h-5 text-blue-600" />
+              </div>
+              <CardTitle className="text-xl font-bold text-gray-900">
+                Open Form Responses
+              </CardTitle>
+            </div>
 
-      {/* ── 2. FILTER & CONTROL STRIP ── */}
-      <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3 flex-1">
-          
-          <div className="w-56">
-            <AntdSelect
-              size="middle"
-              value={selectedFormId}
-              onChange={(v) => { setSelectedFormId(v); setPage(1); }}
-              className="w-full text-xs"
-              options={formOptions}
-              popupClassName="rounded-xl"
-            />
-          </div>
-
-          {/* Segmented Filter Pills */}
-          <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
-            {[
-              { id: "all", label: "All Items" },
-              { id: "success", label: "Triggered" },
-              { id: "failed", label: "Failed" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => { setStatusFilter(tab.id); setPage(1); }}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                  statusFilter === tab.id
-                    ? "bg-white text-indigo-600 shadow-xs"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
+            <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-start lg:justify-end">
+              <Button
+                variant="outline"
+                onClick={fetchSubmissionsFromBackend}
+                className="flex items-center gap-2 text-sm h-[38px]"
               >
-                {tab.label}
-              </button>
-            ))}
+                <RefreshCw
+                  className={`h-4 w-4 ${loading ? "animate-spin text-blue-600" : "text-gray-500"}`}
+                />
+                Refresh
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Sequential Workflow Filter Toolbar with Matched Height */}
+          <div className="flex flex-wrap items-end justify-between gap-3 bg-gray-50/70 p-3 rounded-lg border border-gray-200/60">
+            <div className="flex flex-wrap items-end gap-3 flex-1">
+              {/* STEP 1: Select FMS Template */}
+              <div className="w-64">
+                <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1.5">
+                  1. Select FMS Template
+                </span>
+                <AntdSelect
+                  size="middle"
+                  value={selectedTemplateId || undefined}
+                  onChange={(v) => {
+                    setSelectedTemplateId(v);
+                    setSelectedFormId(""); // Reset dependent form on template change
+                    setPage(1);
+                  }}
+                  className="w-full text-xs"
+                  popupClassName="rounded-lg"
+                  placeholder="Select Template"
+                  options={templates.map((t) => ({
+                    value: t._id,
+                    label: t.templateName || t.fmsId || "Untitled Template",
+                  }))}
+                />
+              </div>
+
+              {/* STEP 2: Select Linked Open Form */}
+              <div className="w-60">
+                <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1.5">
+                  2. Select Linked Form
+                </span>
+                <AntdSelect
+                  size="middle"
+                  value={selectedFormId || undefined}
+                  onChange={(v) => {
+                    setSelectedFormId(v);
+                    setPage(1);
+                  }}
+                  className="w-full text-xs"
+                  popupClassName="rounded-lg"
+                  placeholder={
+                    forms.length === 0 ? "No linked forms" : "Select Form"
+                  }
+                  notFoundContent={
+                    <div className="text-center py-2 text-xs text-gray-400">
+                      No linked forms found
+                    </div>
+                  }
+                  options={forms.map((f) => ({
+                    value: f._id,
+                    label: f.formName || "Untitled Form",
+                  }))}
+                />
+              </div>
+
+              {/* Search Submitter Input matching exact height */}
+              <div className="w-56">
+                <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1.5">
+                  Search Submitter
+                </span>
+                <div className="flex items-center gap-2 bg-white border border-gray-300 px-3 h-[32px] rounded-md focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+                  <Search size={14} className="text-gray-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search name/code..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setPage(1);
+                    }}
+                    className="bg-transparent border-none outline-none flex-1 text-xs text-gray-800 font-medium placeholder:text-gray-400"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Search Box */}
-          <div className="flex items-center gap-2 border border-slate-200 bg-slate-50/50 px-3 py-1.5 rounded-xl w-60 focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-400 transition-all">
-            <Search size={14} className="text-slate-400 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search submitter name or ID..."
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-              className="bg-transparent border-none outline-none flex-1 text-xs text-slate-800 font-medium placeholder:text-slate-400"
-            />
-          </div>
-        </div>
+          {/* High-Density Table matching FmsTemplates */}
+          <div className="overflow-x-auto">
+            <div className="rounded-lg border border-gray-200/50 overflow-hidden shadow-sm">
+              <Table>
+                <TableHeader className="bg-gray-50">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="font-semibold text-sm p-3 w-12">
+                      #
+                    </TableHead>
+                    <TableHead className="font-semibold text-sm p-3 min-w-[170px]">
+                      SUBMITTER
+                    </TableHead>
+                    <TableHead className="font-semibold text-sm p-3 min-w-[150px]">
+                      FORM NAME
+                    </TableHead>
+                    <TableHead className="font-semibold text-sm p-3 min-w-[140px]">
+                      SUBMITTED AT
+                    </TableHead>
 
-        <button
-          onClick={fetchInitialData}
-          className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200/70 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer transition-colors flex items-center gap-1.5"
-        >
-          <RefreshCw size={13} className={loading ? "animate-spin text-indigo-600" : "text-slate-500"} />
-          Refresh
-        </button>
-      </div>
-
-      {/* ── 3. MAIN WORKSPACE ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-        
-        {/* ── LEFT LEDGER TABLE (SPAN 8) ── */}
-        <div className="xl:col-span-8 bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col min-h-[520px]">
-          <div className="px-5 py-3.5 border-b border-slate-100 bg-slate-50/40 flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
-              <FileText size={14} className="text-indigo-600" /> Submissions List
-            </h3>
-            <span className="text-[11px] font-semibold text-slate-400">
-              Showing {filteredSubmissions.length} records
-            </span>
-          </div>
-
-          <div className="flex-1 overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  <th className="py-2.5 px-5 w-12">#</th>
-                  <th className="py-2.5 px-5">Submitter Details</th>
-                  <th className="py-2.5 px-5">Form Name</th>
-                  <th className="py-2.5 px-5">Timestamp</th>
-                  <th className="py-2.5 px-5 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {loading ? (
-                  [...Array(6)].map((_, i) => <SkeletonRow key={i} />)
-                ) : filteredSubmissions.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-20 text-center text-slate-400">
-                      <Inbox size={28} className="mx-auto mb-2 text-slate-300" />
-                      <span className="text-xs font-medium">No submission logs found</span>
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedSubmissions.map((item, idx) => {
-                    const isSelected = selectedSubmission?._id === item._id;
-                    const isTriggered = item.status === "Triggered";
-
-                    return (
-                      <tr
-                        key={item._id}
-                        onClick={() => setSelectedSubmission(item)}
-                        className={`cursor-pointer transition-all ${
-                          isSelected
-                            ? "bg-indigo-50/70 border-l-4 border-l-indigo-600"
-                            : "hover:bg-slate-50/70"
-                        }`}
+                    {/* Dynamic Payload Field Headers */}
+                    {dynamicFieldMap.map(([key, label]) => (
+                      <TableHead
+                        key={key}
+                        className="font-semibold text-sm p-3 min-w-[180px]"
                       >
-                        <td className="py-3 px-5 text-slate-400 font-mono text-[11px]">
+                        {label.toUpperCase()}
+                      </TableHead>
+                    ))}
+
+                    <TableHead className="font-semibold text-sm p-3 text-center min-w-[100px] sticky right-0 bg-gray-50">
+                      ACTIONS
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5 + dynamicFieldMap.length}
+                        className="p-8 text-center"
+                      >
+                        <Spin />
+                      </TableCell>
+                    </TableRow>
+                  ) : paginatedSubmissions.length > 0 ? (
+                    paginatedSubmissions.map((item, idx) => (
+                      <TableRow
+                        key={item._id}
+                        className="hover:bg-gray-50 transition-colors duration-200"
+                      >
+                        <TableCell className="font-medium p-3 text-sm text-gray-400 font-mono">
                           {(page - 1) * limit + idx + 1}
-                        </td>
-                        <td className="py-3 px-5">
-                          <div className="flex items-center gap-2.5">
-                            <div className={`w-7 h-7 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${
-                              isSelected ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-600"
-                            }`}>
+                        </TableCell>
+
+                        <TableCell className="p-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0">
                               {item?.submittedBy?.name?.charAt(0) || "U"}
                             </div>
                             <div className="flex flex-col">
-                              <span className="font-semibold text-slate-800 text-xs leading-tight">
+                              <span className="font-semibold text-gray-900 text-sm">
                                 {item?.submittedBy?.name || "Anonymous User"}
                               </span>
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                ID: {item?.submittedBy?.employeeCode || "—"}
+                              <span className="text-xs text-gray-400 font-mono">
+                                Code: {item?.submittedBy?.employeeCode || "—"}
                               </span>
                             </div>
                           </div>
-                        </td>
-                        <td className="py-3 px-5 font-medium text-slate-700 text-xs">
-                          {item.parentFormName}
-                        </td>
-                        <td className="py-3 px-5 text-slate-400 font-mono text-[11px]">
+                        </TableCell>
+
+                        <TableCell className="p-3 text-sm font-semibold text-gray-800">
+                          {item?.formId?.formName ||
+                            item?.parentFormName ||
+                            "Form"}
+                        </TableCell>
+
+                        <TableCell className="p-3 text-sm font-mono text-gray-500">
                           {formatDate(item.createdAt)}
-                        </td>
-                        <td className="py-3 px-5 text-right">
-                          <Tag
-                            color={isTriggered ? "success" : "error"}
-                            className="rounded-full px-2.5 py-0.5 font-bold text-[10px] m-0 border-0"
-                          >
-                            {isTriggered ? "Triggered" : "Failed"}
-                          </Tag>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                        </TableCell>
 
-          {/* Pagination Controls */}
-          <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between text-xs">
-            <span className="text-slate-400 text-[11px]">
-              Showing {filteredSubmissions.length > 0 ? ((page - 1) * limit) + 1 : 0}–{Math.min(page * limit, filteredSubmissions.length)} of {filteredSubmissions.length}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="p-1 bg-white border border-slate-200 rounded-lg text-slate-600 disabled:opacity-30 cursor-pointer hover:bg-slate-50"
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <span className="text-xs font-semibold text-slate-600 px-2 font-mono">
-                {page}/{totalPages}
-              </span>
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="p-1 bg-white border border-slate-200 rounded-lg text-slate-600 disabled:opacity-30 cursor-pointer hover:bg-slate-50"
-              >
-                <ChevronRight size={14} />
-              </button>
+                        {/* Dynamic Payload Cells */}
+                        {dynamicFieldMap.map(([key]) => (
+                          <TableCell key={key} className="p-3 text-sm">
+                            <SmartTableCell val={item.submissionData?.[key]} />
+                          </TableCell>
+                        ))}
+
+                        {/* Action Icon Buttons */}
+                        <TableCell className="p-3 text-center sticky right-0 bg-white">
+                          <div className="flex items-center justify-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedSubmission(item);
+                                setInspectorModalOpen(true);
+                              }}
+                              className="h-8 w-8 bg-green-100 text-green-600 rounded-md hover:bg-green-200 transition-colors duration-200"
+                              title="View Details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+
+                            {canUpdate && isAdmin && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setSelectedSubmission(item);
+                                  setEditModalOpen(true);
+                                }}
+                                className="h-8 w-8 bg-blue-100 text-blue-600 rounded-md hover:bg-blue-200 transition-colors duration-200"
+                                title="Edit Payload"
+                              >
+                                <Edit3 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow className="hover:bg-gray-50 transition-colors duration-200">
+                      <TableCell
+                        colSpan={5 + dynamicFieldMap.length}
+                        className="p-8 text-center text-sm text-gray-500"
+                      >
+                        <Inbox className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                        No submission logs found for the selected template &
+                        form combination.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
-        </div>
 
-        {/* ── RIGHT INSPECTOR CARD (SPAN 4) ── */}
-        <div className="xl:col-span-4">
-          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs sticky top-5 overflow-hidden flex flex-col max-h-[82vh]">
-            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-              <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider flex items-center gap-1.5">
-                <UserCheck size={14} className="text-indigo-600" /> Response Inspector
-              </h3>
-              {canUpdate&& isAdmin && selectedSubmission && (
-                <button
-                  onClick={() => setEditModalOpen(true)}
-                  className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-[11px] rounded-lg cursor-pointer transition-all flex items-center gap-1 shadow-xs"
-                >
-                  <Edit3 size={12} /> Edit
-                </button>
-              )}
-            </div>
+          {/* Common Pagination */}
+          <DataPagination
+            page={page}
+            limit={limit}
+            total={submissions.length}
+            totalPages={Math.ceil(submissions.length / limit) || 1}
+            onPageChange={(p) => setPage(p)}
+            onLimitChange={(l) => {
+              setLimit(l);
+              setPage(1);
+            }}
+          />
 
-            <div className="p-4 flex-1 overflow-y-auto space-y-4">
-              {selectedSubmission ? (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-                  {/* User Profile Card */}
-                  <div className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
-                    <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest block mb-0.5">
+          {/* Full Payload Inspector Modal */}
+          <Modal
+            title="Submission Response Payload"
+            open={inspectorModalOpen}
+            onCancel={() => setInspectorModalOpen(false)}
+            footer={null}
+            width={700}
+          >
+            {selectedSubmission ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 border rounded-md bg-gray-50">
+                  <div>
+                    <span className="text-xs font-bold text-gray-500 uppercase block">
                       Submitter
                     </span>
-                    <h3 className="font-bold text-slate-900 text-sm">
+                    <h3 className="font-bold text-gray-900 text-sm">
                       {selectedSubmission.submittedBy?.name || "Anonymous User"}
                     </h3>
-                    <p className="text-xs text-slate-500 font-mono mt-0.5">
-                      Code: {selectedSubmission.submittedBy?.employeeCode || "—"}
+                    <p className="text-xs text-gray-500 font-mono mt-0.5">
+                      Employee Code:{" "}
+                      {selectedSubmission.submittedBy?.employeeCode || "—"}
                     </p>
                   </div>
-
-                  {/* Field Values List */}
-                  <div className="space-y-2">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block border-b border-slate-100 pb-1">
-                      Payload Data
-                    </span>
-
-                    {Object.entries(selectedSubmission?.submissionData || {}).map(
-                      ([key, field]) => (
-                        <SubmissionFieldCard
-                          key={key}
-                          fieldKey={key}
-                          field={field}
-                        />
-                      )
-                    )}
+                  <div className="text-right">
+                    {/* <Badge
+                      variant="default"
+                      className={
+                        selectedSubmission.status === "Triggered"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }
+                    >
+                      {selectedSubmission.status || "Triggered"}
+                    </Badge> */}
+                    <p className="text-xs text-gray-400 mt-1 font-mono">
+                      {formatDate(selectedSubmission.createdAt)}
+                    </p>
                   </div>
-                </motion.div>
-              ) : (
-                <div className="py-20 text-center text-slate-400 text-xs">
-                  Select a row from the left table to inspect form fields.
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
 
-      </div>
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                  {Object.entries(selectedSubmission?.submissionData || {}).map(
+                    ([key, field]) => {
+                      let labelText = key;
+                      let renderedValue = "—";
 
-      {/* Admin Edit Modal */}
-      <EditSubmissionModal
-        open={editModalOpen}
-        submission={selectedSubmission}
-        onClose={() => setEditModalOpen(false)}
-        onSuccess={handleEditSuccess}
-      />
+                      if (typeof field === "object" && field !== null) {
+                        if (field.label) labelText = field.label;
+                        if ("value" in field)
+                          renderedValue = String(field.value ?? "—");
+                      } else if (field !== null && field !== undefined) {
+                        renderedValue = String(field);
+                      }
+
+                      return (
+                        <div
+                          key={key}
+                          className="flex items-start gap-3 p-3 border rounded-md hover:shadow-xs transition bg-white"
+                        >
+                          <div className="w-1.5 h-full bg-blue-500 rounded-full mt-1" />
+                          <div className="flex-1">
+                            <span className="text-xs font-semibold text-gray-800 uppercase block">
+                              {labelText}
+                            </span>
+                            <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">
+                              {renderedValue}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    },
+                  )}
+                </div>
+              </div>
+            ) : null}
+          </Modal>
+
+          {/* Admin Payload Edit Modal */}
+          <EditSubmissionModal
+            open={editModalOpen}
+            submission={selectedSubmission}
+            onClose={() => setEditModalOpen(false)}
+            onSuccess={fetchSubmissionsFromBackend}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 }

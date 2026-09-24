@@ -68,6 +68,8 @@ import FloatingManualButton from "./components/FloatingManualButton";
 import SuperModuleSettings from "./pages/SuperModuleSettings";
 import CompanyProfile from "./pages/CompanyProfile";
 import NotificationIntegrations from "./pages/Notificationintegrations";
+import UnifiedReport from "./pages/reports/UnifiedReport";
+import UserTaskDetails from "./pages/reports/UserTaskDetails";
 
 function App() {
   const [isSessionTimeoutModalOpen, setIsSessionTimeoutModalOpen] =
@@ -92,7 +94,27 @@ function App() {
       window.removeEventListener("session-timeout", sessionTimeoutListener);
     };
   }, []);
+  // Window error listener for Stale/Old Chunk Error
+  window.addEventListener("error", (event) => {
+    const isChunkError =
+      /loading chunk/i.test(event.message) ||
+      /loading CSS chunk/i.test(event.message) ||
+      /failed to fetch dynamically imported module/i.test(event.message);
 
+    if (isChunkError) {
+      // Prevent infinite loop using SessionStorage
+      const isReloaded = sessionStorage.getItem("chunk_reload");
+      if (!isReloaded) {
+        sessionStorage.setItem("chunk_reload", "true");
+        window.location.reload(true); // Force reload to fetch latest index.html
+      }
+    }
+  });
+
+  // Clear reload flag on successful load
+  window.addEventListener("DOMContentLoaded", () => {
+    sessionStorage.removeItem("chunk_reload");
+  });
   return (
     <>
       <Toaster richColors position="top-center" />
@@ -324,6 +346,22 @@ function App() {
                   element={
                     <PermissionRoute requiredPermission="mis_reports">
                       <MisReports />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/reports/combined"
+                  element={
+                    <PermissionRoute requiredPermission="combine_reports">
+                      <UnifiedReport />
+                    </PermissionRoute>
+                  }
+                />
+                <Route
+                  path="/reports/user-tasks"
+                  element={
+                    <PermissionRoute requiredPermission="combine_reports">
+                      <UserTaskDetails />
                     </PermissionRoute>
                   }
                 />
