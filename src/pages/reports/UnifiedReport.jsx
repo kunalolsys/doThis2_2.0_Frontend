@@ -11,6 +11,9 @@ import {
   BarChart3,
   Award,
   Layers,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 import api from "../../lib/api";
 import { Select as AntdSelect, DatePicker, Spin, message } from "antd";
@@ -52,9 +55,11 @@ const { RangePicker } = DatePicker;
 
 /* ─── Color Palette for Recharts ─── */
 const CHART_COLORS = {
-  completed: "#10B981", // Emerald
-  pending: "#F59E0B", // Amber
+  onTime: "#10B981", // Emerald
+  late: "#F59E0B", // Amber
   overdue: "#EF4444", // Red
+  pending: "#EAB308", // Yellow / Gold
+  upcoming: "#06B6D4", // Cyan
   fms: "#8B5CF6", // Purple
   regular: "#3B82F6", // Blue
 };
@@ -151,29 +156,63 @@ export default function UnifiedReport() {
     fetchReport();
   }, [fetchReport]);
 
+  // 🚀 Updated Summary Structure with Backend Alignment
   const summary = reportData?.summary || {
     totalTasks: 0,
     completed: 0,
     onTime: 0,
     late: 0,
     overdue: 0,
-    notDone: 0,
+    pending: 0,
+    upcoming: 0,
+    notCompleted: 0,
     actualToPlannedCount: 0,
     plannedToPlannedCount: 0,
+    rates: {
+      completionRate: 0,
+      onTimeRate: 0,
+      lateRate: 0,
+      overdueRate: 0,
+      pendingRate: 0,
+      upcomingRate: 0,
+      notCompletedRate: 0,
+      actualToPlannedRate: 0,
+      plannedToPlannedRate: 0,
+    },
   };
 
   const userSummary = reportData?.userSummary || [];
 
-  // Chart Data Preparation
+  // Chart Data Preparation: Status Breakdown
   const statusPieData = useMemo(
-    () => [
-      { name: "On Time", value: summary.onTime, color: CHART_COLORS.completed },
-      { name: "Late", value: summary.late, color: CHART_COLORS.pending },
-      { name: "Overdue", value: summary.overdue, color: CHART_COLORS.overdue },
-    ],
+    () =>
+      [
+        {
+          name: "On Time",
+          value: summary.onTime || 0,
+          color: CHART_COLORS.onTime,
+        },
+        { name: "Late", value: summary.late || 0, color: CHART_COLORS.late },
+        {
+          name: "Overdue",
+          value: summary.overdue || 0,
+          color: CHART_COLORS.overdue,
+        },
+        {
+          name: "Pending",
+          value: summary.pending || 0,
+          color: CHART_COLORS.pending,
+        },
+        {
+          name: "Upcoming",
+          value: summary.upcoming || 0,
+          color: CHART_COLORS.upcoming,
+        },
+      ].filter((item) => item.value > 0),
     [summary],
   );
 
+  // Chart Data Preparation: FMS vs Regular Tasks
   const taskTypeData = useMemo(
     () => [
       {
@@ -194,16 +233,12 @@ export default function UnifiedReport() {
     [summary],
   );
 
+  // Top Performers Leaderboard
   const topUserLeaderboard = useMemo(() => {
     return [...userSummary]
       .map((u) => ({
         userName: u.userName,
-        rate:
-          u.completionRate !== undefined
-            ? u.completionRate
-            : u.total > 0
-              ? Math.round((u.completed / u.total) * 100)
-              : 0,
+        rate: u.completionRate ?? 0,
       }))
       .sort((a, b) => b.rate - a.rate)
       .slice(0, 5);
@@ -229,42 +264,46 @@ export default function UnifiedReport() {
     const headers = [
       "Member Name",
       "Employee Code",
-      "Total Tasks",
+      "Total Assigned",
       "Completed Tasks",
       "Completion %",
       "On Time",
       "On Time %",
       "Late",
+      "Late %",
       "Overdue",
-      "Not Done",
-      "Not Done %",
+      "Overdue %",
+      "Pending",
+      "Upcoming",
+      "Not Completed",
+      "Not Completed %",
     ];
 
     const csvRows = [headers.join(",")];
 
     userSummary.forEach((u) => {
-      const compRate =
-        u.completionRate ??
-        (u.total > 0 ? Math.round((u.completed / u.total) * 100) : 0);
-      const onTimeRate =
-        u.onTimeRate ??
-        (u.completed > 0 ? Math.round((u.onTime / u.completed) * 100) : 0);
-      const notDoneRate =
-        u.notDoneRate ??
-        (u.total > 0 ? Math.round((u.notDone / u.total) * 100) : 0);
+      const compRate = u.completionRate ?? 0;
+      const onTimeRate = u.onTimeRate ?? 0;
+      const lateRate = u.lateRate ?? 0;
+      const overdueRate = u.overdueRate ?? 0;
+      const notCompletedRate = u.notCompletedRate ?? 0;
 
       const row = [
         `"${u.userName || ""}"`,
         `"${u.employeeCode || ""}"`,
-        u.total,
-        u.completed,
+        u.total || 0,
+        u.completed || 0,
         `"${compRate}%"`,
-        u.onTime,
+        u.onTime || 0,
         `"${onTimeRate}%"`,
-        u.late,
-        u.overdue,
-        u.notDone,
-        `"${notDoneRate}%"`,
+        u.late || 0,
+        `"${lateRate}%"`,
+        u.overdue || 0,
+        `"${overdueRate}%"`,
+        u.pending || 0,
+        u.upcoming || 0,
+        u.notCompleted || 0,
+        `"${notCompletedRate}%"`,
       ];
       csvRows.push(row.join(","));
     });
@@ -383,10 +422,17 @@ export default function UnifiedReport() {
                   mode="multiple"
                   maxTagCount={1}
                   size="middle"
+                  showSearch
+                  optionFilterProp="label"
+                  placeholder="Search users..."
                   value={selectedUsers}
                   onChange={(v) => {
                     if (v.includes("all") && v.length > 1) {
-                      setSelectedUsers(v.filter((x) => x !== "all"));
+                      if (v[v.length - 1] === "all") {
+                        setSelectedUsers(["all"]);
+                      } else {
+                        setSelectedUsers(v.filter((x) => x !== "all"));
+                      }
                     } else if (v.length === 0) {
                       setSelectedUsers(["all"]);
                     } else {
@@ -398,7 +444,7 @@ export default function UnifiedReport() {
                     { value: "all", label: "All Users" },
                     ...userOptions.map((u) => ({
                       value: u._id,
-                      label: u.name,
+                      label: u.name || "Unnamed User",
                     })),
                   ]}
                 />
@@ -479,7 +525,26 @@ export default function UnifiedReport() {
                 />
               </div>
 
-              <div className="w-100">
+              <div className="w-36">
+                <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                  Task Status
+                </span>
+                <AntdSelect
+                  size="middle"
+                  value={taskStatus}
+                  onChange={(v) => setTaskStatus(v)}
+                  className="w-full text-xs"
+                  options={[
+                    { value: "all", label: "All Statuses" },
+                    { value: "completed", label: "Completed" },
+                    { value: "pending", label: "Pending" },
+                    { value: "overdue", label: "Overdue" },
+                    { value: "upcoming", label: "Upcoming" },
+                  ]}
+                />
+              </div>
+
+              <div className="w-48">
                 <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
                   Search User
                 </span>
@@ -498,10 +563,10 @@ export default function UnifiedReport() {
           </div>
 
           {/* Core Metrics KPI Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100">
               <span className="text-[10px] font-bold text-blue-600 uppercase block">
-                Total Tasks
+                Total Assigned
               </span>
               <h3 className="text-2xl font-black text-gray-900 mt-1">
                 {summary.totalTasks}
@@ -535,30 +600,39 @@ export default function UnifiedReport() {
               </h3>
             </div>
 
+            <div className="p-3.5 rounded-xl bg-yellow-50/60 border border-yellow-200">
+              <span className="text-[10px] font-bold text-yellow-700 uppercase block">
+                Pending
+              </span>
+              <h3 className="text-2xl font-black text-yellow-800 mt-1">
+                {summary.pending}
+              </h3>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-cyan-50/60 border border-cyan-200">
+              <span className="text-[10px] font-bold text-cyan-700 uppercase block">
+                Upcoming
+              </span>
+              <h3 className="text-2xl font-black text-cyan-900 mt-1">
+                {summary.upcoming}
+              </h3>
+            </div>
+
             <div className="p-3.5 rounded-xl bg-gray-100/80 border border-gray-200">
               <span className="text-[10px] font-bold text-gray-600 uppercase block">
-                Not Done
+                Not Completed
               </span>
               <h3 className="text-2xl font-black text-gray-800 mt-1">
-                {summary.notDone}
+                {summary.notCompleted}
               </h3>
             </div>
 
             <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-100">
               <span className="text-[10px] font-bold text-purple-600 uppercase block">
-                Actual-To-Planned
+                Completion Rate
               </span>
               <h3 className="text-2xl font-black text-purple-900 mt-1">
-                {summary.actualToPlannedCount}
-              </h3>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100">
-              <span className="text-[10px] font-bold text-indigo-600 uppercase block">
-                Planned-To-Planned
-              </span>
-              <h3 className="text-2xl font-black text-indigo-900 mt-1">
-                {summary.plannedToPlannedCount}
+                {summary.rates?.completionRate || 0}%
               </h3>
             </div>
           </div>
@@ -571,7 +645,7 @@ export default function UnifiedReport() {
                 <div className="flex items-center gap-2">
                   <PieIcon size={16} className="text-blue-600" />
                   <CardTitle className="text-xs font-bold text-gray-800 uppercase">
-                    Status Distribution
+                    Status Breakdown
                   </CardTitle>
                 </div>
               </CardHeader>
@@ -583,8 +657,8 @@ export default function UnifiedReport() {
                         data={statusPieData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={45}
-                        outerRadius={70}
+                        innerRadius={40}
+                        outerRadius={65}
                         paddingAngle={4}
                         dataKey="value"
                       >
@@ -595,15 +669,15 @@ export default function UnifiedReport() {
                       <RechartsTooltip />
                       <Legend
                         verticalAlign="bottom"
-                        height={30}
+                        height={36}
                         iconType="circle"
-                        wrapperStyle={{ fontSize: "11px" }}
+                        wrapperStyle={{ fontSize: "10px" }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="text-center text-xs text-gray-400">
-                    No status data
+                    No status data available
                   </div>
                 )}
               </CardContent>
@@ -705,7 +779,7 @@ export default function UnifiedReport() {
                       MEMBER NAME
                     </TableHead>
                     <TableHead className="text-xs font-bold text-center">
-                      TOTAL
+                      TOTAL ASSIGNED
                     </TableHead>
                     <TableHead className="text-xs font-bold text-center">
                       COMPLETED
@@ -726,10 +800,16 @@ export default function UnifiedReport() {
                       OVERDUE
                     </TableHead>
                     <TableHead className="text-xs font-bold text-center">
-                      NOT DONE
+                      PENDING
                     </TableHead>
                     <TableHead className="text-xs font-bold text-center">
-                      NOT DONE %
+                      UPCOMING
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-center">
+                      NOT COMPLETED
+                    </TableHead>
+                    <TableHead className="text-xs font-bold text-center">
+                      NOT COMPLETED %
                     </TableHead>
                     <TableHead className="text-xs font-bold text-center w-28">
                       ACTION
@@ -739,30 +819,15 @@ export default function UnifiedReport() {
                 <TableBody>
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={11} className="p-8 text-center">
+                      <TableCell colSpan={13} className="p-8 text-center">
                         <Spin />
                       </TableCell>
                     </TableRow>
                   ) : filteredUserSummary.length > 0 ? (
                     filteredUserSummary.map((u) => {
-                      const compRate =
-                        u.completionRate !== undefined
-                          ? u.completionRate
-                          : u.total > 0
-                            ? Math.round((u.completed / u.total) * 100)
-                            : 0;
-                      const onTimeRate =
-                        u.onTimeRate !== undefined
-                          ? u.onTimeRate
-                          : u.completed > 0
-                            ? Math.round((u.onTime / u.completed) * 100)
-                            : 0;
-                      const notDoneRate =
-                        u.notDoneRate !== undefined
-                          ? u.notDoneRate
-                          : u.total > 0
-                            ? Math.round((u.notDone / u.total) * 100)
-                            : 0;
+                      const compRate = u.completionRate ?? 0;
+                      const onTimeRate = u.onTimeRate ?? 0;
+                      const notCompletedRate = u.notCompletedRate ?? 0;
 
                       return (
                         <TableRow
@@ -776,10 +841,10 @@ export default function UnifiedReport() {
                             </span>
                           </TableCell>
                           <TableCell className="text-center font-bold text-gray-900">
-                            {u.total}
+                            {u.total || 0}
                           </TableCell>
                           <TableCell className="text-center font-bold text-emerald-600">
-                            {u.completed}
+                            {u.completed || 0}
                           </TableCell>
 
                           {/* Completion Rate Column */}
@@ -799,7 +864,7 @@ export default function UnifiedReport() {
                           </TableCell>
 
                           <TableCell className="text-center font-bold text-emerald-700">
-                            {u.onTime}
+                            {u.onTime || 0}
                           </TableCell>
 
                           {/* On Time Rate Column */}
@@ -808,22 +873,28 @@ export default function UnifiedReport() {
                           </TableCell>
 
                           <TableCell className="text-center font-bold text-amber-600">
-                            {u.late}
+                            {u.late || 0}
                           </TableCell>
                           <TableCell className="text-center font-bold text-red-600">
-                            {u.overdue}
+                            {u.overdue || 0}
+                          </TableCell>
+                          <TableCell className="text-center font-bold text-yellow-700">
+                            {u.pending || 0}
+                          </TableCell>
+                          <TableCell className="text-center font-bold text-cyan-700">
+                            {u.upcoming || 0}
                           </TableCell>
                           <TableCell className="text-center font-bold text-gray-600">
-                            {u.notDone}
+                            {u.notCompleted || 0}
                           </TableCell>
 
-                          {/* Not Done Rate Column */}
+                          {/* Not Completed Rate Column */}
                           <TableCell className="text-center font-mono font-bold text-gray-700">
                             <Badge
                               variant="outline"
                               className="bg-slate-100 text-slate-800 border-slate-200 font-semibold"
                             >
-                              {notDoneRate}%
+                              {notCompletedRate}%
                             </Badge>
                           </TableCell>
 
@@ -843,7 +914,7 @@ export default function UnifiedReport() {
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={11}
+                        colSpan={13}
                         className="p-8 text-center text-gray-500"
                       >
                         No user performance summary found.

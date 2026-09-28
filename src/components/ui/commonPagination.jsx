@@ -18,27 +18,36 @@ const DataPagination = ({
 }) => {
   // if (!total || totalPages <= 1) return null;
 
-  const start = (page - 1) * limit + 1;
-  const end = Math.min(page * limit, total);
+  // 🚀 Internal strict number normalization (fixes string concatenation bugs)
+  const numPage = Number(page) || 1;
+  const numLimit = Number(limit) || 10;
+  const numTotal = Number(total) || 0;
+  const numTotalPages = Math.max(
+    1,
+    Number(totalPages) || Math.ceil(numTotal / numLimit) || 1,
+  );
+
+  const start = numTotal > 0 ? (numPage - 1) * numLimit + 1 : 0;
+  const end = Math.min(numPage * numLimit, numTotal);
 
   const getPages = () => {
     const pages = [];
     const siblingCount = 1; // how many pages around current
     const totalNumbers = siblingCount * 2 + 5; // first + last + current + siblings + 2 dots
 
-    if (totalPages <= totalNumbers) {
+    if (numTotalPages <= totalNumbers) {
       // small number of pages → show all
-      for (let i = 1; i <= totalPages; i++) {
+      for (let i = 1; i <= numTotalPages; i++) {
         pages.push(i);
       }
       return pages;
     }
 
-    const leftSibling = Math.max(page - siblingCount, 1);
-    const rightSibling = Math.min(page + siblingCount, totalPages);
+    const leftSibling = Math.max(numPage - siblingCount, 1);
+    const rightSibling = Math.min(numPage + siblingCount, numTotalPages);
 
     const showLeftDots = leftSibling > 2;
-    const showRightDots = rightSibling < totalPages - 1;
+    const showRightDots = rightSibling < numTotalPages - 1;
 
     if (!showLeftDots && showRightDots) {
       // left side no dots
@@ -46,13 +55,13 @@ const DataPagination = ({
         pages.push(i);
       }
       pages.push("...");
-      pages.push(totalPages);
+      pages.push(numTotalPages);
     } else if (showLeftDots && !showRightDots) {
       pages.push(1);
       pages.push("...");
       for (
-        let i = totalPages - (3 + 2 * siblingCount) + 1;
-        i <= totalPages;
+        let i = numTotalPages - (3 + 2 * siblingCount) + 1;
+        i <= numTotalPages;
         i++
       ) {
         pages.push(i);
@@ -64,7 +73,7 @@ const DataPagination = ({
         pages.push(i);
       }
       pages.push("...");
-      pages.push(totalPages);
+      pages.push(numTotalPages);
     }
 
     return pages;
@@ -77,13 +86,13 @@ const DataPagination = ({
         <span>
           Showing <span className="font-medium">{start}</span>–
           <span className="font-medium">{end}</span> of{" "}
-          <span className="font-medium">{total}</span>
+          <span className="font-medium">{numTotal}</span>
         </span>
 
         {/* Limit Selector */}
         <Select
-          value={String(limit)}
-          onValueChange={(val) => onLimitChange(Number(val))}
+          value={String(numLimit)}
+          onValueChange={(val) => onLimitChange?.(Number(val))}
         >
           <SelectTrigger className="w-[80px] h-8 text-xs">
             <SelectValue />
@@ -103,24 +112,27 @@ const DataPagination = ({
         <Button
           variant="outline"
           size="icon"
-          disabled={page === 1}
-          onClick={() => onPageChange(page - 1)}
+          disabled={numPage <= 1}
+          onClick={() => onPageChange?.(numPage - 1)}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
 
         {getPages().map((p, idx) =>
           p === "..." ? (
-            <span key={idx} className="px-2 text-gray-400 text-sm select-none">
+            <span
+              key={`dots-${idx}`}
+              className="px-2 text-gray-400 text-sm select-none"
+            >
               ...
             </span>
           ) : (
             <Button
-              key={p}
-              variant={p === page ? "default" : "outline"}
+              key={`page-btn-${p}-${idx}`} // Unique key to avoid DOM duplication conflicts
+              variant={Number(p) === numPage ? "default" : "outline"}
               size="sm"
               className="min-w-[36px]"
-              onClick={() => onPageChange(p)}
+              onClick={() => onPageChange?.(Number(p))}
             >
               {p}
             </Button>
@@ -130,8 +142,8 @@ const DataPagination = ({
         <Button
           variant="outline"
           size="icon"
-          disabled={page === totalPages}
-          onClick={() => onPageChange(page + 1)}
+          disabled={numPage >= numTotalPages}
+          onClick={() => onPageChange?.(numPage + 1)}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>

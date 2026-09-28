@@ -42,16 +42,28 @@ export default function UserTaskDetails() {
   const userName = searchParams.get("userName") || "User Tasks";
 
   // Filter States
-  const [period, setPeriod] = useState(searchParams.get("period") || "this_month");
+  const [period, setPeriod] = useState(
+    searchParams.get("period") || "this_month",
+  );
   const [customDates, setCustomDates] = useState([
     searchParams.get("startDate") ? dayjs(searchParams.get("startDate")) : null,
     searchParams.get("endDate") ? dayjs(searchParams.get("endDate")) : null,
   ]);
-  const [departmentId, setDepartmentId] = useState(searchParams.get("departmentId") || "all");
-  const [templateId, setTemplateId] = useState(searchParams.get("templateId") || "all");
-  const [taskSource, setTaskSource] = useState(searchParams.get("taskSource") || "all");
-  const [timingLogic, setTimingLogic] = useState(searchParams.get("timingLogic") || "all");
-  const [taskStatus, setTaskStatus] = useState(searchParams.get("taskStatus") || "all");
+  const [departmentId, setDepartmentId] = useState(
+    searchParams.get("departmentId") || "all",
+  );
+  const [templateId, setTemplateId] = useState(
+    searchParams.get("templateId") || "all",
+  );
+  const [taskSource, setTaskSource] = useState(
+    searchParams.get("taskSource") || "all",
+  );
+  const [timingLogic, setTimingLogic] = useState(
+    searchParams.get("timingLogic") || "all",
+  );
+  const [taskStatus, setTaskStatus] = useState(
+    searchParams.get("taskStatus") || "all",
+  );
   const [searchQuery, setSearchQuery] = useState("");
 
   // Data States
@@ -121,8 +133,8 @@ export default function UserTaskDetails() {
         taskSource,
         timingLogic,
         taskStatus,
-        page,
-        limit,
+        page: Number(page), // 👈 Enforce Number
+        limit: Number(limit), // 👈 Enforce Number
       };
 
       const res = await api.post("/mis/combined-report", payload);
@@ -152,7 +164,7 @@ export default function UserTaskDetails() {
     fetchUserTasks();
   }, [fetchUserTasks]);
 
-  // 🚀 User Specific CSV Export
+  // 🚀 User Specific CSV Export (Updated with executionStatus)
   const handleExportUserCSV = () => {
     if (!exportTasks.length) {
       message.warning("No user task records to export.");
@@ -170,13 +182,14 @@ export default function UserTaskDetails() {
       "Start Date",
       "Due Date",
       "Completed At",
-      "Time Status",
+      "Execution Status",
     ];
 
     const csvRows = [headers.join(",")];
 
     exportTasks.forEach((t) => {
       const delay = calculateDelayDays(t);
+      const statusLabel = t.executionStatus || t.timeStatus || t.status || "—";
       const row = [
         `"${t.taskId || ""}"`,
         `"${t.title || ""}"`,
@@ -188,7 +201,7 @@ export default function UserTaskDetails() {
         `"${t.startDate ? formatDate(t.startDate) : ""}"`,
         `"${t.dueDate ? formatDate(t.dueDate) : ""}"`,
         `"${t.completedAt ? formatDate(t.completedAt) : ""}"`,
-        `"${t.timeStatus || ""}"`,
+        `"${statusLabel}"`,
       ];
       csvRows.push(row.join(","));
     });
@@ -209,14 +222,13 @@ export default function UserTaskDetails() {
       (t) =>
         t.title?.toLowerCase().includes(q) ||
         t.taskId?.toLowerCase().includes(q) ||
-        t.instanceName?.toLowerCase().includes(q)
+        t.instanceName?.toLowerCase().includes(q),
     );
   }, [tasks, searchQuery]);
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 space-y-4">
       <Card className="border-0 shadow-md bg-white">
-        
         {/* Header Bar */}
         <CardHeader className="border-b border-gray-100 pb-4">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
@@ -235,7 +247,8 @@ export default function UserTaskDetails() {
                   Task Logs: {userName}
                 </CardTitle>
                 <p className="text-xs text-gray-500 font-medium">
-                  Viewing detailed task breakdown with delay analysis and completion timestamps
+                  Viewing detailed task breakdown with delay analysis and
+                  completion timestamps
                 </p>
               </div>
             </div>
@@ -264,11 +277,9 @@ export default function UserTaskDetails() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          
           {/* Top Filter Bar */}
           <div className="flex flex-wrap items-end justify-between gap-3 bg-gray-50 p-3.5 rounded-xl border border-gray-200/80">
             <div className="flex flex-wrap items-end gap-3 flex-1">
-              
               {/* Period Dropdown */}
               <div className="w-36">
                 <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
@@ -346,12 +357,15 @@ export default function UserTaskDetails() {
                   options={[
                     { value: "all", label: "All Logic Types" },
                     { value: "actual-to-planned", label: "Actual-to-Planned" },
-                    { value: "planned-to-planned", label: "Planned-to-Planned" },
+                    {
+                      value: "planned-to-planned",
+                      label: "Planned-to-Planned",
+                    },
                   ]}
                 />
               </div>
 
-              {/* Status Filter */}
+              {/* Status Filter (Updated with "Upcoming") */}
               <div className="w-36">
                 <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
                   Task Status
@@ -369,6 +383,7 @@ export default function UserTaskDetails() {
                     { value: "completed", label: "Completed" },
                     { value: "pending", label: "Pending" },
                     { value: "overdue", label: "Overdue" },
+                    { value: "upcoming", label: "Upcoming" },
                   ]}
                 />
               </div>
@@ -424,7 +439,7 @@ export default function UserTaskDetails() {
                     DELAY DAYS
                   </TableHead>
                   <TableHead className="text-xs font-bold text-center min-w-[110px]">
-                    TIME STATUS
+                    EXECUTION STATUS
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -439,9 +454,17 @@ export default function UserTaskDetails() {
                 ) : filteredTasks.length > 0 ? (
                   filteredTasks.map((t, idx) => {
                     const delayDays = calculateDelayDays(t);
+                    const statusLabel =
+                      t.executionStatus ||
+                      t.timeStatus ||
+                      t.status ||
+                      "Pending";
 
                     return (
-                      <TableRow key={t._id} className="hover:bg-gray-50 text-xs">
+                      <TableRow
+                        key={t._id}
+                        className="hover:bg-gray-50 text-xs"
+                      >
                         <TableCell className="p-3 text-gray-400 font-mono">
                           {(page - 1) * limit + idx + 1}
                         </TableCell>
@@ -474,7 +497,10 @@ export default function UserTaskDetails() {
 
                         {/* Frequency Badge */}
                         <TableCell className="p-3">
-                          <Badge variant="secondary" className="text-[10px] bg-slate-100 text-slate-700 font-semibold border border-slate-200">
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] bg-slate-100 text-slate-700 font-semibold border border-slate-200"
+                          >
                             {t.frequency || "One-time"}
                           </Badge>
                         </TableCell>
@@ -506,21 +532,23 @@ export default function UserTaskDetails() {
                           )}
                         </TableCell>
 
-                        {/* Time Status */}
+                        {/* Execution Status Badge */}
                         <TableCell className="p-3 text-center">
                           <Badge
                             variant="default"
                             className={
-                              t.timeStatus === "On Time"
+                              statusLabel === "On Time"
                                 ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100"
-                                : t.timeStatus === "Late"
+                                : statusLabel === "Late"
                                   ? "bg-amber-100 text-amber-800 hover:bg-amber-100"
-                                  : t.timeStatus === "Overdue"
+                                  : statusLabel === "Overdue"
                                     ? "bg-red-100 text-red-800 hover:bg-red-100"
-                                    : "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                                    : statusLabel === "Upcoming"
+                                      ? "bg-cyan-100 text-cyan-800 hover:bg-cyan-100"
+                                      : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
                             }
                           >
-                            {t.timeStatus}
+                            {statusLabel}
                           </Badge>
                         </TableCell>
                       </TableRow>
@@ -542,14 +570,15 @@ export default function UserTaskDetails() {
           </div>
 
           {/* Common Pagination */}
+          {/* Common Pagination Binding */}
           <DataPagination
-            page={page}
-            limit={limit}
-            total={totalCount}
-            totalPages={Math.ceil(totalCount / limit) || 1}
-            onPageChange={(p) => setPage(p)}
+            page={Number(page)}
+            limit={Number(limit)}
+            total={Number(totalCount)}
+            totalPages={Math.ceil(totalCount / Number(limit)) || 1}
+            onPageChange={(p) => setPage(Number(p))}
             onLimitChange={(l) => {
-              setLimit(l);
+              setLimit(Number(l));
               setPage(1);
             }}
           />
