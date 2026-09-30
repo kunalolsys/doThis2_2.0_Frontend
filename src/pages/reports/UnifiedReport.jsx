@@ -847,28 +847,17 @@ export default function UnifiedReport() {
                             {u.completed || 0}
                           </TableCell>
 
-                          {/* Completion Rate Column */}
-                          <TableCell className="text-center p-2">
-                            <Badge
-                              variant="default"
-                              className={
-                                compRate >= 75
-                                  ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 font-semibold"
-                                  : compRate >= 40
-                                    ? "bg-amber-100 text-amber-800 hover:bg-amber-100 border border-amber-200 font-semibold"
-                                    : "bg-red-100 text-red-800 hover:bg-red-100 border border-red-200 font-semibold"
-                              }
-                            >
-                              {compRate}%
-                            </Badge>
+                          {/* Completion Rate Column (Plain Style - Badge/Colors removed) */}
+                          <TableCell className="text-center font-mono font-medium text-gray-800">
+                            {compRate}%
                           </TableCell>
 
                           <TableCell className="text-center font-bold text-emerald-700">
                             {u.onTime || 0}
                           </TableCell>
 
-                          {/* On Time Rate Column */}
-                          <TableCell className="text-center font-mono font-semibold text-emerald-700">
+                          {/* On Time Rate Column (Plain Style - Colors removed) */}
+                          <TableCell className="text-center font-mono font-medium text-gray-800">
                             {onTimeRate}%
                           </TableCell>
 
@@ -888,17 +877,17 @@ export default function UnifiedReport() {
                             {u.notCompleted || 0}
                           </TableCell>
 
-                          {/* Not Completed Rate Column */}
-                          <TableCell className="text-center font-mono font-bold text-gray-700">
+                          {/* Not Completed Rate Column (Highlight Red Color) */}
+                          <TableCell className="text-center font-mono font-bold">
                             <Badge
-                              variant="outline"
-                              className="bg-slate-100 text-slate-800 border-slate-200 font-semibold"
+                              variant="default"
+                              className="bg-red-100 text-red-800 hover:bg-red-100 border border-red-200 font-semibold"
                             >
                               {notCompletedRate}%
                             </Badge>
                           </TableCell>
 
-                          {/* Action Button to Open Dedicated User Tasks View */}
+                          {/* Action Button */}
                           <TableCell className="text-center p-2">
                             <Button
                               size="sm"

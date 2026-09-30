@@ -91,6 +91,16 @@ export default function UserTaskDetails() {
 
   // Helper to calculate delay in days
   const calculateDelayDays = (task) => {
+    // Terminated ya Cancelled tasks ke liye zero delay days
+    if (
+      task.status === "Terminated" ||
+      task.status === "Cancelled" ||
+      task.executionStatus === "Terminated" ||
+      task.executionStatus === "Cancelled"
+    ) {
+      return 0;
+    }
+
     if (task.delayDays !== undefined && task.delayDays !== null) {
       return task.delayDays;
     }
@@ -133,8 +143,8 @@ export default function UserTaskDetails() {
         taskSource,
         timingLogic,
         taskStatus,
-        page: Number(page), // 👈 Enforce Number
-        limit: Number(limit), // 👈 Enforce Number
+        page: Number(page),
+        limit: Number(limit),
       };
 
       const res = await api.post("/mis/combined-report", payload);
@@ -164,7 +174,7 @@ export default function UserTaskDetails() {
     fetchUserTasks();
   }, [fetchUserTasks]);
 
-  // 🚀 User Specific CSV Export (Updated with executionStatus)
+  // 🚀 User Specific CSV Export
   const handleExportUserCSV = () => {
     if (!exportTasks.length) {
       message.warning("No user task records to export.");
@@ -365,7 +375,7 @@ export default function UserTaskDetails() {
                 />
               </div>
 
-              {/* Status Filter (Updated with "Upcoming") */}
+              {/* Status Filter (Updated with "Terminated") */}
               <div className="w-36">
                 <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
                   Task Status
@@ -384,6 +394,7 @@ export default function UserTaskDetails() {
                     { value: "pending", label: "Pending" },
                     { value: "overdue", label: "Overdue" },
                     { value: "upcoming", label: "Upcoming" },
+                    { value: "terminated", label: "Terminated" },
                   ]}
                 />
               </div>
@@ -532,7 +543,7 @@ export default function UserTaskDetails() {
                           )}
                         </TableCell>
 
-                        {/* Execution Status Badge */}
+                        {/* Execution Status Badge (Updated with Terminated / Cancelled styling) */}
                         <TableCell className="p-3 text-center">
                           <Badge
                             variant="default"
@@ -545,7 +556,10 @@ export default function UserTaskDetails() {
                                     ? "bg-red-100 text-red-800 hover:bg-red-100"
                                     : statusLabel === "Upcoming"
                                       ? "bg-cyan-100 text-cyan-800 hover:bg-cyan-100"
-                                      : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
+                                      : statusLabel === "Terminated" ||
+                                          statusLabel === "Cancelled"
+                                        ? "bg-gray-200 text-gray-800 hover:bg-gray-200"
+                                        : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"
                             }
                           >
                             {statusLabel}
@@ -570,7 +584,6 @@ export default function UserTaskDetails() {
           </div>
 
           {/* Common Pagination */}
-          {/* Common Pagination Binding */}
           <DataPagination
             page={Number(page)}
             limit={Number(limit)}
