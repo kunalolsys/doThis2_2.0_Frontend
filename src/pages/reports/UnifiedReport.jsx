@@ -203,11 +203,11 @@ export default function UnifiedReport() {
           value: summary.pending || 0,
           color: CHART_COLORS.pending,
         },
-        {
-          name: "Upcoming",
-          value: summary.upcoming || 0,
-          color: CHART_COLORS.upcoming,
-        },
+        // {
+        //   name: "Upcoming",
+        //   value: summary.upcoming || 0,
+        //   color: CHART_COLORS.upcoming,
+        // },
       ].filter((item) => item.value > 0),
     [summary],
   );
@@ -539,7 +539,7 @@ export default function UnifiedReport() {
                     { value: "completed", label: "Completed" },
                     { value: "pending", label: "Pending" },
                     { value: "overdue", label: "Overdue" },
-                    { value: "upcoming", label: "Upcoming" },
+                    // { value: "upcoming", label: "Upcoming" },
                   ]}
                 />
               </div>
@@ -563,7 +563,7 @@ export default function UnifiedReport() {
           </div>
 
           {/* Core Metrics KPI Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
             <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100">
               <span className="text-[10px] font-bold text-blue-600 uppercase block">
                 Total Assigned
@@ -609,14 +609,14 @@ export default function UnifiedReport() {
               </h3>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-cyan-50/60 border border-cyan-200">
+            {/* <div className="p-3.5 rounded-xl bg-cyan-50/60 border border-cyan-200">
               <span className="text-[10px] font-bold text-cyan-700 uppercase block">
                 Upcoming
               </span>
               <h3 className="text-2xl font-black text-cyan-900 mt-1">
                 {summary.upcoming}
               </h3>
-            </div>
+            </div> */}
 
             <div className="p-3.5 rounded-xl bg-gray-100/80 border border-gray-200">
               <span className="text-[10px] font-bold text-gray-600 uppercase block">
@@ -802,9 +802,9 @@ export default function UnifiedReport() {
                     <TableHead className="text-xs font-bold text-center">
                       PENDING
                     </TableHead>
-                    <TableHead className="text-xs font-bold text-center">
+                    {/* <TableHead className="text-xs font-bold text-center">
                       UPCOMING
-                    </TableHead>
+                    </TableHead> */}
                     <TableHead className="text-xs font-bold text-center">
                       NOT COMPLETED
                     </TableHead>
@@ -870,9 +870,9 @@ export default function UnifiedReport() {
                           <TableCell className="text-center font-bold text-yellow-700">
                             {u.pending || 0}
                           </TableCell>
-                          <TableCell className="text-center font-bold text-cyan-700">
+                          {/* <TableCell className="text-center font-bold text-cyan-700">
                             {u.upcoming || 0}
-                          </TableCell>
+                          </TableCell> */}
                           <TableCell className="text-center font-bold text-gray-600">
                             {u.notCompleted || 0}
                           </TableCell>
