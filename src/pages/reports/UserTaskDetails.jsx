@@ -68,10 +68,10 @@ export default function UserTaskDetails() {
 
   // Data States
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [tasks, setTasks] = useState([]);
-  const [exportTasks, setExportTasks] = useState([]);
 
-  // Pagination
+  // Pagination (Limit defaults to 10)
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
@@ -91,7 +91,6 @@ export default function UserTaskDetails() {
 
   // Helper to calculate delay in days
   const calculateDelayDays = (task) => {
-    // Terminated ya Cancelled tasks ke liye zero delay days
     if (
       task.status === "Terminated" ||
       task.status === "Cancelled" ||
@@ -149,7 +148,6 @@ export default function UserTaskDetails() {
 
       const res = await api.post("/mis/combined-report", payload);
       setTasks(res.data?.tasks || []);
-      setExportTasks(res.data?.allTasksForExport || res.data?.tasks || []);
       setTotalCount(res.data?.pagination?.total || 0);
     } catch (err) {
       console.error("Failed to fetch user tasks:", err);
@@ -174,55 +172,86 @@ export default function UserTaskDetails() {
     fetchUserTasks();
   }, [fetchUserTasks]);
 
-  // 🚀 User Specific CSV Export
-  const handleExportUserCSV = () => {
-    if (!exportTasks.length) {
-      message.warning("No user task records to export.");
-      return;
-    }
+  // 🚀 Download ALL Filtered User Tasks to CSV
+  const handleExportUserCSV = async () => {
+    try {
+      setExporting(true);
 
-    const headers = [
-      "Task ID",
-      "Title",
-      "Type",
-      "Assignee",
-      "Department",
-      "Frequency",
-      "Delay Days",
-      "Start Date",
-      "Due Date",
-      "Completed At",
-      "Execution Status",
-    ];
+      // Payload requesting ALL records without pagination limits
+      const payload = {
+        period,
+        startDate: customDates[0] ? customDates[0].format("YYYY-MM-DD") : null,
+        endDate: customDates[1] ? customDates[1].format("YYYY-MM-DD") : null,
+        departmentId: departmentId !== "all" ? departmentId : null,
+        templateId: templateId !== "all" ? templateId : null,
+        memberIds: [userId],
+        taskSource,
+        timingLogic,
+        taskStatus,
+        page: 1,
+        limit: 999999, // Fetch all records for export
+      };
 
-    const csvRows = [headers.join(",")];
+      const res = await api.post("/mis/combined-report", payload);
+      const exportData = res.data?.allTasksForExport || res.data?.tasks || [];
 
-    exportTasks.forEach((t) => {
-      const delay = calculateDelayDays(t);
-      const statusLabel = t.executionStatus || t.timeStatus || t.status || "—";
-      const row = [
-        `"${t.taskId || ""}"`,
-        `"${t.title || ""}"`,
-        `"${t.taskType || ""}"`,
-        `"${t.assignedTo?.name || userName}"`,
-        `"${t.department || ""}"`,
-        `"${t.frequency || "One-time"}"`,
-        `"${delay}"`,
-        `"${t.startDate ? formatDate(t.startDate) : ""}"`,
-        `"${t.dueDate ? formatDate(t.dueDate) : ""}"`,
-        `"${t.completedAt ? formatDate(t.completedAt) : ""}"`,
-        `"${statusLabel}"`,
+      if (!exportData.length) {
+        message.warning("No task records found to export.");
+        return;
+      }
+
+      const headers = [
+        "Task ID",
+        "Title",
+        "Type",
+        "Assignee",
+        "Department",
+        "Frequency",
+        "Delay Days",
+        "Start Date",
+        "Due Date",
+        "Completed At",
+        "Execution Status",
       ];
-      csvRows.push(row.join(","));
-    });
 
-    const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Tasks_${userName.replace(/\s+/g, "_")}_${dayjs().format("YYYY-MM-DD")}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+      const csvRows = [headers.join(",")];
+
+      exportData.forEach((t) => {
+        const delay = calculateDelayDays(t);
+        const statusLabel =
+          t.executionStatus || t.timeStatus || t.status || "—";
+        const row = [
+          `"${t.taskId || ""}"`,
+          `"${t.title || ""}"`,
+          `"${t.taskType || ""}"`,
+          `"${t.assignedTo?.name || userName}"`,
+          `"${t.department || ""}"`,
+          `"${t.frequency || "One-time"}"`,
+          `"${delay}"`,
+          `"${t.startDate ? formatDate(t.startDate) : ""}"`,
+          `"${t.dueDate ? formatDate(t.dueDate) : ""}"`,
+          `"${t.completedAt ? formatDate(t.completedAt) : ""}"`,
+          `"${statusLabel}"`,
+        ];
+        csvRows.push(row.join(","));
+      });
+
+      const blob = new Blob([csvRows.join("\n")], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `All_Tasks_${userName.replace(/\s+/g, "_")}_${dayjs().format("YYYY-MM-DD")}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      message.success(`Successfully exported ${exportData.length} tasks!`);
+    } catch (err) {
+      console.error("Failed to export user tasks:", err);
+      message.error("Failed to export tasks CSV.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   const filteredTasks = useMemo(() => {
@@ -266,11 +295,15 @@ export default function UserTaskDetails() {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
+                disabled={exporting}
                 onClick={handleExportUserCSV}
                 className="flex items-center gap-2 text-sm h-[38px] bg-green-50 text-green-700 border-green-200 hover:bg-green-100 font-semibold"
               >
-                <Download size={15} />
-                Export User Tasks CSV
+                <Download
+                  size={15}
+                  className={exporting ? "animate-bounce" : ""}
+                />
+                {exporting ? "Exporting All..." : "Export All Tasks CSV"}
               </Button>
               <Button
                 variant="outline"
@@ -375,7 +408,7 @@ export default function UserTaskDetails() {
                 />
               </div>
 
-              {/* Status Filter (Updated with "Terminated") */}
+              {/* Status Filter */}
               <div className="w-36">
                 <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
                   Task Status
@@ -543,7 +576,7 @@ export default function UserTaskDetails() {
                           )}
                         </TableCell>
 
-                        {/* Execution Status Badge (Updated with Terminated / Cancelled styling) */}
+                        {/* Execution Status Badge */}
                         <TableCell className="p-3 text-center">
                           <Badge
                             variant="default"
@@ -583,12 +616,19 @@ export default function UserTaskDetails() {
             </Table>
           </div>
 
-          {/* Common Pagination */}
+          {/* Common Pagination with Option to Show All Tasks */}
           <DataPagination
             page={Number(page)}
             limit={Number(limit)}
             total={Number(totalCount)}
             totalPages={Math.ceil(totalCount / Number(limit)) || 1}
+            limitOptions={[
+              { label: "10", value: 10 },
+              { label: "25", value: 25 },
+              { label: "50", value: 50 },
+              { label: "100", value: 100 },
+              { label: "All Tasks", value: totalCount || 999999 },
+            ]}
             onPageChange={(p) => setPage(Number(p))}
             onLimitChange={(l) => {
               setLimit(Number(l));

@@ -1,3 +1,4 @@
+import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -13,12 +14,17 @@ const DataPagination = ({
   limit = 10,
   total = 0,
   totalPages = 1,
+  limitOptions = [
+    { label: "5 / page", value: 5 },
+    { label: "10 / page", value: 10 },
+    { label: "20 / page", value: 20 },
+    { label: "50 / page", value: 50 },
+    { label: "100 / page", value: 100 },
+  ],
   onPageChange,
   onLimitChange,
 }) => {
-  // if (!total || totalPages <= 1) return null;
-
-  // 🚀 Internal strict number normalization (fixes string concatenation bugs)
+  // 🚀 Internal strict number normalization
   const numPage = Number(page) || 1;
   const numLimit = Number(limit) || 10;
   const numTotal = Number(total) || 0;
@@ -32,11 +38,10 @@ const DataPagination = ({
 
   const getPages = () => {
     const pages = [];
-    const siblingCount = 1; // how many pages around current
+    const siblingCount = 1; // pages around current page
     const totalNumbers = siblingCount * 2 + 5; // first + last + current + siblings + 2 dots
 
     if (numTotalPages <= totalNumbers) {
-      // small number of pages → show all
       for (let i = 1; i <= numTotalPages; i++) {
         pages.push(i);
       }
@@ -50,7 +55,6 @@ const DataPagination = ({
     const showRightDots = rightSibling < numTotalPages - 1;
 
     if (!showLeftDots && showRightDots) {
-      // left side no dots
       for (let i = 1; i <= 3 + 2 * siblingCount; i++) {
         pages.push(i);
       }
@@ -79,9 +83,25 @@ const DataPagination = ({
     return pages;
   };
 
+  // Helper to format option objects or raw numbers
+  const formattedLimitOptions = limitOptions.map((opt) => {
+    if (typeof opt === "object" && opt !== null) {
+      return {
+        label: opt.label,
+        value: String(opt.value),
+        numValue: Number(opt.value),
+      };
+    }
+    return {
+      label: `${opt} / page`,
+      value: String(opt),
+      numValue: Number(opt),
+    };
+  });
+
   return (
     <div className="flex flex-col md:flex-row items-center justify-between gap-3 mt-5 border-t pt-4">
-      {/* Left: Range + Limit */}
+      {/* Left: Range + Limit Selector */}
       <div className="flex items-center gap-3 text-sm text-gray-600">
         <span>
           Showing <span className="font-medium">{start}</span>–
@@ -89,18 +109,18 @@ const DataPagination = ({
           <span className="font-medium">{numTotal}</span>
         </span>
 
-        {/* Limit Selector */}
+        {/* Dynamic Limit Selector */}
         <Select
           value={String(numLimit)}
           onValueChange={(val) => onLimitChange?.(Number(val))}
         >
-          <SelectTrigger className="w-[80px] h-8 text-xs">
+          <SelectTrigger className="w-[110px] h-8 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {[5, 10, 20, 50].map((l) => (
-              <SelectItem key={l} value={String(l)}>
-                {l} / page
+            {formattedLimitOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -128,7 +148,7 @@ const DataPagination = ({
             </span>
           ) : (
             <Button
-              key={`page-btn-${p}-${idx}`} // Unique key to avoid DOM duplication conflicts
+              key={`page-btn-${p}-${idx}`}
               variant={Number(p) === numPage ? "default" : "outline"}
               size="sm"
               className="min-w-[36px]"

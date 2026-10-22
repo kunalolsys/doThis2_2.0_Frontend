@@ -791,10 +791,10 @@ export default function UnifiedReport() {
                       ON TIME
                     </TableHead>
                     <TableHead className="text-xs font-bold text-center">
-                      ON TIME %
+                      LATE
                     </TableHead>
                     <TableHead className="text-xs font-bold text-center">
-                      LATE
+                      ON TIME %
                     </TableHead>
                     <TableHead className="text-xs font-bold text-center">
                       OVERDUE
@@ -856,13 +856,12 @@ export default function UnifiedReport() {
                             {u.onTime || 0}
                           </TableCell>
 
+                          <TableCell className="text-center font-bold text-amber-600">
+                            {u.late || 0}
+                          </TableCell>
                           {/* On Time Rate Column (Plain Style - Colors removed) */}
                           <TableCell className="text-center font-mono font-medium text-gray-800">
                             {onTimeRate}%
-                          </TableCell>
-
-                          <TableCell className="text-center font-bold text-amber-600">
-                            {u.late || 0}
                           </TableCell>
                           <TableCell className="text-center font-bold text-red-600">
                             {u.overdue || 0}
